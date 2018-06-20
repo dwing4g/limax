@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="testmonitor">
+    <monitorset name="Online">
+        <monitor name="online" type="gauge" />
+        <key name="level" type="short" />
+        <key name="sex" type="byte" />
+        <key name="camp" type="short" />
+    </monitorset>
+
+    <monitorset name="AuthProvider">
+        <monitor name="newaccount" type="counter" />
+        <monitor name="auth" type="counter" />
+        <key name="platflag" type="string" />
+        <key name="pvid" type="short" />
+    </monitorset>
+</project>

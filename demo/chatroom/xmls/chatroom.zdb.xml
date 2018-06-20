@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zdb>
+	<xbean name="ChatHallInfo">
+		<variable name="name" type="string" />
+		<variable name="rooms" type="list" value="long" />
+	</xbean>
+	<table autoIncrement="true" name="chathalls" key="long" value="ChatHallInfo" />
+
+	<table name="hallnamecache" key="string" value="long"
+		persistence="MEMORY" />
+
+	<xbean name="ChatRoomInfo">
+		<variable name="name" type="string" />
+		<variable name="hallid" type="long" />
+	</xbean>
+	<table autoIncrement="true" name="chatrooms" key="long" value="ChatRoomInfo" />
+
+	<xbean name="UserInfo">
+		<variable name="nickname" type="string" />
+	</xbean>
+	<table name="userinfo" key="long" value="UserInfo" />
+
+	<table name="roominfocache" key="long" value="any:chatviews.ChatRoom"
+		persistence="MEMORY" />
+</zdb>

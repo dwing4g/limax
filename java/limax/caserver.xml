@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CAServer archive="/work/pkix/ca/certs" authCode="123456" domain="ca.limax-project.org">
+    <CAService location="pkcs12:/work/pkix/ca/ca0.p12" passphrase="123456"/>
+    <CAService location="pkcs12:/work/pkix/ca/ca1.p12" passphrase="123456"/>
+    <OcspServer certificateAlgorithm="ec/256" certificateLifetime="30"
+        nextUpdateDelay="7" ocspStore="/work/pkix/ca/ocsp" port="80"
+        responseCacheCapacity="10000" signatureBits="256"/>
+    <CertServer port="8080" publicKeyAlgorithmForGeneratePKCS12="rsa/1024">
+        <Subject pattern=".*" patternIgnorecase="true" template="cn=zengpan,dc=limax-project,dc=org"/>
+        <NotBefore mandatory="true"/>
+        <NotAfter mandatory="false" period="30" periodHigh="365" periodLow="10"/>
+        <KeyUsage>
+            <digitalSignature default="true" mandatory="false"/>
+            <nonRepudiation default="false" mandatory="true"/>
+            <keyEncipherment default="true" mandatory="false"/>
+            <dataEncipherment default="false" mandatory="false"/>
+            <keyAgreement default="false" mandatory="false"/>
+            <encipherOnly default="false" mandatory="true"/>
+            <decipherOnly default="false" mandatory="true"/>
+        </KeyUsage>
+        <ExtKeyUsage>
+            <ServerAuth default="true" mandatory="false"/>
+            <ClientAuth default="true" mandatory="false"/>
+            <CodeSigning default="false" mandatory="true"/>
+            <EmailProtection default="fase" mandatory="true"/>
+        </ExtKeyUsage>
+    </CertServer>
+    <CertUpdateServer certificateAlgorithm="ec/256"
+        certificateLifetime="30" port="443" renewLifespanPercent="79"/>
+    <Trace console="true" level="info" outDir="./trace"
+        rotateHourOfDay="6" rotateMinute="0"/>
+</CAServer>

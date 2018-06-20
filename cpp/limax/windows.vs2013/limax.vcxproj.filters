@@ -1,0 +1,212 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\source\byteorder.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\common.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\osstr.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dlldefines.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\limax.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\marshal.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\octets.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\osdefine.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\osincs.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\protocol.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\endpoint.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\view.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\script.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\variant.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\netbase.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\osbase.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\utils.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\codec.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\netinterface.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\netio.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\netsession.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\rfc2118.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\security.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\viewdefineparser.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\engine.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\viewcontextimpl.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\BI.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\dh.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\endpointinc.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\erroroccured.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\scriptexchange.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\variantdef.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\variantviews.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\httpclient.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\http.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\json.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\threadpool.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\endpointconfig.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\endpointhelper.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\websocket.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="..\source\auanyservice.h">
+      <Filter>source</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\source\codec.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\marshal.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\netio.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\netsession.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\octets.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\protocol.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\rfc2118.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\security.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\utils.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\BI.c">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\dh.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\endpoint.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\script.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\variant.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\view.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\viewcontextimpl.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\httpclient.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\http.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\threadpool.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\endpointhelper.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\endpointconfig.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\websocket.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\auanyservice.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\source\json.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServiceConf name="provider">
+    <Zdb autoKeyInitValue="0" autoKeyStep="4096"
+        checkpointPeriod="60000" corePoolSize="30" dbhome="zdb"
+        deadlockDetectPeriod="1000"
+        defaultTableCache="limax.zdb.TTableCacheLRU"
+        edbCacheSize="65536" edbLoggerPages="16384" jdbcPoolSize="5"
+        marshalN="1" marshalPeriod="-1" procPoolSize="10"
+        schedPoolSize="5" snapshotFatalTime="200" zdbVerify="false">
+        <Procedure maxExecutionTime="0" retryDelay="100" retryTimes="3" trace="WARN"/>
+    </Zdb>
+    <Trace console="true" level="WARN" outDir="./trace"
+        rotateHourOfDay="6" rotateMinute="0"/>
+    <Manager autoStartListen="true" backlog="32"
+        checkOutputBuffer="false"
+        className="limax.globalid.Main$GlobalIdServer"
+        classSingleton="getInstance"
+        defaultStateClass="limax.globalid.states.GlobalIdServer"
+        inputBufferSize="16384" localPort="10210" maxSize="0"
+        name="GlobalIdServer" outputBufferSize="16384" type="server"/>
+</ServiceConf>

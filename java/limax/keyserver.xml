@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<KeyServer algorithm="sha-256" keyLifespan="365"
+    location="pkcs12:/work/key.limax-project.org.p12"
+    master="www.limax-project.org" passphrase="123456" publishPeriod="3"
+    revocationCheckerOptions="disable" trustsPath="/work/trusts">
+    <Trace console="true" level="info" outDir="./trace"
+        rotateHourOfDay="6" rotateMinute="0"/>
+</KeyServer>

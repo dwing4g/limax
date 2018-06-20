@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<application name="limax" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+	<xi:include href="switcher.endpoint.xml" />
+	<xi:include href="switcher.auany.xml" />
+	<xi:include href="auany.views.xml" />
+	<xi:include href="defines.beans.xml" />
+
+	<zdb>
+		<xbean name="Session">
+			<variable name="appid" type="int" />
+			<variable name="serial" type="int" />
+			<variable name="subordinates" type="list" value="long" />
+		</xbean>
+		<table name="session" key="long" value="Session" cacheCapacity="10240"
+			autoIncrement="true" />
+
+		<xbean name="Account">
+			<variable name="application" type="map" key="int" value="long" />
+			<variable name="lmkdata" type="binary" />
+		</xbean>
+		<table name="account" key="string" value="Account"
+			cacheCapacity="10240" />
+	</zdb>
+
+	<namespace name="auanymonitor">
+		<monitorset name="AuthPlat">
+			<monitor name="auth" type="counter" />
+			<key name="platflag" type="string" />
+		</monitorset>
+		<monitorset name="AuthApp">
+			<monitor name="newaccount" type="counter" />
+			<monitor name="auth" type="counter" />
+			<key name="appid" type="int" />
+		</monitorset>
+	</namespace>
+
+	<state name="AuanyServer">
+		<namespace ref="switcherauany" />
+	</state>
+
+	<state name="AuanyProvider">
+		<namespace ref="auanyviews" />
+	</state>
+
+	<service name="auany" useZdb="true">
+		<manager name="AuanyServer" type="server" initstate="AuanyServer"
+			port="10200" />
+		<manager name="AuanyProvider" type="provider" initstate="AuanyProvider"
+			sessionTimeout="30000" />
+	</service>
+</application>

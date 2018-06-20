@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServiceConf name="switcher">
+    <ThreadPoolSize applicationExecutors="16" netProcessors="4"
+        nioCpus="1" protocolSchedulers="4"/>
+    <Limit maxSize="16384" name="limit0"/>
+    <Manager autoStartListen="true" backlog="32"
+        checkOutputBuffer="false"
+        defaultStateClass="limax.switcher.states.SwitcherServer"
+        inputBufferSize="16384" limit="limit0" localPort="10000"
+        maxSize="0" name="SwitcherServer" outputBufferSize="16384"
+        parserCreatorClass="limax.switcher.Config$SwitcherManagerCreator" type="server"/>
+    <Manager autoStartListen="true" backlog="32"
+        checkOutputBuffer="false" inputBufferSize="16384" limit="limit0"
+        localPort="10001" name="SwitcherServerWebSocket"
+        outputBufferSize="16384"
+        parserCreatorClass="limax.switcher.Config$SwitcherManagerCreator"
+        type="server" webSocketEnabled="true"/>
+    <Manager autoStartListen="true" backlog="32"
+        checkOutputBuffer="false"
+        className="limax.switcher.ProviderListener"
+        classSingleton="getInstance"
+        defaultStateClass="limax.switcher.states.ProviderServer"
+        inputBufferSize="16384" limit="limit0" localPort="10100"
+        maxSize="0" name="ProviderServer" outputBufferSize="16384" type="server"/>
+    <Manager autoReconnect="true" checkOutputBuffer="false"
+        className="limax.switcher.AuanyClientListener"
+        classSingleton="getInstance" connectTimeout="5000"
+        defaultStateClass="limax.switcher.states.AuanyClient"
+        inputBufferSize="65536" name="AuanyClient"
+        outputBufferSize="65536" remoteIp="$auany.ipaddr:127.0.0.1$"
+        remotePort="10200" type="client"/>
+    <Switcher cacheCapacity="10000" cacheGroup="224.100.100.100" key=""
+        needcompress.c2s="true" needcompress.s2c="true">
+        <dh group="1"/>
+        <dh group="2"/>
+        <dh group="5"/>
+        <native id="1"/>
+        <ws id="2"/>
+    </Switcher>
+    <JmxServer host="localhost" rmiPort="10002" serverPort="10003"/>
+    <Transpond autostart="$globalidtransport.autostart:false$"
+        localPort="10210" name="globalidtransport"
+        parserClass="limax.switcher.Config$Transpond"
+        serverIp="$globalidtransport.serverip:127.0.0.1$" serverPort="10210"/>
+    <Trace console="true" level="info" outDir="./trace"
+        rotateHourOfDay="6" rotateMinute="0"/>
+</ServiceConf>

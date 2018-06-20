@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="individual"/>
+	<classpathentry including="limax/auanyviews/|limax/defines/|limax/endpoint/|limax/providerendpoint/" kind="src" path="gen.limax"/>
+	<classpathentry excluding="limax/codec/JSONEncoder.java|limax/codec/asn1/|limax/endpoint/script/JavaScriptHandle.java|limax/net/io/NetModel.java|limax/net/io/WebSocketServerTask.java" including="limax/codec/|limax/endpoint/|limax/net/AbstractManager.java|limax/net/AbstractRpcContext.java|limax/net/AbstractTransport.java|limax/net/ClientListener.java|limax/net/ClientManager.java|limax/net/ClientManagerConfig.java|limax/net/ClientManagerImpl.java|limax/net/Config.java|limax/net/Driver.java|limax/net/Engine.java|limax/net/Listener.java|limax/net/Manager.java|limax/net/ManagerConfig.java|limax/net/Protocol.java|limax/net/SizePolicyException.java|limax/net/Skeleton.java|limax/net/State.java|limax/net/StateTransport.java|limax/net/StateTransportImpl.java|limax/net/SupportDispatch.java|limax/net/SupportRpcContext.java|limax/net/SupportStateCheck.java|limax/net/SupportTypedDataBroadcast.java|limax/net/SupportTypedDataTransfer.java|limax/net/SupportUnknownProtocol.java|limax/net/Transport.java|limax/net/UnknownProtocolHandler.java|limax/net/io/|limax/util/Closeable.java|limax/util/ConcurrentEnvironment.java|limax/util/Dispatcher.java|limax/util/HashExecutor.java|limax/util/Helper.java|limax/util/HttpClient.java|limax/util/JMXException.java|limax/util/JSON.java|limax/util/JSONDecoder.java|limax/util/Pair.java|limax/util/Resource.java|limax/util/ScheduledTimeoutExecutor.java|limax/util/TimeoutExecutor.java|limax/xmlconfig/ClientManagerConfigBuilder.java|limax/xmlconfig/ConfigBuilder.java" kind="src" path="src"/>
+	<classpathentry kind="src" path="gen"/>
+	<classpathentry kind="con" path="com.android.ide.eclipse.adt.ANDROID_FRAMEWORK"/>
+	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.LIBRARIES"/>
+	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.DEPENDENCIES"/>
+	<classpathentry kind="output" path="bin/classes"/>
+</classpath>

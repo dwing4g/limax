@@ -1,0 +1,232 @@
+<!doctype html>
+<html>
+	<head>
+		<title>Entity Certificate Utility</title>
+		<style>
+			body {
+				font-size : 12px;
+			}
+			div.item {
+				display : flex;
+				align-items : baseline;
+			}
+			div.title {
+				color : red;
+				flex-basis : 108px;
+				flex-shrink : 0;
+			}
+			div.input {
+				flex-grow : 1;
+				margin : 1px 4px;
+			}
+			input[type='text'] {
+				width : 100%;
+			}
+			input[type='password'] {
+				width : 100%;
+			}
+			.err {
+				color : red;
+				border-color : red;
+			}
+			.ok {
+				color : black;
+			}
+			.background-red {
+				background-color:red;
+			}
+			ul {
+				display:flex;
+				list-style-type:none;
+				margin:0;
+				padding:0;
+				overflow:hidden;
+				align-items : center;
+			}
+			li {
+				flex-grow : 0;
+				width : 180px;				
+				background-color:gray;
+				margin-bottom:8px;
+			}
+			a:link,a:visited {
+				display : block;
+				font-weight:bold;
+				color:white;
+				text-align:center;
+				padding:4px;
+				text-decoration:none;
+				text-transform:uppercase;
+			}
+			a:hover,a:active {
+				background-color:red;
+			}
+			label {
+				cursor: pointer;
+				width: 128px;
+				display: inline-block;
+			}		
+			span:hover {
+				cursor:pointer;
+			}
+			span {
+				text-decoration:underline;
+			}
+			div.checkbox-ext{
+  				flex-wrap: wrap;
+			}
+			input[type=file] {
+				width:100%;
+				margin-bottom:4px;
+			}
+			textarea {
+				width:100%;
+				padding-right:0;
+				font-size : 12px;
+				resize:none;
+			}
+		</style>
+		<script type='text/javascript' src='CertServer.js'>
+		</script>
+	</head>
+	<body onload='load()'>
+		<ul id='menu'>
+			<li><a href='#'>sign</a></li>
+			<li><a href='#'>revoke</a></li>
+			<li><a href='#'>recall</a></li>
+		</ul>
+		<div id='sign'>
+			<div class='item'>
+				<div class='title'>
+					subject
+				</div>
+				<div class='input'>
+					<input id='subject' type='text' spellcheck='false'/>
+				</div>
+			</div>
+			<div id='subjectAltNames'>
+				<div class='item'>
+					<div class='title'>
+						subjectAltName
+					</div>
+					<div class='input' style='flex-grow:0;margin-right:0px;'>
+						<select>
+							<option></option>
+							<option>rfc822Name</option>
+							<option>dNSName</option>
+							<option>directoryName</option>
+							<option>uniformResourceIdentifier</option>
+							<option>iPAddress</option>
+							<option>registeredID</option>
+						</select>
+					</div>
+					<div class='input'>
+						<input type='text' spellcheck='false'/>
+					</div>
+				</div>
+			</div>
+			<div class='item'>
+				<div class='title'>
+					notBefore
+				</div>
+				<div class='input'>
+					<input type='text' maxlength='10' size='10' id='notBefore'/>
+				</div>
+			</div>
+			<div class='item'>
+				<div class='title'>
+					notAfter
+				</div>
+				<div class='input'>
+					<input type='text' maxlength='10' size='10' id='notAfter'/>
+				</div>
+			</div>
+			<div class='item'>
+				<div class='title'>
+					keyUsage
+				</div>
+				<div class='checkbox-ext'>
+						<label><input type='checkbox' name='keyUsage'/>digitalSignature</label>
+						<label><input type='checkbox' name='keyUsage'/>nonRepudiation</label>
+						<label><input type='checkbox' name='keyUsage'/>keyEncipherment</label>
+						<label><input type='checkbox' name='keyUsage'/>dataEncipherment</label>
+						<label><input type='checkbox' name='keyUsage'/>keyAgreement</label>
+						<label><input type='checkbox' name='keyUsage'/>encipherOnly</label>
+						<label><input type='checkbox' name='keyUsage'/>decipherOnly</label>
+				</div>
+			</div>
+			<div class='item'>
+				<div class='title'>
+					extKeyUsage
+				</div>
+				<div class='checkbox-ext'>
+						<label><input type='checkbox' name='extKeyUsage'/>ServerAuth</label>
+						<label><input type='checkbox' name='extKeyUsage'/>ClientAuth</label>
+						<label><input type='checkbox' name='extKeyUsage'/>CodeSigning</label>
+						<label><input type='checkbox' name='extKeyUsage'/>EmailProtection</label>
+				</div>
+			</div>
+			<div id='pkcs12' hidden='true'>
+				<div class='item'>
+					<div class='title'>
+						<span>PKCS12Passphrase</span>
+					</div>
+					<div class='input'>
+						<input id='pkcs12passphrase' type='password' placeholder='Set Passphrase'/>
+					</div>
+					<div class='input'>
+						<input id='pkcs12confirm' type='password' placeholder='Confirm Passphrase'/>
+					</div>
+				</div>
+			</div>
+			<div id='pubkey'>
+				<div class='item'>
+					<div class='title'>
+						<span>publicKey</span>
+					</div>
+					<div class='input'>
+						<input id='pkfile' type='file'/>
+						<textarea id='pktext' spellcheck='false' rows='16' placeholder='-----BEGIN PUBLIC KEY-----&#10;Paste publicKey Or Choose publicKey File &#10;-----END PUBLIC KEY-----'></textarea>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id='revoke'>
+			<div class='item'>
+				<div class='title'>
+					certificate
+				</div>
+				<div class='input'>
+					<input id='revokefile' type='file'/>
+					<textarea id='revoketext' spellcheck='false' rows='16' placeholder='-----BEGIN CERTIFICATE-----&#10;Paste Certificate Or Choose Certificate File &#10;-----END CERTIFICATE-----'></textarea>
+				</div>
+			</div>
+		</div>
+		<div id='recall'>
+			<div class='item'>
+				<div class='title'>
+					certificate
+				</div>
+				<div class='input'>
+					<input id='recallfile' type='file'/>
+					<textarea id='recalltext' spellcheck='false' rows='16' placeholder='-----BEGIN CERTIFICATE-----&#10;Paste Certificate Or Choose Certificate File &#10;-----END CERTIFICATE-----'></textarea>
+				</div>
+			</div>
+		</div>
+		<div class='item'>
+			<div class='title'>
+				authCode
+			</div>
+			<div class='input'>
+				<input type='password' id='authCode'/>
+			</div>
+			<div class='input' style='flex-grow:0'>
+				<input id='action' type='button' value='Action'/>
+			</div>
+			<div class='input' style='flex-grow:0'>
+				<input id='reset' type='button' value='Reset'/>
+			</div>
+		</div>
+		<a id='retrieveKey' style='display:none;'></a>
+	</body>
+</html>

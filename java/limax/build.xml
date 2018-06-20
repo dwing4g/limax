@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="limax" default="dist">
+
+	<property name="src" value="src/" />
+	<property name="gen" value="gen/" />
+	<property name="build" value="bin/" />
+	<property name="limaxbin" value="../../bin" />
+	<property name="jssrc" value="../../javascript" />
+	<property name="jarfile" value="${limaxbin}/limax.jar" />
+
+	<target name="xmlgen">
+		<mkdir dir="${build}" />
+		<javac encoding="UTF-8" srcdir="${src}" includes="limax/xmlgen/**"
+			destdir="${build}" debug="true" debuglevel="lines,source"
+			includeantruntime="false">
+			<compilerarg line="-Xlint:unchecked" />
+		</javac>
+		<java classpath="${build}" classname="limax.xmlgen.Main" fork="yes">
+			<arg value="-java" />
+			<arg value="limax.xml" />
+		</java>
+	</target>
+
+	<target name="init" depends="xmlgen" />
+
+	<target name="compile" depends="init">
+		<path id="classpath">
+			<fileset dir="lib/">
+				<include name="**/*.jar" />
+			</fileset>
+		</path>
+		<javac encoding="UTF-8" srcdir="${src}:${gen}" destdir="${build}"
+			classpathref="classpath" debug="true" debuglevel="lines,source,vars"
+			includeantruntime="false">
+			<compilerarg line="-Xlint:unchecked" />
+		</javac>
+	</target>
+
+	<target name="clean">
+		<delete dir="${build}" />
+		<delete dir="${gen}" />
+		<delete file="${jarfile}" />
+	</target>
+
+	<target name="dist" depends="compile">
+		<copy todir="${build}">
+			<fileset dir="${src}">
+				<include name="**/*.js" />
+				<include name="**/*.html" />
+			</fileset>
+		</copy>
+		<copy todir="${build}/limax/endpoint/script" file="${jssrc}/limax.js" />
+		<copy todir="${build}/limax/endpoint/script" file="${jssrc}/map.js" />
+		<jar jarfile="${jarfile}" basedir="${build}" manifest="${src}/MANIFEST.MF" />
+	</target>
+
+	<target name="all" depends="clean, dist" />
+
+	<target name="release" depends="dist" />
+
+	<target name="doc">
+		<mkdir dir="doc" />
+		<javadoc sourcepath="src:gen"
+			packagenames="limax.codec,limax.codec.asn1,limax.edb,limax.endpoint,limax.endpoint.script,limax.endpoint.variant,limax.executable,limax.key,limax.key.ed,limax.net,limax.net.io,limax.p2p,limax.pkix,limax.provider,limax.util,limax.util.monitor,limax.xmlconfig,limax.zdb,limax.zdb.tool"
+			defaultexcludes="yes" destdir="doc" locale="en_US" Encoding="UTF-8"
+			docencoding="UTF-8" charset="UTF-8" />
+	</target>
+
+	<target name="-run">
+		<java classpath="${jarfile}" classname="limax.switcher.Main"
+			fork="true" spawn="true" />
+	</target>
+
+	<target name="run" depends="dist, -run" />
+
+</project>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<namespace name="providerendpoint">
+
+	<protocol name="SendControlToServer" type="40" maxsize="0">
+		<variable name="providerid" type="int" />
+		<variable name="sessionid" type="long" />
+
+		<variable name="classindex" type="short" />
+		<variable name="instanceindex" type="int" />
+		<variable name="controlindex" type="byte" />
+		<variable name="controlparameter" type="binary" />
+
+		<variable name="stringdata" type="string" />
+	</protocol>
+
+	<bean name="ViewVariableData">
+		<variable name="index" type="byte" />
+		<variable name="field" type="byte" />
+		<variable name="data" type="binary" />
+		<variable name="dataremoved" type="binary" />
+	</bean>
+
+	<bean name="ViewMemberData">
+		<variable name="sessionid" type="long" />
+		<variable name="vardata" type="ViewVariableData" />
+	</bean>
+
+	<protocol name="SyncViewToClients" type="41" maxsize="0">
+		<variable name="providerid" type="int" />
+		<variable name="sessionids" type="vector" value="long" />
+
+		<variable name="classindex" type="short" />
+		<variable name="instanceindex" type="int" />
+
+		<enum name="DT_VIEW_DATA" value="0" />
+		<enum name="DT_TEMPORARY_INIT_DATA" value="1" />
+		<enum name="DT_TEMPORARY_DATA" value="2" />
+		<enum name="DT_TEMPORARY_ATTACH" value="3" />
+		<enum name="DT_TEMPORARY_DETACH" value="4" />
+		<enum name="DT_TEMPORARY_CLOSE" value="5" />
+
+		<variable name="synctype" type="byte" />
+
+		<variable name="vardatas" type="vector" value="ViewVariableData" />
+		<variable name="members" type="vector" value="ViewMemberData" />
+		<variable name="stringdata" type="string" />
+	</protocol>
+
+	<protocol name="Tunnel" type="42" maxsize="0">
+		<variable name="providerid" type="int" />
+		<variable name="sessionid" type="long" />
+		<variable name="label" type="int" />
+		<variable name="data" type="binary" />	
+	</protocol>
+</namespace>

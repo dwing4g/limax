@@ -1,0 +1,137 @@
+{
+  "name": "test",
+  "url": "jdbc:mysql://localhost:3306/test?user\u003droot\u0026password\u003dadmin\u0026autoReconnect\u003dtrue",
+  "poolSize": 5,
+  "alive": true,
+  "tables": [
+    {
+      "table": "_authprovider",
+      "exist": true,
+      "keys": [
+        "ts",
+        "host",
+        "_platflag",
+        "_pvid"
+      ],
+      "columns": [
+        {
+          "col": "ts",
+          "type": "TIMESTAMP"
+        },
+        {
+          "col": "host",
+          "type": "STRING"
+        },
+        {
+          "col": "_platflag",
+          "type": "STRING"
+        },
+        {
+          "col": "_pvid",
+          "type": "INT"
+        },
+        {
+          "col": "_newaccount",
+          "type": "INT"
+        },
+        {
+          "col": "_auth",
+          "type": "INT"
+        }
+      ]
+    },
+    {
+      "table": "_online",
+      "exist": true,
+      "keys": [
+        "ts",
+        "host",
+        "_level",
+        "_sex",
+        "_camp"
+      ],
+      "columns": [
+        {
+          "col": "ts",
+          "type": "TIMESTAMP"
+        },
+        {
+          "col": "host",
+          "type": "STRING"
+        },
+        {
+          "col": "_level",
+          "type": "INT"
+        },
+        {
+          "col": "_sex",
+          "type": "INT"
+        },
+        {
+          "col": "_camp",
+          "type": "INT"
+        },
+        {
+          "col": "_online",
+          "type": "INT"
+        }
+      ]
+    }
+  ],
+  "chartSeriess": [
+    {
+      "name": "online",
+      "table": "_online",
+      "filters": [
+        {
+          "col": "host",
+          "desc": "testhost"
+        }
+      ],
+      "charts": [
+        {
+          "type": "PIE",
+          "keys": [
+            "_camp"
+          ],
+          "values": [
+            "_online"
+          ]
+        },
+        {
+          "type": "COLUMN",
+          "keys": [
+            "_level"
+          ],
+          "values": [
+            "_online"
+          ]
+        },
+        {
+          "type": "LINE",
+          "keys": [
+            "ts"
+          ],
+          "values": [
+            "_online"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "auth",
+      "table": "_authprovider",
+      "charts": [
+        {
+          "type": "COLUMN",
+          "keys": [
+            "ts"
+          ],
+          "values": [
+            "_newaccount"
+          ]
+        }
+      ]
+    }
+  ]
+}

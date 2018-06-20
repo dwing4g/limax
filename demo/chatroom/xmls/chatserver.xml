@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="chat" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+	<xi:include href="chatroom.zdb.xml" />
+	<xi:include href="chatroom.view.xml" />
+
+	<state name="ChatServer">
+		<namespace ref="chatviews" />
+	</state>
+	<service name="chatserver" useGlobalId="true" useZdb="true">
+		<manager name="Provider" type="provider" initstate="ChatServer"
+			port="10100" />
+	</service>
+</project>

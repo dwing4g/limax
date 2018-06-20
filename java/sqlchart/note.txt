@@ -1,0 +1,9 @@
+
+1, java-class, java-object -> json, json-schema
+2, json-schema ->  html-form -(user input)-> json -> java-object
+
+css 参考 flake
+json-schema -> html-form -> json 使用json-editor
+java-object <-> json 使用gson
+json -> html 使用handlebars
+json -> svg chart 使用highcharts

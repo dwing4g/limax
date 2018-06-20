@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="limax" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+	<xi:include href="switcher.endpoint.xml" />
+	<xi:include href="switcher.provider.xml" />
+	<xi:include href="switcher.auany.xml" />
+	<xi:include href="provider.endpoint.xml" />
+	<xi:include href="provider.globalid.xml" />
+	<xi:include href="auany.views.xml" />
+	<xi:include href="defines.beans.xml" />
+
+	<namespace name="zdb">
+		<monitorset name="TransactionMonitor" supportTransaction="false">
+			<monitor name="runned" type="counter" />
+			<monitor name="false" type="counter" />
+			<monitor name="exception" type="counter" />
+			<key name="procedureName" type="string" />
+		</monitorset>
+	</namespace>
+
+	<state name="EndpointKeyExchange">
+		<protocol ref="switcherendpoint.PingAndKeepAlive" />
+		<protocol ref="switcherendpoint.SessionKick" />
+		<protocol ref="switcherendpoint.CHandShake" />
+		<protocol ref="switcherendpoint.SHandShake" />
+		<protocol ref="switcherendpoint.SessionLoginByToken" />
+	</state>
+
+	<state name="EndpointSessionLogin">
+		<protocol ref="switcherendpoint.SessionLoginByToken" />
+		<protocol ref="switcherendpoint.SessionKick" />
+		<protocol ref="switcherendpoint.ProviderLogin" />
+		<protocol ref="switcherendpoint.OnlineAnnounce" />
+	</state>
+
+	<state name="EndpointClient">
+		<namespace ref="auanyviews" />
+		<protocol ref="switcherendpoint.ProviderLogin" />
+		<protocol ref="switcherendpoint.OnlineAnnounce" />
+		<protocol ref="switcherendpoint.PingAndKeepAlive" />
+		<protocol ref="switcherendpoint.SessionKick" />
+		<protocol ref="switcherendpoint.PortForward" />
+		<protocol ref="providerendpoint.SendControlToServer" />
+		<protocol ref="providerendpoint.SyncViewToClients" />
+		<protocol ref="providerendpoint.Tunnel" />
+	</state>
+
+	<state name="AuanyClient">
+		<namespace ref="switcherauany" />
+	</state>
+
+	<state name="ForProvider">
+		<namespace ref="switcherprovider" />
+
+		<protocol ref="providerendpoint.SendControlToServer" />
+		<protocol ref="providerendpoint.SyncViewToClients" />
+		<protocol ref="providerendpoint.Tunnel" />
+	</state>
+
+	<state name="ForGlobalId">
+		<namespace ref="providerglobalid" />
+	</state>
+
+	<service name="provider">
+		<manager name="ProviderClient" type="client" initstate="ForProvider"
+			port="10100" />
+		<manager name="GlobalIdClient" type="client" initstate="ForGlobalId"
+			port="10210" />
+	</service>
+
+	<service name="switcher">
+		<manager name="SwitcherServer" type="server" initstate="EndpointKeyExchange"
+			port="10000">
+			<state ref="EndpointSessionLogin" />
+			<state ref="EndpointClient" />
+		</manager>
+		<manager name="ProviderServer" type="server" initstate="ForProvider"
+			port="10100" />
+		<manager name="AuanyClient" type="client" initstate="AuanyClient"
+			port="10200" />
+	</service>
+
+	<service name="endpoint">
+		<manager name="Endpoint" type="client" initstate="EndpointKeyExchange"
+			port="10000">
+			<state ref="EndpointSessionLogin" />
+			<state ref="EndpointClient" />
+		</manager>
+	</service>
+
+</project>

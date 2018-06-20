@@ -1,0 +1,109 @@
+<html>
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>dashboard</title>
+    <link href="deps/opt/bootstrap.css" rel="stylesheet">
+    <link href="sidebar.css" rel="stylesheet">
+    <style>
+        #editor {height:900px; margin: 4px; width:900px }
+        .hide {display: none;}
+        #canvas, #holder0, #holder1, #holder2, #holder3, #holder4, #holder5, #holder6 {height:440px; margin: 0 4px; min-width: 600px;}
+    </style>
+</head>
+
+<body>
+
+<div id="wrapper">
+
+    <div id="sidebar-wrapper">
+    </div>
+
+    <div>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-12" id="dashboard">
+                    <h3>Welcome</h3>
+                </div>
+            </div>
+            <div class="row" id="dashboard-result"></div>
+        </div>
+    </div>
+
+</div>
+
+<script id="template-sidebar" type="text/x-handlebars-template">
+    <ul class="sidebar-nav">
+        <li class="sidebar-brand">
+            <a id="sidebar-meta">{{name}}</a>
+        </li>
+        {{#chartSeriess}}
+            <li><a class="sidebar-chart">{{name}}</a></li>
+        {{/chartSeriess}}
+    </ul>
+</script>
+
+<script id="template-meta" type="text/x-handlebars-template">
+    <h5>{{name}}.json <a id="setting">setting</a></h5>
+    <div id="editor"> </div>
+    <button id="editor-submit">submit</button>
+</script>
+
+<script id="template-setting" type="text/x-handlebars-template">
+    <h5>{{name}}.json <a id="meta">meta</a></h5>
+    <form id="setting-form">
+    </form>
+</script>
+
+<script id="template-chart" type="text/x-handlebars-template">
+    <h5>{{name}}</h5>
+    <form id="filter-form">
+    </form>
+    <div id="holder0"></div>
+
+    <div id="action1"></div>
+    <div id="holder1"></div>
+
+    <div id="action2"></div>
+    <div id="holder2"></div>
+
+    <div id="action3"></div>
+    <div id="holder3"></div>
+
+    <div id="action4"></div>
+    <div id="holder4"></div>
+
+    <div id="action5"></div>
+    <div id="holder5"></div>
+
+    <div id="action6"></div>
+    <div id="holder6"></div>
+
+    <canvas id="export" class="hide"></canvas>
+</script>
+
+<script src="deps/jquery.min.js"></script>
+<script src="deps/underscore.js"></script>
+<script src="deps/opt/jsv.js"></script>
+<script src="deps/opt/jquery.ui.core.js"></script>
+<script src="deps/opt/jquery.ui.widget.js"></script>
+<script src="deps/opt/jquery.ui.mouse.js"></script>
+<script src="deps/opt/jquery.ui.sortable.js"></script>
+<script src="deps/opt/bootstrap-dropdown.js"></script>
+<script src="deps/opt/ace/ace.js"></script>
+<script src="deps/opt/ace/mode-json.js"></script>
+<script src="deps/jsonform.js"></script>
+<script src="deps/handlebars-v3.0.3.js"></script>
+
+<script src="deps/highcharts.js" > </script>
+<script src="deps/rgbcolor.js" > </script>
+<script src="deps/canvg.js" > </script>
+
+<script src="dashboard.js"></script>
+<script src="drawchart.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<logger className="limax.auany.logger.AccountLoggerMysql"
+	url="jdbc:mysql://192.168.1.3:3306/account?user=root&amp;password=admin&amp;characterEncoding=utf8&amp;autoReconnect=true">
+	<sql>
+		<![CDATA[
+			CREATE TABLE IF NOT EXISTS `account`(
+				`sessionid` BIGINT NOT NULL PRIMARY KEY,
+				`appid` INTEGER NOT NULL,
+				`name` VARCHAR(255) NOT NULL,
+				`plat` VARCHAR(255) NOT NULL,
+				`ctime` DATETIME(6) NOT NULL,
+				`mtime` DATETIME(6) NOT NULL
+			) CHARSET=utf8;
+		]]>
+	</sql>
+	<sql>
+		<![CDATA[
+			CREATE TABLE IF NOT EXISTS `account_change`(
+				`sessionid` BIGINT NOT NULL PRIMARY KEY,
+				`appid` INTEGER NOT NULL,
+				`namesrc` VARCHAR(255) NOT NULL,
+				`platsrc` VARCHAR(255) NOT NULL,
+				`namedst` VARCHAR(255) NOT NULL,
+				`platdst` VARCHAR(255) NOT NULL,
+				`ctime` DATETIME(6) NOT NULL
+			) CHARSET=utf8;
+		]]>
+	</sql>
+</logger>

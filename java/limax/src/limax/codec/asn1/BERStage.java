@@ -1,0 +1,5 @@
+package limax.codec.asn1;
+
+enum BERStage {
+	INIT, IDENTIFIER, LENGTH, DEFINITE_CONTENT, INDEFINITE_CONTENT, END
+}

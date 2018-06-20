@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="chatclient" default="dist">
+
+	<property name="src" location="src/" />
+	<property name="gen" location="gen/" />
+	<property name="build" location="bin/" />
+	<property name="limaxbin" location="../../../bin" />
+	<property name="limaxicons" location="../../../icons" />
+	<property name="jarfile" location="${limaxbin}/chatclient.jar" />
+
+	<target name="limax">
+		<ant dir="../../../java/limax" target="release" inheritAll="false" />
+	</target>
+
+	<target name="xmlgen" depends="limax">
+		<java jar="${limaxbin}/limax.jar" fork="yes">
+			<arg value="xmlgen" />
+			<arg value="-java" />
+			<arg value="-noServiceXML" />
+			<arg value="../xmls/chatclient.xml" />
+		</java>
+	</target>
+
+	<target name="init" depends="xmlgen">
+		<mkdir dir="${build}" />
+	</target>
+
+	<target name="compile" depends="init">
+		<path id="classpath">
+			<fileset dir="${limaxbin}">
+				<include name="**/*.jar" />
+			</fileset>
+		</path>
+		<javac encoding="UTF-8" srcdir="${gen}:${src}" destdir="${build}" classpathref="classpath" debug="true" debuglevel="lines,source" includeantruntime="false">
+			<compilerarg line="-Xlint:unchecked" />
+		</javac>
+		<copy file="${limaxicons}/limaxc.png" todir="${build}" />
+	</target>
+
+	<target name="dist" depends="compile">
+		<jar jarfile="${jarfile}" basedir="${build}" manifest="${src}/MANIFEST.MF" />
+	</target>
+
+	<target name="all" depends="clean, dist" />
+
+	<target name="clean">
+		<delete dir="${build}" />
+		<delete dir="${gen}" />
+		<delete file="${jarfile}" />
+	</target>
+
+</project>

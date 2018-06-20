@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<namespace name="providerglobalid">
+
+	<bean name="GroupName">
+		<variable name="grp" type="string" />
+		<variable name="name" type="string" />
+	</bean>
+
+	<bean name="Group">
+		<variable name="grp" type="string" />
+	</bean>
+
+	<bean name="Id">
+		<variable name="val" type="long" />
+	</bean>
+
+	<bean name="NameRequest">
+		<enum name="CREATE" value="1" />
+		<enum name="DELETE" value="2" />
+		<enum name="TEST" value="3" />
+		<variable name="gn" type="GroupName" />
+		<variable name="type" type="int" />
+		<variable name="serial" type="long" />
+	</bean>
+
+	<bean name="NameResponse">
+		<enum name="OK" value="0" />
+		<enum name="DUPLICATE" value="1" />
+		<enum name="NOTEXISTS" value="2" />
+		<enum name="REJECT" value="3" />
+		<enum name="DEADLOCK" value="4" />
+		<variable name="status" type="int" />
+		<variable name="serial" type="long" />
+	</bean>
+
+	<bean name="NamesEndorse">
+		<enum name="COMMIT" value="1" />
+		<enum name="ROLLBACK" value="2" />
+		<variable name="type" type="int" />
+		<variable name="tid" type="int" />
+	</bean>
+
+	<rpc name="RequestId" type="50" argument="Group" result="Id"
+		maxsize="0" timeout="2000" />
+
+	<rpc name="RequestName" type="51" argument="NameRequest" result="NameResponse"
+		maxsize="0" timeout="2000" />
+
+	<rpc name="EndorseNames" type="52" argument="NamesEndorse" result="NameResponse"
+		maxsize="0" timeout="2000" />
+
+	<protocol name="KeepAlive" type="53" maxsize="8">
+		<variable name="millisecond" type="long" />
+	</protocol>
+</namespace>

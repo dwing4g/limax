@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<namespace name="switcherendpoint">
+
+	<protocol name="CHandShake" type="0" maxsize="1030">
+		<variable name="dh_group" type="byte" />
+		<variable name="dh_data" type="binary" />
+	</protocol>
+
+	<protocol name="SHandShake" type="1" maxsize="2048">
+		<variable name="dh_data" type="binary" />
+		<variable name="s2cneedcompress" type="boolean" />
+		<variable name="c2sneedcompress" type="boolean" />
+	</protocol>
+
+	<protocol name="SessionLoginByToken" type="2" maxsize="16384">
+		<variable name="username" type="string" />
+		<variable name="token" type="string" />
+		<variable name="platflag" type="string" />
+		<variable name="pvids" type="map" key="int" value="byte" />
+		<variable name="report_ip" type="binary" />
+		<variable name="report_port" type="short" />
+	</protocol>
+
+	<protocol name="OnlineAnnounce" type="3" maxsize="0">
+		<variable name="errorSource" type="int" />
+		<variable name="errorCode" type="int" />
+		<variable name="sessionid" type="long" />
+		<variable name="flags" type="long" />
+		<variable name="variantdefines" type="map" key="int"
+			value="VariantDefines" />
+		<variable name="scriptdefines" type="string" />
+		<variable name="lmkdata" type="binary" />
+	</protocol>
+
+	<protocol name="PingAndKeepAlive" type="4" maxsize="8">
+		<variable name="timestamp" type="long" />
+	</protocol>
+
+	<protocol name="SessionKick" type="5" maxsize="32">
+		<variable name="error" type="int" />
+	</protocol>
+
+	<protocol name="PortForward" type="6" maxsize="1048576">
+		<enum name="eConnect" value="1" />
+		<enum name="eClose" value="2" />
+		<enum name="eForward" value="3" />
+		<enum name="eForwardAck" value="4" />
+		<enum name="eAuthority" value="5" />
+
+		<!-- code -->
+
+		<!-- eConnect -->
+		<enum name="eConnectV0" value="0" />
+
+		<!-- eClose -->
+		<enum name="eCloseUnknownConnectVersion" value="1" />
+		<enum name="eCloseUnknownForwardType" value="2" />
+		<enum name="eCloseForwardPortNotFound" value="3" />
+		<enum name="eCloseConnectDuplicatePort" value="4" />
+		<enum name="eCloseSessionAbort" value="5" />
+		<enum name="eCloseSessionClose" value="6" />
+		<enum name="eCloseForwardAckPortNotFound" value="7" />
+		<enum name="eCloseManualClosed" value="8" />
+		<enum name="eCloseNoAuthority" value="9" />
+
+		<!-- eForward -->
+		<enum name="eForwardRaw" value="0" />
+
+		<variable name="command" type="int" />
+		<variable name="portsid" type="int" />
+		<variable name="code" type="int" />
+		<variable name="data" type="binary" />
+	</protocol>
+
+	<protocol name="ProviderLogin" type="7" maxsize="0">
+		<variable name="data" type="ProviderLoginData"/>
+	</protocol>
+</namespace>

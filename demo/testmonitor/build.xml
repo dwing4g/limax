@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="monitortest" default="dist">
+
+	<property name="src" value="src/" />
+	<property name="gen" value="gen/" />
+	<property name="build" value="bin/" />
+	<property name="limaxbin" value="../../bin" />
+	<property name="jarfile" value="mon.jar" />
+
+    <target name="limax">
+        <ant dir="../../java/limax" target="release" inheritAll="false" />
+    </target>
+
+    <target name="xmlgen" depends="limax">
+        <java classpath="${limaxbin}/limax.jar" classname="limax.xmlgen.Main" fork="true">
+            <arg value="-java" />
+            <arg value="testmonitor.xml" />
+        </java>
+    </target>
+
+	<target name="init" depends="xmlgen">
+		<mkdir dir="${build}" />
+	</target>
+
+	<target name="compile" depends="init">
+		<path id="classpath">
+			<fileset dir="${limaxbin}">
+				<include name="**/*.jar" />
+			</fileset>
+		</path>
+		<javac encoding="UTF-8" srcdir="${src}:${gen}" destdir="${build}"
+			classpathref="classpath" debug="true" debuglevel="lines,source"
+			includeantruntime="false">
+			<compilerarg line="-Xlint:unchecked" />
+		</javac>
+	</target>
+
+	<target name="dist" depends="compile">
+		<jar jarfile="${jarfile}" basedir="${build}" />
+	</target>
+
+	<target name="all" depends="clean, dist" />
+
+	<target name="clean">
+		<delete dir="${build}" />
+		<delete file="${jarfile}" />
+	</target>
+
+	<target name="run1" depends="dist">
+		<java classpath="${jarfile}:${limaxbin}/limax.jar" classname="limax.executable.Main"
+			fork="true">
+			<arg value="jmxtool" />
+			<arg value="monitor" />
+			<arg value="-c" />
+			<arg value="monitor.AuanyCheckPointMonitor" />
+		</java>
+	</target>
+
+	<target name="run2" depends="dist">
+		<java classpath="${jarfile}:${limaxbin}/limax.jar:${limaxbin}/auany.jar" classname="limax.executable.Main"
+			fork="true">
+			<arg value="jmxtool" />
+			<arg value="monitor" />
+			<arg value="-c" />
+			<arg value="monitor.AuanyAuthMonitor" />
+		</java>
+	</target>
+
+</project>

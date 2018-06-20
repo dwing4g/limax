@@ -1,0 +1,24 @@
+<html>
+<title> sqlchart </title>
+<body>
+<label>datasource list:</label>
+<div id="target">Loading...</div>
+
+<input type="text" id="ds">
+<button id="add">add</button>
+<button id="delete">delete</button>
+
+<script id="header" type="text/x-handlebars-template">
+    <ul>
+    {{#dataSources}}
+        <li><a href="/dashboard.html?ds={{this}}"> {{this}} </a></li>
+    {{/dataSources}}
+    </ul>
+</script>
+
+<script src="deps/handlebars-v3.0.3.js"></script>
+<script src="deps/jquery.min.js"></script>
+<script src="index.js"></script>
+
+</body>
+</html>

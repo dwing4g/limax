@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="gbk"?>
+
+<project name="endpoint" default="xmlgen">
+
+	<property name="limaxpath" location="../../" />
+	<property name="limaxbin" location="${limaxpath}/bin/" />
+	
+	<target name="limax">
+		<ant dir="${limaxpath}/java/limax" target="release" inheritAll="false" />
+	</target>
+
+	<target name="xmlgen" depends="limax">
+		<java jar="${limaxbin}/limax.jar" fork="yes">
+			<arg value="xmlgen"/>
+			<arg value="-csharp"/>
+			<arg value="-service"/>
+			<arg value="endpoint"/>
+			<arg value="../../java/limax/limax.xml"/>
+		</java>
+	</target>
+
+</project>

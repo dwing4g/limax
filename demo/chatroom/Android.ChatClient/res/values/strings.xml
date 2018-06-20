@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">ChatClient</string>
+    <string name="action_settings">Settings</string>
+    <string name="username">username</string>
+    <string name="password">password</string>
+    <string name="testaccount">androidtest</string>
+    <string name="testaccountpassword">123456</string>
+    <string name="PlatFlag">platflag</string>
+    <string name="defaultPlatFlag">test</string>
+    <string name="checkusendk">use ndk</string>
+    <string name="serverlist">server</string>
+    <string name="ButtonLogin">login</string>
+    <string name="logout">logout</string>
+    <string name="join">join</string>
+    <string name="rename">rename</string>
+    <string name="buttonSend">send</string>
+    <string name="toAll">[all]</string>
+    <string name="limax_icon_desc">limax</string>
+
+</resources>

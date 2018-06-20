@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<application name="limax" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<xi:include href="provider.globalid.xml" />
+
+	<zdb>
+		<xbean name="VOID" />
+
+		<table name="maxgroupid" key="int" value="short" cacheCapacity="1" />
+		<table name="namegroups" key="string" capacity="key:64" value="short"
+			cacheCapacity="10240" />
+
+		<cbean name="NameKey">
+			<variable name="groupid" type="short" />
+			<variable name="name" type="string" capacity="64" />
+		</cbean>
+
+		<table name="names" key="NameKey" value="VOID" cacheCapacity="10240" />
+
+		<table name="idgroups" key="string" value="long" cacheCapacity="10240" />
+	</zdb>
+
+	<state name="GlobalIdServer">
+		<namespace ref="providerglobalid" />
+	</state>
+
+	<service name="globalid" useZdb="true">
+		<manager name="GlobalIdServer" type="server" initstate="GlobalIdServer"
+			port="10210" />
+	</service>
+</application>

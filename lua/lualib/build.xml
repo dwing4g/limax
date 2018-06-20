@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<project name="limax.lua" default="luastr">
+	<property name="limaxbin" value="../../bin" />
+	<property name="jarfile" value="${limaxbin}/limax.jar" />
+
+	<target name="limax">
+		<ant dir="../../java/limax" target="release" inheritAll="false" />
+	</target>
+
+	<target name="luastr" depends="limax">
+		<java jar="${jarfile}" fork="true">
+			<arg value="file2str"/>
+			<arg value="luacodes/limax.lua"/>
+			<arg value="clibs/luacodestring.cpp"/>
+			<arg value=" "/>
+			<arg value="const char* g_limax_lua_code_string ="/>
+			<arg value=";"/>
+		</java>
+		<java jar="${jarfile}" fork="true">
+			<arg value="file2str"/>
+			<arg value="luacodes/limax.lua"/>
+			<arg value="clr/limax.lua.cs"/>
+			<arg value="+"/>
+			<arg value="namespace limax.script.codes { internal partial struct lua { public static string limax ="/>
+			<arg value=";} }"/>
+		</java>
+	</target>
+
+</project>

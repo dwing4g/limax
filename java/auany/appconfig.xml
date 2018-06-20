@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<appconfig>
+	<switcher host="127.0.0.1" id="1" key="" port="10000" type="native" />
+	<switcher host="127.0.0.1" id="2" key="" port="10001" type="ws" />
+	<switcher host="127.0.0.1" id="3" key="" port="10002" type="wss" />
+	<switcher host="127.0.0.1" id="4" key="" port="11000" type="native" />
+	<switcher host="127.0.0.1" id="5" key="" port="11001" type="ws" />
+	<switcher host="127.0.0.1" id="6" key="" port="11002" type="wss" />
+	<provider id="1" jsonPublishDelayMin="0" key="" />
+	<app id="1" jsonPublishDelayMin="15000" maxSubordinates="0"
+		providerMatchBidirectionally="true" shareProvider="">
+		<service id="1" shareProvider="" switcher="1,2,3">
+			<provider id="100" key="" />
+		</service>
+	</app>
+	<app id="2" jsonPublishDelayMin="5000" maxSubordinates="8"
+		providerMatchBidirectionally="true" shareProvider="">
+		<service id="1" shareProvider="" switcher="1,2,3">
+			<provider id="200" key="" />
+		</service>
+		<service id="2" shareProvider="" switcher="1,2,3">
+			<provider id="300" key="" />
+		</service>
+	</app>
+	<app id="12" jsonPublishDelayMin="15000" maxSubordinates="0"
+		providerMatchBidirectionally="true" shareProvider="">
+		<service id="1" shareProvider="" switcher="1,2,3,4,5,6">
+			<provider id="12" key="" />
+		</service>
+	</app>
+</appconfig>

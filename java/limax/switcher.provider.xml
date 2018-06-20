@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<namespace name="switcherprovider">
+
+	<protocol name="Bind" type="20" maxsize="0">
+		<variable name="pvid" type="int" />
+		<variable name="pvkey" type="string" />
+		<variable name="pinfos" type="map" key="int" value="int" />
+
+		<enum name="PS_VARIANT_SUPPORTED" value="1" />
+		<enum name="PS_VARIANT_ENABLED" value="2" />
+		<enum name="PS_SCRIPT_SUPPORTED" value="4" />
+		<enum name="PS_SCRIPT_ENABLED" value="8" />
+		<enum name="PS_STATELESS" value="16" />
+		<enum name="PS_PAY_SUPPORTED" value="32" />
+		<enum name="PS_LOGINDATA_SUPPORTED" value="64" />
+
+		<variable name="capability" type="int" />
+		<variable name="variantdefines" type="VariantDefines" />
+		<variable name="scriptdefines" type="string" />
+		<variable name="json" type="string" />
+	</protocol>
+
+	<protocol name="BindResult" type="21" maxsize="32">
+		<variable name="error" type="int" />
+		<variable name="jsonPublishDelayMin" type="long" />
+	</protocol>
+
+	<protocol name="UnBind" type="22" maxsize="8">
+	</protocol>
+
+	<protocol name="Kick" type="23" maxsize="32">
+		<variable name="sessionid" type="long" />
+		<variable name="error" type="int" />
+	</protocol>
+
+	<protocol name="Dispatch" type="24" maxsize="65536">
+		<variable name="sessionid" type="long" />
+		<variable name="ptype" type="int" />
+		<variable name="pdata" type="binary" />
+	</protocol>
+
+	<protocol name="Unicast" type="25" maxsize="65536">
+		<variable name="sessionid" type="long" />
+		<variable name="ptype" type="int" />
+		<variable name="pdata" type="binary" />
+	</protocol>
+
+	<protocol name="Broadcast" type="26" maxsize="65536">
+		<variable name="ptype" type="int" />
+		<variable name="pdata" type="binary" />
+	</protocol>
+
+	<protocol name="OnlineAnnounce" type="27" maxsize="0">
+		<variable name="sessionid" type="long" />
+		<variable name="mainid" type="long" />
+		<variable name="uid" type="string" />
+		<variable name="clientaddress" type="binary" />
+		<variable name="flags" type="long" />
+		<variable name="sessiontype" type="map" key="int" value="byte" />
+		<variable name="logindata" type="ProviderLoginData" />
+	</protocol>
+
+	<protocol name="OnlineAnnounceAck" type="28" maxsize="32">
+		<variable name="sessionid" type="long" />
+		<variable name="error" type="int" />
+	</protocol>
+
+	<protocol name="LinkBroken" type="29" maxsize="32">
+		<variable name="sessionid" type="long" />
+	</protocol>
+
+	<protocol name="Pay" type="30" maxsize="32">
+		<variable name="payid" type="int" />
+		<variable name="serial" type="long" />
+		<variable name="sessionid" type="long" />
+		<variable name="product" type="int" />
+		<variable name="price" type="int" />
+		<variable name="count" type="int" />
+	</protocol>
+
+	<protocol name="PayAck" type="31" maxsize="16">
+		<variable name="payid" type="int" />
+		<variable name="serial" type="long" />
+	</protocol>
+
+	<protocol name="JSONPublish" type="32" maxsize="0">
+		<variable name="json" type="string" />
+	</protocol>
+
+	<bean name="ProbeValue">
+		<variable name="key" type="long" />
+	</bean>
+
+	<rpc name="Probe" type="33" argument="ProbeValue" result="ProbeValue"
+		maxsize="16" timeout="3000" />
+
+	<protocol name="KeepAlive" type="34" maxsize="8">
+		<variable name="millisecond" type="long" />
+	</protocol>
+</namespace>

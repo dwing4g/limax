@@ -1,0 +1,112 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{720C08CD-4CC2-42FA-9DED-4231B9831081}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>limax</RootNamespace>
+    <AssemblyName>limax</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="codec.cs" />
+    <Compile Include="endpoint.cs" />
+    <Compile Include="net.cs" />
+    <Compile Include="script.cs" />
+    <Compile Include="util.cs" />
+    <Compile Include="variant.cs" />
+    <Compile Include="xmlgen\beans\auanyviews.Result.cs" />
+    <Compile Include="xmlgen\beans\defines.ErrorCodes.cs" />
+    <Compile Include="xmlgen\beans\defines.ErrorSource.cs" />
+    <Compile Include="xmlgen\beans\defines.GlobalIdFlags.cs" />
+    <Compile Include="xmlgen\beans\defines.ProviderLoginData.cs" />
+    <Compile Include="xmlgen\beans\defines.SessionFlags.cs" />
+    <Compile Include="xmlgen\beans\defines.SessionType.cs" />
+    <Compile Include="xmlgen\beans\defines.VariantBeanDefine.cs" />
+    <Compile Include="xmlgen\beans\defines.VariantDefines.cs" />
+    <Compile Include="xmlgen\beans\defines.VariantNameIds.cs" />
+    <Compile Include="xmlgen\beans\defines.VariantVariableDefine.cs" />
+    <Compile Include="xmlgen\beans\defines.VariantViewControlDefine.cs" />
+    <Compile Include="xmlgen\beans\defines.VariantViewDefine.cs" />
+    <Compile Include="xmlgen\beans\defines.VariantViewVariableDefine.cs" />
+    <Compile Include="xmlgen\beans\providerendpoint.ViewMemberData.cs" />
+    <Compile Include="xmlgen\beans\providerendpoint.ViewVariableData.cs" />
+    <Compile Include="xmlgen\beans\providerglobalid.Group.cs" />
+    <Compile Include="xmlgen\beans\providerglobalid.GroupName.cs" />
+    <Compile Include="xmlgen\beans\providerglobalid.Id.cs" />
+    <Compile Include="xmlgen\beans\providerglobalid.NameRequest.cs" />
+    <Compile Include="xmlgen\beans\providerglobalid.NameResponse.cs" />
+    <Compile Include="xmlgen\beans\providerglobalid.NamesEndorse.cs" />
+    <Compile Include="xmlgen\beans\switcherauany.AuanyAuthArg.cs" />
+    <Compile Include="xmlgen\beans\switcherauany.AuanyAuthRes.cs" />
+    <Compile Include="xmlgen\beans\switcherauany.CheckProviderKeyArg.cs" />
+    <Compile Include="xmlgen\beans\switcherauany.CheckProviderKeyRes.cs" />
+    <Compile Include="xmlgen\endpoint.auanyviews.viewmanager.cs" />
+    <Compile Include="xmlgen\endpoint.states.cs" />
+    <Compile Include="xmlgen\protocols\providerendpoint.SendControlToServer.cs" />
+    <Compile Include="xmlgen\protocols\providerendpoint.SyncViewToClients.cs" />
+    <Compile Include="xmlgen\protocols\providerendpoint.Tunnel.cs" />
+    <Compile Include="xmlgen\protocols\switcherendpoint.CHandShake.cs" />
+    <Compile Include="xmlgen\protocols\switcherendpoint.OnlineAnnounce.cs" />
+    <Compile Include="xmlgen\protocols\switcherendpoint.PingAndKeepAlive.cs" />
+    <Compile Include="xmlgen\protocols\switcherendpoint.PortForward.cs" />
+    <Compile Include="xmlgen\protocols\switcherendpoint.ProviderLogin.cs" />
+    <Compile Include="xmlgen\protocols\switcherendpoint.SessionKick.cs" />
+    <Compile Include="xmlgen\protocols\switcherendpoint.SessionLoginByToken.cs" />
+    <Compile Include="xmlgen\protocols\switcherendpoint.SHandShake.cs" />
+    <Compile Include="xmlgen\views\auanyviews.Service.cs" />
+    <Compile Include="xmlgen\views\auanyviews.ServiceResult.cs" />
+    <Compile Include="xmlsrc\auanyviews.ServiceResult.cs" />
+    <Compile Include="xmlsrc\providerendpoint.SendControlToServer.cs" />
+    <Compile Include="xmlsrc\providerendpoint.SyncViewToClients.cs" />
+    <Compile Include="xmlsrc\providerendpoint.Tunnel.cs" />
+    <Compile Include="xmlsrc\switcherendpoint.CHandShake.cs" />
+    <Compile Include="xmlsrc\switcherendpoint.OnlineAnnounce.cs" />
+    <Compile Include="xmlsrc\switcherendpoint.PingAndKeepAlive.cs" />
+    <Compile Include="xmlsrc\switcherendpoint.PortForward.cs" />
+    <Compile Include="xmlsrc\switcherendpoint.ProviderLogin.cs" />
+    <Compile Include="xmlsrc\switcherendpoint.SessionKick.cs" />
+    <Compile Include="xmlsrc\switcherendpoint.SessionLoginByToken.cs" />
+    <Compile Include="xmlsrc\switcherendpoint.SHandShake.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

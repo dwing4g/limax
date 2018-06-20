@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<application name="limax" xmlns:xi="http://www.w3.org/2001/XInclude">
+
+	<xi:include href="switcher.endpoint.xml" />
+	<xi:include href="provider.endpoint.xml" />
+	<xi:include href="auany.views.xml" />
+	<xi:include href="defines.beans.xml" />
+
+	<state name="EndpointClient">
+		<namespace ref="switcherendpoint" />
+		<namespace ref="auanyviews" />
+
+		<protocol ref="providerendpoint.SendControlToServer" />
+		<protocol ref="providerendpoint.SyncViewToClients" />
+		<protocol ref="providerendpoint.Tunnel" />
+	</state>
+
+	<service name="endpoint">
+		<manager name="Endpoint" type="client" initstate="EndpointClient"
+			port="10000" />
+	</service>
+
+</application>

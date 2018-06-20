@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="chatclient" default="javah">
+
+	<target name="javah">		<javah class="org.limax.android.chatclient.ndk.LimaxInterface"			classpath="bin/classes" destdir="jni" />
+	</target>
+
+	<target name="javap">
+		<exec executable="javap">
+			<arg value="-s" />
+			<arg value="-cp" />
+			<arg value="bin/classes" />
+			<arg value="org.limax.android.chatclient.ndk.LimaxInterface$DataNotify" />
+		</exec>
+	</target>
+
+
+</project>

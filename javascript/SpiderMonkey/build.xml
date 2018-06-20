@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<project name="limax.lua" default="jsstr">
+	<property name="limaxbin" value="../../bin" />
+	<property name="jarfile" value="${limaxbin}/limax.jar" />
+
+	<target name="limax">
+		<ant dir="../../java/limax" target="release" inheritAll="false" />
+	</target>
+
+	<target name="jsstr" depends="limax">
+		<java jar="${jarfile}" fork="true">
+			<arg value="file2str"/>
+			<arg value="../limax.js"/>
+			<arg value="clibs/jscodestring.cpp"/>
+			<arg value=" "/>
+			<arg value="const char* g_limax_js_code_string ="/>
+			<arg value=";"/>
+		</java>
+		<java jar="${jarfile}" fork="true">
+			<arg value="file2str"/>
+			<arg value="../limax.js"/>
+			<arg value="clr/limax.js.cs"/>
+			<arg value="+"/>
+			<arg value="namespace limax.script.codes { internal partial struct js{ public static string limax ="/>
+			<arg value=";} }"/>
+		</java>
+	</target>
+</project>

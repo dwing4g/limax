@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<namespace name="chatviews" pvid="100">
+	<bean name="ErrorCodes">
+		<enum name="EC_SUCCEED" value="0" />
+		<enum name="EC_NAME_UNMODIFIED" value="1" />
+		<enum name="EC_NAME_EXISTING" value="2" />
+		<enum name="EC_BAD_ROOM_ID" value="11" />
+		<enum name="EC_BAD_ARGS" value="12" />
+		<enum name="EC_BAD_HALL_NAME" value="13" />
+		<enum name="EC_BAD_ROOM_NAME" value="14" />
+	</bean>
+
+	<bean name="ViewChatRoomInfo">
+		<variable name="name" type="string" />
+		<variable name="roomid" type="long" />
+	</bean>
+
+	<bean name="RoomChatHallInfo">
+		<variable name="name" type="string" />
+		<variable name="hallid" type="long" />
+		<variable name="rooms" type="vector" value="ViewChatRoomInfo" />
+	</bean>
+
+	<view name="CommonInfo" lifecycle="global">
+		<variable name="halls" type="vector" value="RoomChatHallInfo" />
+	</view>
+
+	<bean name="ChatMessage">
+		<variable name="msg" type="string" />
+		<variable name="user" type="long" />
+	</bean>
+
+	<view name="UserInfo" lifecycle="session">
+		<bind name="name" table="userinfo">
+			<ref name="nickname" />
+		</bind>
+		<variable name="recvedmessage" type="ChatMessage" />
+		<variable name="sendedmessage" type="ChatMessage" />
+		<variable name="lasterror" type="int" />
+	</view>
+
+	<view name="ChatRoom" lifecycle="temporary">
+		<variable name="info" type="ViewChatRoomInfo" />
+		<subscribe name="names" ref="UserInfo.name" />
+		<variable name="lastmessage" type="ChatMessage" />
+	</view>
+
+	<namespace name="monitor">
+
+		<monitorset name="RoomInfo" mapKeyType="long">
+			<monitor name="privateMessages" type="counter" />
+			<monitor name="publicMessages" type="counter" />
+			<monitor name="memberCount" type="gauge" />
+			<key name="hallid" type="long" />
+			<key name="roomid" type="long" />
+		</monitorset>
+
+		<monitorset name="SysInfo">
+			<monitor name="loginTime" type="counter" />
+			<monitor name="nickNameChange" type="counter" />
+		</monitorset>
+
+	</namespace>
+
+</namespace>

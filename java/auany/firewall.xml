@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<firewall>
+	<permit host="1.0.0.1" pvid="12" />
+	<permit host="127.0.0.1" pvid="12" />
+	<permit host="127.0.0.1" pvid="200" />
+</firewall>

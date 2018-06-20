@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<namespace name="auanyviews" pvid="1">
+	<view name="Service" lifecycle="global">
+		<control name="Pay">
+			<variable name="sn" type="int" />
+			<variable name="gateway" type="int" />
+			<variable name="payid" type="int" />
+			<variable name="product" type="int" />
+			<variable name="price" type="int" />
+			<variable name="quantity" type="int" />
+			<variable name="receipt" type="string" />
+		</control>
+		<control name="Derive">
+			<variable name="sn" type="int" />
+			<variable name="credential" type="string" />
+			<variable name="authcode" type="string" />
+		</control>
+		<control name="Bind">
+			<variable name="sn" type="int" />
+			<variable name="credential" type="string" />
+			<variable name="authcode" type="string" />
+			<variable name="username" type="string" />
+			<variable name="token" type="string" />
+			<variable name="platflag" type="string" />
+		</control>
+		<control name="TemporaryFromCredential">
+			<variable name="sn" type="int" />
+			<variable name="credential" type="string" />
+			<variable name="authcode" type="string" />
+			<variable name="authcode2" type="string" />
+			<variable name="millisecond" type="long" />
+			<variable name="usage" type="byte" />
+			<variable name="subid" type="string" />
+		</control>
+		<control name="TemporaryFromLogin">
+			<variable name="sn" type="int" />
+			<variable name="username" type="string" />
+			<variable name="token" type="string" />
+			<variable name="platflag" type="string" />
+			<variable name="appid" type="int" />
+			<variable name="authcode" type="string" />
+			<variable name="millisecond" type="long" />
+			<variable name="usage" type="byte" />
+			<variable name="subid" type="string" />
+		</control>
+		<control name="Transfer">
+			<variable name="sn" type="int" />
+			<variable name="username" type="string" />
+			<variable name="token" type="string" />
+			<variable name="platflag" type="string" />
+			<variable name="authcode" type="string" />
+			<variable name="temp" type="string" />
+			<variable name="authtemp" type="string" />
+		</control>
+	</view>
+
+	<bean name="Result">
+		<variable name="sn" type="int" />
+		<variable name="errorSource" type="int" />
+		<variable name="errorCode" type="int" />
+		<variable name="result" type="string" />
+	</bean>
+
+	<view name="ServiceResult" lifecycle="temporary">
+		<variable name="result" type="Result" />
+	</view>
+</namespace>

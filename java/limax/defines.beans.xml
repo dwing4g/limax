@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<namespace name="defines">
+
+	<bean name="ErrorSource">
+		<enum name="LIMAX" value="0" />
+		<enum name="PLAT" value="1" />
+		<enum name="ENDPOINT" value="2" />
+	</bean>
+
+	<bean name="ErrorCodes">
+		<enum name="SUCCEED" value="0" />
+
+		<enum name="SWITCHER_AUANY_UNREADY" value="11" />
+		<enum name="SWITCHER_AUANY_TIMEOUT" value="12" />
+		<enum name="SWITCHER_SEND_DISPATCH_EXCEPTION" value="13" />
+		<enum name="SWITCHER_SEND_TO_ENDPOINT_EXCEPTION" value="14" />
+		<enum name="SWITCHER_DHGROUP_NOTSUPPRTED" value="15" />
+		<enum name="SWITCHER_LOST_PROVIDER" value="16" />
+		<enum name="SWITCHER_PROVIDER_UNBIND" value="17" />
+		<enum name="SWITCHER_WRONG_PROVIDER" value="18" />
+		<enum name="SWITCHER_MALFORMED_TUNNELDATA" value="19" />
+
+		<enum name="AUANY_UNKNOWN_PLAT" value="1001" />
+		<enum name="AUANY_BAD_TOKEN" value="1002" />
+		<enum name="AUANY_AUTHENTICATE_TIMEOUT" value="1003" />
+		<enum name="AUANY_AUTHENTICATE_FAIL" value="1004" />
+		<enum name="AUANY_CALL_PROCEDURE_FAILED" value="1005" />
+		<enum name="AUANY_CHECK_LOGIN_IP_FAILED" value="1006" />
+		<enum name="AUANY_CHECK_PROVIDER_KEY_UNKNOWN_PVID" value="1007" />
+		<enum name="AUANY_CHECK_PROVIDER_KEY_BAD_KEY" value="1008" />
+
+		<enum name="AUANY_SERVICE_BAD_ARGS" value="1021" />
+
+		<enum name="AUANY_SERVICE_BIND_HAS_BEEN_BOUND" value="1022" />
+		<enum name="AUANY_SERVICE_BIND_ACCOUNT_HAS_BEEN_USED" value="1023" />
+
+		<enum name="AUANY_SERVICE_PAY_NOT_ENABLED" value="1026" />
+		<enum name="AUANY_SERVICE_PAY_GATEWAY_NOT_DEFINED" value="1027" />
+		<enum name="AUANY_SERVICE_PAY_GATEWAY_FAIL" value="1028" />
+
+		<enum name="AUANY_SERVICE_INVALID_INVITE" value="1030" />
+		<enum name="AUANY_SERVICE_INVALID_CREDENTIAL" value="1031" />
+		<enum name="AUANY_SERVICE_CREDENTIAL_NOT_MATCH" value="1032" />
+		<enum name="AUANY_SERVICE_ACCOUNT_TOO_MANY_SUBORDINATES" value="1033" />
+		<enum name="AUANY_SERVICE_TRANSFER_APPID_COLLISION" value="1034" />
+
+		<enum name="ENDPOINT_PING_TIMEOUT" value="2001" />
+		<enum name="ENDPOINT_AUANY_SERVICE_CLIENT_TIMEOUT" value="2002" />
+		<enum name="ENDPOINT_AUANY_SERVICE_ENGINE_CLOSE" value="2003" />
+
+		<enum name="PROVIDER_DUPLICATE_ID" value="3002" />
+		<enum name="PROVIDER_UNSUPPORTED_VARINAT" value="3004" />
+		<enum name="PROVIDER_NOT_ALLOW_VARINAT" value="3005" />
+		<enum name="PROVIDER_UNSUPPORTED_SCRIPT" value="3006" />
+		<enum name="PROVIDER_NOT_ALLOW_SCRIPT" value="3007" />
+		<enum name="PROVIDER_KICK_SESSION" value="3008" />
+		<enum name="PROVIDER_DUPLICATE_SESSION" value="3009" />
+		<enum name="PROVIDER_SESSION_LOGINED" value="3011" />
+		<enum name="PROVIDER_ADD_TRANSPORT_EXCEPTION" value="3012" />
+		<enum name="PROVIDER_TUNNEL_EXCEPTION" value="3013" />
+	</bean>
+
+	<bean name="GlobalIdFlags">
+		<enum name="GLOBALID_OK" value="0" />
+		<enum name="GLOBALID_DUPLICATE" value="1" />
+		<enum name="GLOBALID_NOT_EXISTS" value="2" />
+		<enum name="GLOBALID_REJECT" value="3" />
+	</bean>
+
+	<bean name="SessionFlags">
+		<enum name="FLAG_ACCOUNT_BOUND" type="long" value="0x00000001" />
+		<enum name="FLAG_TEMPORARY_LOGIN" type="long" value="0x00000002" />
+		<enum name="FLAG_CAN_FLOW_CONTROL" type="long" value="0x00000004" />
+	</bean>
+
+	<bean name="TemporaryCredentialUsage">
+		<enum name="USAGE_LOGIN" type="byte" value="1" />
+		<enum name="USAGE_TRANSFER" type="byte" value="2" />
+	</bean>
+
+	<!-- session transport type defines -->
+	<bean name="SessionType">
+		<enum name="ST_PROTOCOL" type="byte" value="0" />
+		<enum name="ST_STATIC" type="byte" value="1" />
+		<enum name="ST_VARIANT" type="byte" value="2" />
+		<enum name="ST_SCRIPT" type="byte" value="4" />
+		<enum name="ST_WEB_SOCKET" type="byte" value="8" />
+		<enum name="ST_STATELESS" type="byte" value="16" />
+	</bean>
+
+	<!-- variant support defines -->
+	<bean name="VariantNameIds">
+		<variable name="ids" type="vector" value="int" />
+	</bean>
+
+	<bean name="VariantVariableDefine">
+		<variable name="name" type="int" />
+		<variable name="type" type="int" />
+		<variable name="typeKey" type="int" />
+		<variable name="typeValue" type="int" />
+	</bean>
+
+	<bean name="VariantBeanDefine">
+		<variable name="type" type="int" />
+		<variable name="vars" type="vector" value="VariantVariableDefine" />
+	</bean>
+
+	<bean name="VariantViewControlDefine">
+		<variable name="name" type="int" />
+		<variable name="vars" type="vector" value="VariantVariableDefine" />
+	</bean>
+
+	<bean name="VariantViewVariableDefine">
+		<variable name="name" type="int" />
+		<variable name="type" type="int" />
+		<variable name="typeKey" type="int" />
+		<variable name="typeValue" type="int" />
+		<variable name="bind" type="boolean" />
+	</bean>
+
+	<bean name="VariantViewDefine">
+		<variable name="name" type="VariantNameIds" />
+		<variable name="clsindex" type="short" />
+		<variable name="istemp" type="boolean" />
+		<variable name="vars" type="vector" value="VariantViewVariableDefine" />
+		<variable name="subs" type="vector" value="VariantViewVariableDefine" />
+		<variable name="ctrls" type="vector" value="VariantViewControlDefine" />
+	</bean>
+
+	<bean name="VariantDefines">
+		<enum name="BASE_TYPE_BINARY" value="1" />
+		<enum name="BASE_TYPE_BOOLEAN" value="2" />
+		<enum name="BASE_TYPE_BYTE" value="3" />
+		<enum name="BASE_TYPE_DOUBLE" value="4" />
+		<enum name="BASE_TYPE_FLOAT" value="5" />
+		<enum name="BASE_TYPE_INT" value="6" />
+		<enum name="BASE_TYPE_LIST" value="7" />
+		<enum name="BASE_TYPE_LONG" value="8" />
+		<enum name="BASE_TYPE_MAP" value="9" />
+		<enum name="BASE_TYPE_SET" value="10" />
+		<enum name="BASE_TYPE_SHORT" value="11" />
+		<enum name="BASE_TYPE_STRING" value="12" />
+		<enum name="BASE_TYPE_VECTOR" value="13" />
+
+		<enum name="BASE_TYPE_MAX" value="32" />
+
+		<variable name="namedict" type="map" key="int" value="string" />
+		<variable name="beans" type="vector" value="VariantBeanDefine" />
+		<variable name="views" type="vector" value="VariantViewDefine" />
+	</bean>
+
+	<bean name="ProviderLoginData">
+		<enum name="tUnused" value="0" />
+		<enum name="tTunnelData" value="1" />
+		<enum name="tUserData" value="2" />
+		<variable name="pvid" type="int" />
+		<variable name="type" type="int" />
+		<variable name="label" type="int" />
+		<variable name="data" type="binary" />
+	</bean>
+</namespace>

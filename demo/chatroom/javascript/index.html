@@ -1,0 +1,41 @@
+<html>
+	<head>
+		<script type="text/javascript" src="../../../javascript/limax.js"></script>
+	</head>
+	<body>
+		<script type="text/javascript" src="chatroom.js"></script>
+		<div name="dynamicShow" id="dynamicShow"></div>
+		<div name="errorInfo" id="errorInfo"></div>
+		<div><img src="../../../icons/limaxs.png" width="200" height="120"/></div>
+		<script type="text/javascript">
+			showLoginFrame();
+				
+			function showNavigatorType() {
+				var Sys = {};
+				console.log(navigator); 
+    	    	var ua = navigator.userAgent.toLowerCase();
+        		var s;
+        		(s = ua.match(/msie ([\d.]+)/)) ? Sys.ie = s[1] :
+        	    	(s = ua.match(/firefox\/([\d.]+)/)) ? Sys.firefox = s[1] :
+        	        (s = ua.match(/chrome\/([\d.]+)/)) ? Sys.chrome = s[1] :
+        	        (s = ua.match(/opera.([\d.]+)/)) ? Sys.opera = s[1] :
+        	        (s = ua.match(/version\/([\d.]+).*safari/)) ? Sys.safari = s[1] : 0;
+
+				var navigatorType = Sys;
+				var nt = "unknow";
+				if (navigatorType.ie) nt = 'IE: ' + navigatorType.ie;
+		        if (navigatorType.firefox) nt = 'Firefox: ' + navigatorType.firefox;
+	        	if (navigatorType.chrome) nt = 'Chrome: ' + navigatorType.chrome;
+		        if (navigatorType.opera) nt = 'Opera: ' + navigatorType.opera;
+		        if (navigatorType.safari) nt = 'Safari: ' + navigatorType.safari;
+				document.getElementById('errorInfo').innerHTML = nt;
+				
+				if( navigatorType.safari) 
+					document.write("<script src='../../../javascript/map.js'><\/script>");
+			}
+			showNavigatorType();
+		</script>
+	</body>
+</html> 
+
+

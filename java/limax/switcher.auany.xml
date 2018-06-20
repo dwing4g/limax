@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<namespace name="switcherauany">
+	<bean name="AuanyAuthArg">
+		<enum name="ST_SOCKET" value="0" />
+		<enum name="ST_WEBSOCKET" value="1" />
+		<variable name="username" type="string" />
+		<variable name="token" type="string" />
+		<variable name="platflag" type="string" />
+		<variable name="pvids" type="map" key="int" value="byte" />
+		<variable name="clientaddress" type="binary" />
+		<variable name="sockettype" type="byte" />
+	</bean>
+
+	<bean name="AuanyAuthRes">
+		<variable name="errorSource" type="int" />
+		<variable name="errorCode" type="int" />
+		<variable name="sessionid" type="long" />
+		<variable name="mainid" type="long" />
+		<variable name="uid" type="string" />
+		<variable name="flags" type="long" />
+		<variable name="lmkdata" type="binary" />
+	</bean>
+
+	<rpc name="SessionAuthByToken" type="10" argument="AuanyAuthArg"
+		result="AuanyAuthRes" maxsize="8192" timeout="5000" />
+
+	<bean name="CheckProviderKeyArg">
+		<variable name="pvid" type="int" />
+		<variable name="pvkey" type="string" />
+		<variable name="paySupported" type="boolean" />
+		<variable name="json" type="string" />
+	</bean>
+
+	<bean name="CheckProviderKeyRes">
+		<variable name="error" type="int" />
+		<variable name="jsonPublishDelayMin" type="long" />
+	</bean>
+
+	<rpc name="CheckProviderKey" type="11" argument="CheckProviderKeyArg"
+		result="CheckProviderKeyRes" maxsize="0" timeout="5000" />
+
+	<protocol name="Pay" type="12" maxsize="32">
+		<variable name="payid" type="int" />
+		<variable name="serial" type="long" />
+		<variable name="sessionid" type="long" />
+		<variable name="product" type="int" />
+		<variable name="price" type="int" />
+		<variable name="count" type="int" />
+	</protocol>
+
+	<protocol name="PayAck" type="13" maxsize="16">
+		<variable name="payid" type="int" />
+		<variable name="serial" type="long" />
+	</protocol>
+
+	<protocol name="OnlineAnnounce" type="14" maxsize="0">
+		<variable name="key" type="string" />
+		<variable name="nativeIds" type="vector" value="int" />
+		<variable name="wsIds" type="vector" value="int" />
+		<variable name="wssIds" type="vector" value="int" />
+		<variable name="pvids" type="map" key="int" value="boolean" />
+	</protocol>
+
+	<protocol name="Kick" type="15" maxsize="0">
+		<variable name="message" type="string" />
+	</protocol>
+
+	<protocol name="JSONPublish" type="16" maxsize="0">
+		<variable name="pvid" type="int" />
+		<variable name="json" type="string" />
+	</protocol>
+
+	<protocol name="KeepAlive" type="17" maxsize="8">
+		<variable name="millisecond" type="long" />
+	</protocol>
+
+	<protocol name="ProviderDown" type="18" maxsize="8">
+		<variable name="pvid" type="int" />
+	</protocol>
+
+	<protocol name="Exchange" type="19" maxsize="0">
+		<enum name="UPLOAD_LMKDATA" value="0" />
+		<enum name="CONFIG_LMKMASQUERADE" value="1" />
+		<variable name="type" type="int" />
+		<variable name="data" type="binary" />
+	</protocol>
+</namespace>

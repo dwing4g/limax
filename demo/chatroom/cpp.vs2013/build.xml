@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="chatclient" default="xmlgen">
+	<property name="limaxbin" value="../../../bin" />
+
+	<target name="limax">
+		<ant dir="../../../java/limax" target="release" inheritAll="false" />
+	</target>
+
+	<target name="xmlgen" depends="limax">
+		<java jar="${limaxbin}/limax.jar" fork="yes">
+			<arg value="xmlgen" />
+			<arg value="-cpp" />
+			<arg value="-noServiceXML" />
+			<arg value="../xmls/chatclient.xml" />
+		</java>
+	</target>
+
+</project>

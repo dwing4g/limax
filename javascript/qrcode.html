@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="qrcode.js"></script>
+<script>
+	function flush() {
+		document.getElementById('svg').innerHTML = QrCode.encode(QrCode.toUTF8(document.getElementById('txt').value), QrCode.ECL_H).toSvgXML();
+	}
+</script>
+<body>
+<div style="width:30em; padding:1em; background-color:#f0f0f0">
+	<div id="svg" style="width:480px; height:30em; "></div>
+	<textarea id="txt" style="width:480px; margin-top:1em"	oninput="flush()"></textarea>
+</div>
+</body>
+</html>

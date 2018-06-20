@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LmkServer certificateAlgorithm="ec/256" certificateLifetime="30"
+    constraintNameLength="16" domain="lmkca.limax-project.org"
+    port="443" revocationCheckerOptions="disable" trustsPath="/work/pkix/root/ca.p7b">
+    <CAService location="file:lmkca@/work/pkix/ca/" passphrase="123456"/>
+    <OcspServer certificateAlgorithm="ec/256" certificateLifetime="30"
+        nextUpdateDelay="7" ocspStore="/work/pkix/ca/ocsp" port="80"
+        responseCacheCapacity="10000" signatureBits="256"/>
+    <LmkBundle certificateLifetime="365" rsaBits="1024"/>
+    <Trace console="true" level="info" outDir="./trace"
+        rotateHourOfDay="6" rotateMinute="0"/>
+</LmkServer>

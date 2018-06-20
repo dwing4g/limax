@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<logger className="limax.auany.logger.PayLoggerMysql" pool="3"
+	url="jdbc:mysql://192.168.1.3:3306/account?user=root&amp;password=admin&amp;characterEncoding=utf8&amp;autoReconnect=true">
+	<sql>
+		<![CDATA[
+			CREATE TABLE IF NOT EXISTS `order`(
+				`serial` BIGINT NOT NULL PRIMARY KEY,
+				`sessionid` BIGINT NOT NULL,
+				`gateway` INTEGER NOT NULL,
+				`payid` INTEGER NOT NULL,
+				`product` INTEGER NOT NULL,
+				`price` INTEGER NOT NULL,
+				`quantity` INTEGER NOT NULL,
+				`ctime` DATETIME(6) NOT NULL,
+				`mtime` DATETIME(6) NOT NULL,
+				`status` TINYINT NOT NULL,
+				`message` VARCHAR(255) NOT NULL
+			) CHARSET=utf8;
+		]]>
+	</sql>
+	<sql>
+		<![CDATA[
+			CREATE TABLE IF NOT EXISTS `order_fake`(
+				`serial` BIGINT NOT NULL,
+				`gateway` INTEGER NOT NULL,
+				`expect` INTEGER NOT NULL,
+				`ctime` DATETIME(6) NOT NULL
+			) CHARSET=utf8;
+		]]>
+	</sql>
+	<sql>
+		<![CDATA[
+			CREATE TABLE IF NOT EXISTS `appstore_order`(
+				`serial` BIGINT NOT NULL PRIMARY KEY,
+				`transaction_id` BIGINT NOT NULL UNIQUE,
+				`sessionid` BIGINT NOT NULL,
+				`gateway` INTEGER NOT NULL,
+				`payid` INTEGER NOT NULL,
+				`product` INTEGER NOT NULL,
+				`quantity` INTEGER NOT NULL,
+				`ctime` DATETIME(6) NOT NULL,
+				`mtime` DATETIME(6) NOT NULL,
+				`status` TINYINT NOT NULL,
+				`status_appstore` INTEGER NOT NULL
+			) CHARSET=utf8;
+		]]>
+	</sql>
+	<sql>
+		<![CDATA[
+			CREATE TABLE IF NOT EXISTS `appstore_replay`(
+				`transaction_id` BIGINT NOT NULL,
+				`ctime` DATETIME(6) NOT NULL
+			) CHARSET=utf8;
+		]]>
+	</sql>
+</logger>

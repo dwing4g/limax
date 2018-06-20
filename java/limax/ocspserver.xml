@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OcspServer cRLFile="/work/pkix/root/ca.crl"
+    domain="root.limax-project.org"
+    location="pkcs12:/work/pkix/root/ocsp.p12" nextUpdateDelay="7"
+    ocspStore="/work/pkix/root/ocsp" passphrase="123456" port="80"
+    responseCacheCapacity="10000" signatureBits="256">
+    <Trace console="true" level="info" outDir="./trace"
+        rotateHourOfDay="6" rotateMinute="0"/>
+</OcspServer>

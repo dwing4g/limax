@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ServiceConf name="chatserver">
+    <!-- ThreadPoolSize nioCpus="1" netProcessors="4" protocolSchedulers="4" applicationExecutors="16"-->
+    <Provider className="chat.chatserver.SessionManager"
+        classSingleton="getInstance"
+        defaultStateClass="chat.chatserver.states.Provider"
+        name="Provider" pvid="100" setAsOnlines="true" viewManagerClass="chat.chatserver.chatviews.ViewManager">
+        <Manager autoReconnect="true" checkOutputBuffer="false"
+            connectTimeout="5000" inputBufferSize="8192"
+            outputBufferSize="8192" remoteIp="127.0.0.1"
+            remotePort="10100" type="client"/>
+    </Provider>
+    <Trace console="true" level="WARN" outDir="./trace"
+        rotateHourOfDay="6" rotateMinute="0"/>
+    <Zdb autoKeyInitValue="0" autoKeyStep="4096"
+        checkpointPeriod="60000" corePoolSize="30" dbhome="zdb"
+        deadlockDetectPeriod="1000"
+        defaultTableCache="limax.zdb.TTableCacheLRU"
+        edbCacheSize="65536" edbLoggerPages="16384" jdbcPoolSize="5"
+        marshalN="1" marshalPeriod="-1" procPoolSize="10"
+        schedPoolSize="5" snapshotFatalTime="200" zdbVerify="false">
+        <Procedure maxExecutionTime="0" retryDelay="100" retryTimes="3" trace="WARN"/>
+    </Zdb>
+    <GlobalId autoReconnect="true" remoteIp="127.0.0.1" remotePort="10210"/>
+</ServiceConf>

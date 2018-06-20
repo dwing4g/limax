@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="globalid" default="dist">
+
+	<property name="src" value="src" />
+	<property name="gen" value="gen" />
+	<property name="build" value="bin/" />
+	<property name="limaxbin" value="../../bin" />
+	<property name="jarfile" value="${limaxbin}/globalid.jar" />
+
+	<target name="limax">
+		<ant dir="../limax" target="dist" inheritAll="false" />
+	</target>
+
+	<target name="-init">
+		<mkdir dir="${build}" />
+	</target>
+
+	<target name="xmlgen" depends="limax">
+		<java classpath="${limaxbin}/limax.jar" classname="limax.xmlgen.Main" fork="true">
+			<arg value="-java" />
+			<arg value="../limax/globalid.xml" />
+		</java>
+	</target>
+
+	<target name="init" depends="-init, limax, xmlgen" />
+
+	<target name="-compile">
+		<path id="classpath">
+			<fileset dir="${limaxbin}">
+				<include name="**/*.jar" />
+			</fileset>
+		</path>
+		<javac encoding="UTF-8" srcdir="${src}:${gen}" destdir="${build}" includeantruntime="false" classpathref="classpath" debug="true" debuglevel="lines,source,vars">
+			<compilerarg line="-Xlint:unchecked" />
+		</javac>
+	</target>
+
+	<target name="compile" depends="init, -compile" />
+
+	<target name="clean">
+		<delete dir="${build}" />
+		<delete dir="${gen}" />
+		<delete file="${jarfile}" />
+	</target>
+
+	<target name="-dist">
+		<jar jarfile="${jarfile}" basedir="${build}" manifest="${src}/MANIFEST.MF" />
+	</target>
+
+	<target name="dist" depends="compile, -dist" />
+
+	<target name="all" depends="clean, dist" />
+
+	<target name="release" depends="-init, xmlgen, -compile, -dist" />
+
+	<target name="-run">
+		<java jar="${jarfile}" fork="true" spawn="true" />
+	</target>
+
+	<target name="run" depends="dist, -run" />
+
+</project>

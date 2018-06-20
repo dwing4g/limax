@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="chatserver" default="dist">
+
+	<property name="src" value="src/" />
+	<property name="gen" value="gen/" />
+	<property name="build" value="bin/" />
+	<property name="limaxbin" value="../../../bin" />
+	<property name="jarfile" value="${limaxbin}/chatserver.jar" />
+
+	<target name="limax">
+		<ant dir="../../../java/limax" target="release" inheritAll="false" />
+	</target>
+
+	<target name="xmlgen" depends="limax">
+		<java jar="${limaxbin}/limax.jar" fork="yes">
+			<arg value="xmlgen" />
+			<arg value="-java" />
+			<arg value="-script" />
+			<arg value="-variant" />
+			<arg value="-jsTemplate" />
+			<arg value="-sizepolicyxml" />
+			<arg value="../xmls/chatserver.xml" />
+		</java>
+	</target>
+
+	<target name="init" depends="xmlgen">
+		<mkdir dir="${build}" />
+	</target>
+
+	<target name="compile" depends="init">
+		<path id="classpath">
+			<fileset dir="${limaxbin}">
+				<include name="**/*.jar" />
+			</fileset>
+		</path>
+		<javac encoding="UTF-8" srcdir="${gen}:${src}" destdir="${build}" classpathref="classpath" debug="true" debuglevel="lines,source" includeantruntime="false">
+			<compilerarg line="-Xlint:unchecked" />
+		</javac>
+	</target>
+
+	<target name="dist" depends="compile">
+		<jar jarfile="${jarfile}" basedir="${build}" manifest="${src}/MANIFEST.MF" />
+	</target>
+
+	<target name="all" depends="clean, dist" />
+
+	<target name="clean">
+		<delete dir="${build}" />
+		<delete dir="${gen}" />
+		<delete file="${jarfile}" />
+	</target>
+
+	<target name="run">
+		<java jar="${jarfile}" fork="true" spawn="true" />
+	</target>
+
+</project>

@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="limax" default="dist">
+
+	<property environment="env" />
+	<condition property="sdk.dir" value="${env.ANDROID_HOME}">
+		<isset property="env.ANDROID_HOME" />
+	</condition>
+
+	<loadproperties srcFile="project.properties" />
+	<fail
+		message="sdk.dir is missing. Make sure to generate local.properties using 'android update project' or to inject it through the ANDROID_HOME environment variable."
+		unless="sdk.dir" />
+
+	<property name="java.target" value="1.6" />
+	<property name="java.source" value="1.6" />
+	<property name="java.encoding" value="UTF-8" />
+	<property name="out.library.jar.file" value="limax.jar" />
+
+	<property name="limax.java.path" location="./../limax" />
+
+	<import file="${sdk.dir}/tools/ant/build.xml" />
+
+	<target name="init">
+		<ant dir="${limax.java.path}" target="xmlgen" inheritAll="false" />
+		
+		<!-- gen files -->
+		<copy todir="src/limax/defines">
+			<fileset dir="${limax.java.path}/gen/limax/defines" />
+		</copy>
+		<copy todir="src/limax/endpoint">
+			<fileset dir="${limax.java.path}/gen/limax/endpoint" />
+		</copy>
+		<copy todir="src/limax/providerendpoint">
+			<fileset dir="${limax.java.path}/gen/limax/providerendpoint" />
+		</copy>
+		<copy todir="src/limax/auanyviews">
+			<fileset dir="${limax.java.path}/gen/limax/auanyviews" />
+		</copy>
+
+		<!-- individual files -->
+		<copy todir="src/limax">
+			<fileset dir="individual/limax" />
+		</copy>
+
+		<!-- src files -->
+		<copy todir="src/limax/codec">
+			<fileset dir="${limax.java.path}/src/limax/codec" >
+			     <exclude name="**/asn1/**"/>
+			</fileset>
+		</copy>
+		<copy todir="src/limax/endpoint">
+			<fileset dir="${limax.java.path}/src/limax/endpoint"
+				excludes="script/JavaScriptHandle.java,Expansion.java" />
+		</copy>
+		<copy todir="src/limax/net">
+			<fileset dir="${limax.java.path}/src/limax/net"
+				includes="AbstractManager.java,AbstractRpcContext.java,AbstractTransport.java,
+				ClientListener.java,ClientManager.java,ClientManagerConfig.java,ClientManagerImpl.java,
+				Config.java,Driver.java,Engine.java,Listener.java,Manager.java,ManagerConfig.java,
+				Protocol.java,SizePolicyException.java,Skeleton.java,State.java,StateTransport.java,
+				StateTransportImpl.java,SupportDispatch.java,SupportRpcContext.java,SupportStateCheck.java,
+				SupportTypedDataBroadcast.java,SupportTypedDataTransfer.java,SupportUnknownProtocol.java,
+				Transport.java,UnknownProtocolHandler.java" />
+		</copy>
+		<copy todir="src/limax/net/io">
+			<fileset dir="${limax.java.path}/src/limax/net/io" excludes="NetModel.java,WebSocketServerTask.java" />
+		</copy>
+		<copy todir="src/limax/util">
+			<fileset dir="${limax.java.path}/src/limax/util"
+				includes="Closeable.java,HttpClient.java,ConcurrentEnvironment.java,Dispatcher.java,HashExecutor.java,Helper.java,
+				JMXException.java,Resource.java,ScheduledTimeoutExecutor.java,TimeoutExecutor.java,Pair.java" />
+		</copy>
+		<copy todir="src/limax/xmlconfig">
+			<fileset dir="${limax.java.path}/src/limax/xmlconfig"
+				includes="ClientManagerConfigBuilder.java,ConfigBuilder.java" />
+		</copy>
+	</target>
+
+	<target name="cleanlib">
+		<delete file="${out.library.jar.file}" />
+		<delete dir="src/limax" />
+	</target>
+
+	<target name="dist" depends="init,release">
+		<delete dir="src/limax" />
+	</target>
+	<target name="all" depends="cleanlib,clean,dist" />
+
+</project>

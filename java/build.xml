@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<project name="limax.java" default="release">
+
+	<target name="release">
+		<ant dir="limax" target="release" inheritAll="false"/>
+		<ant dir="globalid" target="release" inheritAll="false"/>
+		<ant dir="auany" target="release" inheritAll="false"/>
+	</target>
+
+	<target name="clean">
+		<ant dir="limax" target="clean" inheritAll="false"/>
+		<ant dir="globalid" target="clean" inheritAll="false"/>
+		<ant dir="auany" target="clean" inheritAll="false"/>
+	</target>
+
+	<target name="all" depends="clean, release">
+		<ant dir="limax" target="doc" inheritAll="false"/>
+	</target>
+
+	<target name="run">
+		<ant dir="globalid" target="-run" inheritAll="false"/>
+		<ant dir="auany" target="-run" inheritAll="false"/>
+		<ant dir="limax" target="-run" inheritAll="false"/>
+	</target>
+
+</project>

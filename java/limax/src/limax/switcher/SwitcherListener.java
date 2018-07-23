@@ -1065,9 +1065,11 @@ public final class SwitcherListener implements ServerListener {
 				return;
 			transport.setSessionObject(null);
 			Collection<Integer> pvids = new ArrayList<>(so.pvids.keySet());
-			so.pvids.remove(pvid);
-			if (!so.pvids.isEmpty())
-				ProviderListener.getInstance().broadcastLinkBroken(so.sessionid, so.pvids.keySet());
+			if (error != ErrorCodes.PROVIDER_DUPLICATE_SESSION) {
+				so.pvids.remove(pvid);
+				if (!so.pvids.isEmpty())
+					ProviderListener.getInstance().broadcastLinkBroken(so.sessionid, so.pvids.keySet());
+			}
 			ProviderListener.getInstance().unregisterClient(so.sessionid, pvids);
 			closeSession(transport, error);
 		});

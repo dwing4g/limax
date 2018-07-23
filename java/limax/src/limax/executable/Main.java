@@ -28,6 +28,7 @@ public class Main {
 		map.put("node", limax.node.js.Main.class);
 		map.put("pkix", limax.pkix.tool.Main.class);
 		map.put("keyserver", limax.key.KeyAllocator.class);
+		map.put("qrcode", QrCodeTool.class);
 		if (args.length < 1)
 			usage(map);
 		String cmd = args[0].toLowerCase();

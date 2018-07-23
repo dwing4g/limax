@@ -104,7 +104,7 @@ public final class LockEnvironment {
 				Trace.fatal(m);
 			});
 			schedule(detectDelay);
-		} , detectDelay.getAsLong(), TimeUnit.MILLISECONDS);
+		}, detectDelay.getAsLong(), TimeUnit.MILLISECONDS);
 	}
 
 	private void addHolder(Object o) {
@@ -166,11 +166,13 @@ public final class LockEnvironment {
 		private final Set<Thread> listing;
 
 		DeadlockDetector(Map<Thread, Object> waiting, Map<Thread, Map<Object, Integer>> holding) {
-			this.waiting = waiting.entrySet().stream().collect(
-					Collectors.groupingBy(e -> e.getValue(), Collectors.mapping(e -> e.getKey(), Collectors.toSet())));
+			this.waiting = waiting.entrySet().stream().filter(e -> e.getKey().getState() == Thread.State.WAITING)
+					.collect(Collectors.groupingBy(e -> e.getValue(),
+							Collectors.mapping(e -> e.getKey(), Collectors.toSet())));
 			this.holding = holding.entrySet().stream()
 					.collect(Collectors.toMap(e -> e.getKey(), e -> new ArrayList<>(e.getValue().keySet())));
-			this.listing = this.holding.entrySet().stream().filter(e -> waiting.containsKey(e.getKey()))
+			this.listing = this.holding.entrySet().stream()
+					.filter(e -> waiting.containsKey(e.getKey()) && e.getKey().getState() == Thread.State.WAITING)
 					.sorted((a, b) -> a.getValue().size() - b.getValue().size()).map(e -> e.getKey())
 					.collect(Collectors.toCollection(LinkedHashSet<Thread>::new));
 		}
@@ -214,7 +216,7 @@ public final class LockEnvironment {
 				Iterator<Thread> it = listing.iterator();
 				Thread victim = it.next();
 				Collection<Pair<Thread, Object>> r = test(victim);
-				if (r == null || r.size() == 1)
+				if (r == null)
 					it.remove();
 				else {
 					StringBuilder sb = new StringBuilder("Deadlock detected, cycle-size=").append(r.size())

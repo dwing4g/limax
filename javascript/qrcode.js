@@ -77,10 +77,6 @@ function QrCode(modules, size) {
 			}
 			this.nbits += len;
 		}
-		
-		this.bitLength = function() {
-			return this.nbits;
-		}
 	}
 
 	var testBit = function(x, i) {
@@ -91,20 +87,20 @@ function QrCode(modules, size) {
 		var n = size - 7;
 		for (var i = 0, j = size - 1; i < 7; i++) {
 			var k = n + i;
-			modules[0][i] = modules[6][i] = modules[i][0] = modules[i][6] = true;
-			modules[n][i] = modules[j][i] = modules[i][n] = modules[i][j] = true;
-			modules[0][k] = modules[6][k] = modules[k][0] = modules[k][6] = true;
+			modules[i] = modules[6 * size + i] = modules[i * size] = modules[i * size + 6] = true;
+			modules[n * size + i] = modules[j * size + i] = modules[i * size + n] = modules[i * size + j] = true;
+			modules[k] = modules[6 * size + k] = modules[k * size] = modules[k * size + 6] = true;
 		}
 		for (var i = 2; i < 5; i++)
 			for (var j = 2; j < 5; j++)
-				modules[j][i] = modules[n + j][i] = modules[j][n + i] = true;
+				modules[j * size + i] = modules[(n + j) * size + i] = modules[j * size + n + i] = true;
 		n--;
 		for (var i = 0; i < 8; i++)
 			for (var j = 0; j < 8; j++)
-				funmask[j][i] = funmask[n + j][i] = funmask[j][n + i] = true;
+				funmask[j * size + i] = funmask[(n + j) * size + i] = funmask[j * size + n + i] = true;
 		for (var i = 8; i < n; i++) {
-			modules[6][i] = modules[i][6] = (i & 1) == 0;
-			funmask[6][i] = funmask[i][6] = true;
+			modules[6 * size + i] = modules[i * size + 6] = (i & 1) == 0;
+			funmask[6 * size + i] = funmask[i * size + 6] = true;
 		}
 		if (version > 1) {
 			n = Math.floor(version / 7 + 2);
@@ -121,30 +117,33 @@ function QrCode(modules, size) {
 					var y = r[a];
 					for (var i = -2; i <= 2; i++) {
 						for (var j = -2; j <= 2; j++)
-							funmask[y + j][x + i] = true;
-						modules[y - 2][x + i] = modules[y + 2][x + i] = modules[y + i][x - 2] = modules[y + i][x + 2] = true;
+							funmask[(y + j) * size + x + i] = true;
+						modules[(y - 2) * size + x + i] = true;
+						modules[(y + 2) * size + x + i] = true;
+						modules[(y + i) * size + x - 2] = true;
+						modules[(y + i) * size + x + 2] = true;
 					}
-					modules[y][x] = true;
+					modules[y * size + x] = true;
 				}
 		}
 		if (version > 6) {
 			var r = version;
 			for (var i = 0; i < 12; i++)
 				r = (r << 1) ^ ((r >> 11) * 0x1f25);
-			var	v = version << 12 | r;
+			var v = version << 12 | r;
 			for (var i = 0; i < 18; i++) {
 				var	x = Math.floor(i / 3);
 				var	y = size - 11 + Math.floor(i % 3);
-				funmask[y][x] = funmask[x][y] = true;
+				funmask[y * size + x] = funmask[x * size + y] = true;
 				if (testBit(v, i))
-					modules[y][x] = modules[x][y] = true;
+					modules[y * size + x] = modules[x * size + y] = true;
 			}
 		}
 		for (var i = 0; i < 9; i++)
-			funmask[i][8] = funmask[8][i] = true;
+			funmask[i * size + 8] = funmask[8 * size + i] = true;
 		for (var i = 0; i < 8; i++)
-			funmask[8][size - i - 1] = funmask[size - 8 + i][8] = true;
-		modules[size - 8][8] = true;
+			funmask[8 * size + size - i - 1] = funmask[(size - 8 + i) * size + 8] = true;
+		modules[(size - 8) * size + 8] = true;
 	}
 
 	var selectMaskPattern = function(modules, funmask, size, ecl) {
@@ -164,33 +163,33 @@ function QrCode(modules, size) {
 	}
 
 	var maskPattern = function(modules, funmask, size, pattern) {
-		for (var i = 0; i < size; i++) {
-			for (var j = 0; j < size; j++) {
-				if (!funmask[i][j])
+		for (var p = 0, i = 0; i < size; i++) {
+			for (var j = 0; j < size; j++, p++) {
+				if (!funmask[p])
 					switch (pattern) {
 					case 0:
-						modules[i][j] ^= (i + j) % 2 == 0;
+						modules[p] ^= (i + j) % 2 == 0;
 						break;
 					case 1:
-						modules[i][j] ^= i % 2 == 0;
+						modules[p] ^= i % 2 == 0;
 						break;
 					case 2:
-						modules[i][j] ^= j % 3 == 0;
+						modules[p] ^= j % 3 == 0;
 						break;
 					case 3:
-						modules[i][j] ^= (i + j) % 3 == 0;
+						modules[p] ^= (i + j) % 3 == 0;
 						break;
 					case 4:
-						modules[i][j] ^= (Math.floor(i / 2) + Math.floor(j / 3)) % 2 == 0;
+						modules[p] ^= (Math.floor(i / 2) + Math.floor(j / 3)) % 2 == 0;
 						break;
 					case 5:
-						modules[i][j] ^= i * j % 2 + i * j % 3 == 0;
+						modules[p] ^= i * j % 2 + i * j % 3 == 0;
 						break;
 					case 6:
-						modules[i][j] ^= (i * j % 2 + i * j % 3) % 2 == 0;
+						modules[p] ^= (i * j % 2 + i * j % 3) % 2 == 0;
 						break;
 					case 7:
-						modules[i][j] ^= ((i + j) % 2 + i * j % 3) % 2 == 0;
+						modules[p] ^= ((i + j) % 2 + i * j % 3) % 2 == 0;
 						break;
 					}
 			}
@@ -199,18 +198,18 @@ function QrCode(modules, size) {
 
 	var computePenaltyScore = function(modules, size) {
 		var score = 0;
-		var black = 0;
+		var dark = 0;
 		for (var i = 0; i < size; i++) {
-			var xcolor = modules[i][0];
-			var ycolor = modules[0][i];
+			var xcolor = modules[i * size];
+			var ycolor = modules[i];
 			var xsame = 1;
 			var ysame = 1;
-			var xbits = modules[i][0] ? 1 : 0;
-			var ybits = modules[0][i] ? 1 : 0;
-			black += modules[i][0] ? 1 : 0;
+			var xbits = modules[i * size] ? 1 : 0;
+			var ybits = modules[i] ? 1 : 0;
+			dark += modules[i * size] ? 1 : 0;
 			for (var j = 1; j < size; j++) {
-				if (modules[i][j] != xcolor) {
-					xcolor = modules[i][j];
+				if (modules[i * size + j] != xcolor) {
+					xcolor = modules[i * size + j];
 					xsame = 1;
 				} else {
 					if (++xsame == 5)
@@ -218,8 +217,8 @@ function QrCode(modules, size) {
 					else if (xsame > 5)
 						score++;
 				}
-				if (modules[j][i] != ycolor) {
-					ycolor = modules[j][i];
+				if (modules[j * size + i] != ycolor) {
+					ycolor = modules[j * size + i];
 					ysame = 1;
 				} else {
 					if (++ysame == 5)
@@ -227,25 +226,25 @@ function QrCode(modules, size) {
 					else if (ysame > 5)
 						score++;
 				}
-				xbits = ((xbits << 1) & 0x7ff) | (modules[i][j] ? 1 : 0);
-				ybits = ((ybits << 1) & 0x7ff) | (modules[j][i] ? 1 : 0);
+				xbits = ((xbits << 1) & 0x7ff) | (modules[i * size + j] ? 1 : 0);
+				ybits = ((ybits << 1) & 0x7ff) | (modules[j * size + i] ? 1 : 0);
 				if (j >= 10) {
 					if (xbits == 0x5d || xbits == 0x5d0)
 						score += 40;
 					if (ybits == 0x5d || ybits == 0x5d0)
 						score += 40;
 				}
-				black += modules[i][j] ? 1 : 0;
+				dark += modules[i * size + j] ? 1 : 0;
 			}
 		}
 		for (var i = 0; i < size - 1; i++)
 			for (var j = 0; j < size - 1; j++) {
-				var c = modules[i][j];
-				if (c == modules[i][j + 1] && c == modules[i + 1][j] && c == modules[i + 1][j + 1])
+				var c = modules[i * size + j];
+				if (c == modules[i * size + j + 1] && c == modules[(i + 1) * size + j] && c == modules[(i + 1) * size + j + 1])
 					score += 3;
 			}
-		black *= 20;
-		for (var k = 0, total = size * size; black < total * (9 - k) || black > total * (11 + k); k++)
+		dark *= 20;
+		for (var k = 0, total = size * size; dark < total * (9 - k) || dark > total * (11 + k); k++)
 			score += 10;
 		return score;
 	}
@@ -255,11 +254,13 @@ function QrCode(modules, size) {
 			if (x == 6)
 				x = 5;
 			for (; y >= 0 && y < size; y += dir)
-				for (var j = 0; j < 2; j++)
-					if (!funmask[y][x - j] && i < bitLength) {
-						modules[y][x - j] = testBit(errorCorrectionCodewords[i >> 3], 7 - (i & 7));
+				for (var j = 0; j < 2; j++) {
+					var p = y * size + x - j;
+					if (!funmask[p] && i < bitLength) {
+						modules[p] = testBit(errorCorrectionCodewords[i >> 3], 7 - (i & 7));
 						i++;
 					}
+				}
 		}
 	}
 
@@ -270,19 +271,19 @@ function QrCode(modules, size) {
 			r = (r << 1) ^ ((r >> 9) * 0x537);
 		v = ((v << 10) | r) ^ 0x5412;
 		for (var i = 0; i < 6; i++)
-			modules[i][8] = testBit(v, i);
-		modules[7][8] = testBit(v, 6);
-		modules[8][8] = testBit(v, 7);
-		modules[8][7] = testBit(v, 8);
+			modules[i * size + 8] = testBit(v, i);
+		modules[7 * size + 8] = testBit(v, 6);
+		modules[8 * size + 8] = testBit(v, 7);
+		modules[8 * size + 7] = testBit(v, 8);
 		for (var i = 9; i < 15; i++)
-			modules[8][14 - i] = testBit(v, i);
+			modules[8 * size + 14 - i] = testBit(v, i);
 		for (var i = 0; i < 8; i++)
-			modules[8][size - 1 - i] = testBit(v, i);
+			modules[8 * size + size - 1 - i] = testBit(v, i);
 		for (var i = 8; i < 15; i++)
-			modules[size - 15 + i][8] = testBit(v, i);
+			modules[(size - 15 + i) * size + 8] = testBit(v, i);
 	}
 
-	var reedSolomonMultiply = function(x, y) {
+	var gf_mul = function(x, y) {
 		var z = 0;
 		for (var i = 7; i >= 0; i--) {
 			z = (z << 1) ^ ((z >> 7) * 0x11d);
@@ -303,9 +304,9 @@ function QrCode(modules, size) {
 		coef[coef.length - 1] = 1;
 		for (var j, root = 1, i = 0; i < coef.length; i++) {
 			for (j = 0; j < coef.length - 1; j++)
-				coef[j] = reedSolomonMultiply(coef[j], root) ^ coef[j + 1];
-			coef[j] = reedSolomonMultiply(coef[j], root);
-			root = reedSolomonMultiply(root, 2);
+				coef[j] = gf_mul(coef[j], root) ^ coef[j + 1];
+			coef[j] = gf_mul(coef[j], root);
+			root = gf_mul(root, 2);
 		}
 		var errorCorrectionBase = lengthOfShortBlock + 1 - coef.length;
 		var blocks = new Array(numberOfErrorCorrectionBlocks);
@@ -317,8 +318,8 @@ function QrCode(modules, size) {
 			for (var j = 0, k; j < len; j++) {
 				var factor = (block[j] = codewords[pos + j]) ^ block[errorCorrectionBase];
 				for (k = 0; k < coef.length - 1; k++)
-					block[errorCorrectionBase + k] = reedSolomonMultiply(coef[k], factor) ^ block[errorCorrectionBase + k + 1];
-				block[errorCorrectionBase + k] = reedSolomonMultiply(coef[k], factor);
+					block[errorCorrectionBase + k] = gf_mul(coef[k], factor) ^ block[errorCorrectionBase + k + 1];
+				block[errorCorrectionBase + k] = gf_mul(coef[k], factor);
 			}
 			pos += len;
 		}
@@ -330,39 +331,89 @@ function QrCode(modules, size) {
 		return r;
 	}
 
+	var tmp = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
+	var ALPHANUMERIC = {};
+	for (var i in tmp)
+		ALPHANUMERIC[tmp.charCodeAt(i)] = Number(i);
+
 	var encode = function(data, ecl) {
-		var version = 0;
-		for (var i = 1; i <= 40; i++) {
-			var bitCapacity = getBitCapacity(i, ecl);
-			if (((i < 10 ? 12 : 20) + data.length * 8) <= bitCapacity) {
-				var bs = new BitStream();
-				bs.append(4, 4);
-				bs.append(data.length, i < 10 ? 8 : 16);
-				for (var j = 0; j < data.length; j++)
-					bs.append(data[j] & 0xff, 8);
-				var padBits = bitCapacity - bs.bitLength();
-				var padBytes = padBits >> 3;
-				padBits &= 7;
-				if (padBits != 0)
-					bs.append(0, 8 - padBits);
-				for (; padBytes >= 2; padBytes -= 2)
-					bs.append(0xec11, 16);
-				if (padBytes > 0)
-					bs.append(0xec, 8);
-				data = bs.toByteArray();
-				version = i;
+		var i = 0, version, mode, len = data.length, nbits = 4, lbits = 0, pbits = -1, pbytes;
+		for (; i < len && data[i] >= 48 && data[i] <= 57; i++)
+			;
+		if (i == len) {
+			mode = 1;
+			nbits += Math.floor(len / 3) * 10;
+			switch (len % 3) {
+			case 2:
+				nbits += 7;
+				break;
+			case 1:
+				nbits += 4;
+			}
+		} else {
+			for (; i < len && ALPHANUMERIC[data[i]]; i++)
+				;
+			if (i == len) {
+				mode = 2;
+				nbits += (len >> 1) * 11 + (len & 1) * 6;
+			} else {
+				mode = 4;
+				nbits += len * 8;
+			}
+			mode = i == len ? 2 : 4;
+		}
+		for (version = 0; pbits < 0 && ++version <= 40; pbits = getBitCapacity(version, ecl) - nbits - lbits) {
+			if (version < 10)
+				lbits = mode == 1 ? 10 : mode == 2 ? 9 : 8;
+			else if (version < 27)
+				lbits = mode == 1 ? 12 : mode == 2 ? 11 : 16;
+			else
+				lbits = mode == 1 ? 14 : mode == 2 ? 13 : 16;
+		}
+		if (pbits < 0)
+			return null;
+		var bs = new BitStream();
+		bs.append(mode, 4);
+		bs.append(len, lbits);
+		switch (mode) {
+		case 1:
+			for (i = 0; i <= len - 3; i += 3)
+				bs.append((data[i] - 48) * 100 + (data[i + 1] - 48) * 10 + (data[i + 2] - 48), 10);
+			switch (len - i) {
+			case 2:
+				bs.append((data[i] - 48) * 10 + (data[i + 1] - 48), 7);
+				break;
+			case 1:
+				bs.append((data[i] - 48), 4);
 				break;
 			}
+			break;
+		case 2:
+			for (i = 0; i <= len - 2; i += 2)
+				bs.append(ALPHANUMERIC[data[i]] * 45 + ALPHANUMERIC[data[i + 1]], 11);
+			if (i < len)
+				bs.append(ALPHANUMERIC[data[i]], 6);
+			break;
+		default:
+			for (i = 0; i < data.length; i++)
+				bs.append(data[i] & 0xff, 8);
 		}
-		if (version == 0)
-			throw new "size exceed";
+		if (pbits >= 4) {
+			bs.append(0, 4);
+			pbits -= 4;
+		}
+		pbytes = pbits >> 3;
+		pbits &= 7;
+		if (pbits != 0)
+			bs.append(0, 8 - pbits);
+		for (; pbytes >= 2; pbytes -= 2)
+			bs.append(0xec11, 16);
+		if (pbytes > 0)
+			bs.append(0xec, 8);
+		data = bs.toByteArray();
 		var size = version * 4 + 17;
-		var modules = new Array(size);
-		var funmask = new Array(size);
-		for (var i = 0; i < size; i++) {
-			(modules[i] = new Array(size)).fill(false);
-			(funmask[i] = new Array(size)).fill(false);
-		}
+		var modules = new Array(size * size);
+		var funmask = new Array(size * size);
 		initializeVersion(version, modules, funmask, size);
 		placeErrorCorrectionCodewords(modules, funmask, size, generateErrorCorrectionCodewords(data, version, ecl));
 		var pattern = selectMaskPattern(modules, funmask, size, ecl);
@@ -380,9 +431,9 @@ function QrCode(modules, size) {
 				+ (this.size + 8) + "\" stroke=\"none\">\n");
 		sb.push("\t<rect width=\"100%\" height=\"100%\" fill=\"#FFFFFF\"/>\n");
 		sb.push("\t<path d=\"");
-		for (var y = 0; y < this.size; y++)
+		for (var p = 0, y = 0; y < this.size; y++)
 			for (var x = 0; x < this.size; x++)
-				if (this.modules[y][x])
+				if (this.modules[p++])
 					sb.push("M" + (x + 4) + "," + (y + 4)+ "h1v1h-1z ");
 		sb.push("\" fill=\"#000000\"/>\n");
 		sb.push("</svg>\n");

@@ -80,7 +80,7 @@ public abstract class TTable<K, V> extends AbstractTable implements TTableMBean 
 		TRecord<K, V> rCached = current.getCachedTRecord(this, key);
 		if (rCached != null)
 			return rCached.getValue();
-		Lockey cacheLockey = Lockeys.getLockey(0, lockey);
+		Lockey cacheLockey = Lockeys.getLockey(-lockId, key);
 		cacheLockey.wLock();
 		try {
 			TRecord<K, V> r = cache.get(key);

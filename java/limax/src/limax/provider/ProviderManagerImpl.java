@@ -68,6 +68,7 @@ class ProviderManagerImpl extends AbstractRpcContext
 	private volatile Thread closingThread;
 	private Future<?> jsonFuture;
 	private final Future<?> keepAliveFuture;
+	private final static LoginData flagDuplicateSession = new LoginData(new Octets(0));
 
 	ProviderManagerImpl(ProviderManagerConfig config, ProviderListener listener, Manager wrapper) throws Exception {
 		this.exchanger = new ProviderSwitcherExchanger(this);
@@ -194,8 +195,11 @@ class ProviderManagerImpl extends AbstractRpcContext
 	}
 
 	@Override
-	public void close(Transport transport) {
-		close((ProviderTransport) transport, ErrorCodes.PROVIDER_KICK_SESSION);
+	public void close(Transport _transport) {
+		ProviderTransport transport = (ProviderTransport) _transport;
+		int reason = transport.getLoginData() == flagDuplicateSession ? ErrorCodes.PROVIDER_DUPLICATE_SESSION
+				: ErrorCodes.PROVIDER_KICK_SESSION;
+		close(transport, reason);
 	}
 
 	@Override
@@ -266,9 +270,12 @@ class ProviderManagerImpl extends AbstractRpcContext
 			addTransport3(oa);
 		} else {
 			try {
+				transport.setLoginData(flagDuplicateSession);
 				listener.onTransportDuplicate(transport);
 			} catch (Throwable e) {
 				close(transport, ErrorCodes.PROVIDER_DUPLICATE_SESSION);
+			} finally {
+				transport.setLoginData(null);
 			}
 			scheduleSessionTask(oa.sessionid, () -> addTransport2(oa));
 		}

@@ -62,7 +62,7 @@
 	<target name="doc">
 		<mkdir dir="doc" />
 		<javadoc sourcepath="src:gen"
-			packagenames="limax.codec,limax.codec.asn1,limax.edb,limax.endpoint,limax.endpoint.script,limax.endpoint.variant,limax.executable,limax.key,limax.key.ed,limax.net,limax.net.io,limax.p2p,limax.pkix,limax.provider,limax.util,limax.util.monitor,limax.xmlconfig,limax.zdb,limax.zdb.tool"
+			packagenames="limax.codec,limax.codec.asn1,limax.edb,limax.endpoint,limax.endpoint.script,limax.endpoint.variant,limax.key,limax.key.ed,limax.net,limax.net.io,limax.p2p,limax.pkix,limax.provider,limax.util,limax.util.monitor,limax.xmlconfig,limax.zdb,limax.zdb.tool"
 			defaultexcludes="yes" destdir="doc" locale="en_US" Encoding="UTF-8"
 			docencoding="UTF-8" charset="UTF-8" />
 	</target>

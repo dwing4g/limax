@@ -1882,8 +1882,9 @@ namespace limax.codec
                     r[j++] = (byte)(data[n] >> (56 - (i << 3)));
                 return r;
             }
-            public void Append(ulong val, int len)
+            public void Append(long _val, int len)
             {
+                ulong val = (ulong)_val;
                 if (nbits + len > data.Length * 64)
                 {
                     ulong[] tmp = new ulong[data.Length * 2];
@@ -1902,36 +1903,32 @@ namespace limax.codec
                 }
                 nbits += len;
             }
-            public int bitLength()
-            {
-                return nbits;
-            }
         }
         private static bool testBit(int x, int i)
         {
             return (x & (1 << i)) != 0;
         }
-        private static void initializeVersion(int version, bool[][] modules, bool[][] funmask, int size)
+        private static void initializeVersion(int version, bool[] modules, bool[] funmask, int size)
         {
             int n = size - 7;
             for (int i = 0, j = size - 1; i < 7; i++)
             {
                 int k = n + i;
-                modules[0][i] = modules[6][i] = modules[i][0] = modules[i][6] = true;
-                modules[n][i] = modules[j][i] = modules[i][n] = modules[i][j] = true;
-                modules[0][k] = modules[6][k] = modules[k][0] = modules[k][6] = true;
+                modules[i] = modules[6 * size + i] = modules[i * size] = modules[i * size + 6] = true;
+                modules[n * size + i] = modules[j * size + i] = modules[i * size + n] = modules[i * size + j] = true;
+                modules[k] = modules[6 * size + k] = modules[k * size] = modules[k * size + 6] = true;
             }
             for (int i = 2; i < 5; i++)
                 for (int j = 2; j < 5; j++)
-                    modules[j][i] = modules[n + j][i] = modules[j][n + i] = true;
+                    modules[j * size + i] = modules[(n + j) * size + i] = modules[j * size + n + i] = true;
             n--;
             for (int i = 0; i < 8; i++)
                 for (int j = 0; j < 8; j++)
-                    funmask[j][i] = funmask[n + j][i] = funmask[j][n + i] = true;
+                    funmask[j * size + i] = funmask[(n + j) * size + i] = funmask[j * size + n + i] = true;
             for (int i = 8; i < n; i++)
             {
-                modules[6][i] = modules[i][6] = (i & 1) == 0;
-                funmask[6][i] = funmask[i][6] = true;
+                modules[6 * size + i] = modules[i * size + 6] = (i & 1) == 0;
+                funmask[6 * size + i] = funmask[i * size + 6] = true;
             }
             if (version > 1)
             {
@@ -1951,11 +1948,13 @@ namespace limax.codec
                         for (int i = -2; i <= 2; i++)
                         {
                             for (int j = -2; j <= 2; j++)
-                                funmask[y + j][x + i] = true;
-                            modules[y - 2][x
-                                    + i] = modules[y + 2][x + i] = modules[y + i][x - 2] = modules[y + i][x + 2] = true;
+                                funmask[(y + j) * size + x + i] = true;
+                            modules[(y - 2) * size + x + i] = true;
+                            modules[(y + 2) * size + x + i] = true;
+                            modules[(y + i) * size + x - 2] = true;
+                            modules[(y + i) * size + x + 2] = true;
                         }
-                        modules[y][x] = true;
+                        modules[y * size + x] = true;
                     }
             }
             if (version > 6)
@@ -1968,18 +1967,18 @@ namespace limax.codec
                 {
                     int x = i / 3;
                     int y = size - 11 + i % 3;
-                    funmask[y][x] = funmask[x][y] = true;
+                    funmask[y * size + x] = funmask[x * size + y] = true;
                     if (testBit(v, i))
-                        modules[y][x] = modules[x][y] = true;
+                        modules[y * size + x] = modules[x * size + y] = true;
                 }
             }
             for (int i = 0; i < 9; i++)
-                funmask[i][8] = funmask[8][i] = true;
+                funmask[i * size + 8] = funmask[8 * size + i] = true;
             for (int i = 0; i < 8; i++)
-                funmask[8][size - i - 1] = funmask[size - 8 + i][8] = true;
-            modules[size - 8][8] = true;
+                funmask[8 * size + size - i - 1] = funmask[(size - 8 + i) * size + 8] = true;
+            modules[(size - 8) * size + 8] = true;
         }
-        private static int selectMaskPattern(bool[][] modules, bool[][] funmask, int size, int ecl)
+        private static int selectMaskPattern(bool[] modules, bool[] funmask, int size, int ecl)
         {
             int pattern = 0;
             int minPenaltyScore = Int32.MaxValue;
@@ -1997,61 +1996,61 @@ namespace limax.codec
             }
             return pattern;
         }
-        private static void maskPattern(bool[][] modules, bool[][] funmask, int size, int pattern)
+        private static void maskPattern(bool[] modules, bool[] funmask, int size, int pattern)
         {
-            for (int i = 0; i < size; i++)
+            for (int p = 0, i = 0; i < size; i++)
             {
-                for (int j = 0; j < size; j++)
+                for (int j = 0; j < size; j++, p++)
                 {
-                    if (!funmask[i][j])
+                    if (!funmask[p])
                         switch (pattern)
                         {
                             case 0:
-                                modules[i][j] ^= (i + j) % 2 == 0;
+                                modules[p] ^= (i + j) % 2 == 0;
                                 break;
                             case 1:
-                                modules[i][j] ^= i % 2 == 0;
+                                modules[p] ^= i % 2 == 0;
                                 break;
                             case 2:
-                                modules[i][j] ^= j % 3 == 0;
+                                modules[p] ^= j % 3 == 0;
                                 break;
                             case 3:
-                                modules[i][j] ^= (i + j) % 3 == 0;
+                                modules[p] ^= (i + j) % 3 == 0;
                                 break;
                             case 4:
-                                modules[i][j] ^= (i / 2 + j / 3) % 2 == 0;
+                                modules[p] ^= (i / 2 + j / 3) % 2 == 0;
                                 break;
                             case 5:
-                                modules[i][j] ^= i * j % 2 + i * j % 3 == 0;
+                                modules[p] ^= i * j % 2 + i * j % 3 == 0;
                                 break;
                             case 6:
-                                modules[i][j] ^= (i * j % 2 + i * j % 3) % 2 == 0;
+                                modules[p] ^= (i * j % 2 + i * j % 3) % 2 == 0;
                                 break;
                             case 7:
-                                modules[i][j] ^= ((i + j) % 2 + i * j % 3) % 2 == 0;
+                                modules[p] ^= ((i + j) % 2 + i * j % 3) % 2 == 0;
                                 break;
                         }
                 }
             }
         }
-        private static int computePenaltyScore(bool[][] modules, int size)
+        private static int computePenaltyScore(bool[] modules, int size)
         {
             int score = 0;
-            int black = 0;
+            int dark = 0;
             for (int i = 0; i < size; i++)
             {
-                bool xcolor = modules[i][0];
-                bool ycolor = modules[0][i];
+                bool xcolor = modules[i * size];
+                bool ycolor = modules[i];
                 int xsame = 1;
                 int ysame = 1;
-                int xbits = modules[i][0] ? 1 : 0;
-                int ybits = modules[0][i] ? 1 : 0;
-                black += modules[i][0] ? 1 : 0;
+                int xbits = modules[i * size] ? 1 : 0;
+                int ybits = modules[i] ? 1 : 0;
+                dark += modules[i * size] ? 1 : 0;
                 for (int j = 1; j < size; j++)
                 {
-                    if (modules[i][j] != xcolor)
+                    if (modules[i * size + j] != xcolor)
                     {
-                        xcolor = modules[i][j];
+                        xcolor = modules[i * size + j];
                         xsame = 1;
                     }
                     else
@@ -2061,9 +2060,9 @@ namespace limax.codec
                         else if (xsame > 5)
                             score++;
                     }
-                    if (modules[j][i] != ycolor)
+                    if (modules[j * size + i] != ycolor)
                     {
-                        ycolor = modules[j][i];
+                        ycolor = modules[j * size + i];
                         ysame = 1;
                     }
                     else
@@ -2073,8 +2072,8 @@ namespace limax.codec
                         else if (ysame > 5)
                             score++;
                     }
-                    xbits = ((xbits << 1) & 0x7ff) | (modules[i][j] ? 1 : 0);
-                    ybits = ((ybits << 1) & 0x7ff) | (modules[j][i] ? 1 : 0);
+                    xbits = ((xbits << 1) & 0x7ff) | (modules[i * size + j] ? 1 : 0);
+                    ybits = ((ybits << 1) & 0x7ff) | (modules[j * size + i] ? 1 : 0);
                     if (j >= 10)
                     {
                         if (xbits == 0x5d || xbits == 0x5d0)
@@ -2082,22 +2081,22 @@ namespace limax.codec
                         if (ybits == 0x5d || ybits == 0x5d0)
                             score += 40;
                     }
-                    black += modules[i][j] ? 1 : 0;
+                    dark += modules[i * size + j] ? 1 : 0;
                 }
             }
             for (int i = 0; i < size - 1; i++)
                 for (int j = 0; j < size - 1; j++)
                 {
-                    bool c = modules[i][j];
-                    if (c == modules[i][j + 1] && c == modules[i + 1][j] && c == modules[i + 1][j + 1])
+                    bool c = modules[i * size + j];
+                    if (c == modules[i * size + j + 1] && c == modules[(i + 1) * size + j] && c == modules[(i + 1) * size + j + 1])
                         score += 3;
                 }
-            black *= 20;
-            for (int k = 0, total = size * size; black < total * (9 - k) || black > total * (11 + k); k++)
+            dark *= 20;
+            for (int k = 0, total = size * size; dark < total * (9 - k) || dark > total * (11 + k); k++)
                 score += 10;
             return score;
         }
-        private static void placeErrorCorrectionCodewords(bool[][] modules, bool[][] funmask, int size, byte[] errorCorrectionCodewords)
+        private static void placeErrorCorrectionCodewords(bool[] modules, bool[] funmask, int size, byte[] errorCorrectionCodewords)
         {
             for (int i = 0, bitLength = errorCorrectionCodewords.Length << 3, x = size - 1, y = size - 1, dir = -1; x >= 1; x -= 2, y += (dir = -dir))
             {
@@ -2105,14 +2104,17 @@ namespace limax.codec
                     x = 5;
                 for (; y >= 0 && y < size; y += dir)
                     for (int j = 0; j < 2; j++)
-                        if (!funmask[y][x - j] && i < bitLength)
+                    {
+                        int p = y * size + x - j;
+                        if (!funmask[p] && i < bitLength)
                         {
-                            modules[y][x - j] = testBit(errorCorrectionCodewords[i >> 3], 7 - (i & 7));
+                            modules[p] = testBit(errorCorrectionCodewords[i >> 3], 7 - (i & 7));
                             i++;
                         }
+                    }
             }
         }
-        private static void placeMask(bool[][] modules, bool[][] funmask, int size, int ecl, int mask)
+        private static void placeMask(bool[] modules, bool[] funmask, int size, int ecl, int mask)
         {
             int v = ecl << 3 | mask;
             int r = v;
@@ -2120,18 +2122,18 @@ namespace limax.codec
                 r = (r << 1) ^ ((r >> 9) * 0x537);
             v = ((v << 10) | r) ^ 0x5412;
             for (int i = 0; i < 6; i++)
-                modules[i][8] = testBit(v, i);
-            modules[7][8] = testBit(v, 6);
-            modules[8][8] = testBit(v, 7);
-            modules[8][7] = testBit(v, 8);
+                modules[i * size + 8] = testBit(v, i);
+            modules[7 * size + 8] = testBit(v, 6);
+            modules[8 * size + 8] = testBit(v, 7);
+            modules[8 * size + 7] = testBit(v, 8);
             for (int i = 9; i < 15; i++)
-                modules[8][14 - i] = testBit(v, i);
+                modules[8 * size + 14 - i] = testBit(v, i);
             for (int i = 0; i < 8; i++)
-                modules[8][size - 1 - i] = testBit(v, i);
+                modules[8 * size + size - 1 - i] = testBit(v, i);
             for (int i = 8; i < 15; i++)
-                modules[size - 15 + i][8] = testBit(v, i);
+                modules[(size - 15 + i) * size + 8] = testBit(v, i);
         }
-        private static int reedSolomonMultiply(int x, int y)
+        private static int gf_mul(int x, int y)
         {
             int z = 0;
             for (int i = 7; i >= 0; i--)
@@ -2154,9 +2156,9 @@ namespace limax.codec
             for (int j, root = 1, i = 0; i < coef.Length; i++)
             {
                 for (j = 0; j < coef.Length - 1; j++)
-                    coef[j] = (byte)(reedSolomonMultiply(coef[j], root) ^ coef[j + 1]);
-                coef[j] = (byte)reedSolomonMultiply(coef[j], root);
-                root = reedSolomonMultiply(root, 2);
+                    coef[j] = (byte)(gf_mul(coef[j], root) ^ coef[j + 1]);
+                coef[j] = (byte)gf_mul(coef[j], root);
+                root = gf_mul(root, 2);
             }
             int errorCorrectionBase = lengthOfShortBlock + 1 - coef.Length;
             byte[][] blocks = new byte[numberOfErrorCorrectionBlocks][];
@@ -2168,8 +2170,8 @@ namespace limax.codec
                 {
                     int factor = (block[j] = codewords[pos + j]) ^ block[errorCorrectionBase];
                     for (k = 0; k < coef.Length - 1; k++)
-                        block[errorCorrectionBase + k] = (byte)(reedSolomonMultiply(coef[k], factor) ^ block[errorCorrectionBase + k + 1]);
-                    block[errorCorrectionBase + k] = (byte)reedSolomonMultiply(coef[k], factor);
+                        block[errorCorrectionBase + k] = (byte)(gf_mul(coef[k], factor) ^ block[errorCorrectionBase + k + 1]);
+                    block[errorCorrectionBase + k] = (byte)gf_mul(coef[k], factor);
                 }
                 pos += len;
             }
@@ -2180,43 +2182,100 @@ namespace limax.codec
                         r[pos++] = blocks[j][i];
             return r;
         }
+
+        private static readonly string ALPHANUMERIC = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
         public static QrCode encode(byte[] data, int ecl)
         {
-            int version = 0;
-            for (int i = 1; i <= 40; i++)
+            int i = 0, version, mode, len = data.Length, nbits = 4, lbits = 0, pbits = -1, pbytes;
+            for (; i < len && data[i] >= 48 && data[i] <= 57; i++)
+                ;
+            if (i == len)
             {
-                int bitCapacity = getBitCapacity(i, ecl);
-                if (((i < 10 ? 12 : 20) + data.Length * 8) <= bitCapacity)
+                mode = 1;
+                nbits += (len / 3) * 10;
+                switch (len % 3)
                 {
-                    BitStream bs = new BitStream();
-                    bs.Append(4, 4);
-                    bs.Append((ulong)data.Length, i < 10 ? 8 : 16);
-                    foreach (byte b in data)
-                        bs.Append(b, 8);
-                    int padBits = bitCapacity - bs.bitLength();
-                    int padBytes = padBits >> 3;
-                    padBits &= 7;
-                    if (padBits != 0)
-                        bs.Append(0, 8 - padBits);
-                    for (; padBytes >= 2; padBytes -= 2)
-                        bs.Append(0xec11, 16);
-                    if (padBytes > 0)
-                        bs.Append(0xec, 8);
-                    data = bs.ToByteArray();
-                    version = i;
-                    break;
+                    case 2:
+                        nbits += 7;
+                        break;
+                    case 1:
+                        nbits += 4;
+                        break;
                 }
             }
-            if (version == 0)
-                throw new Exception("size exceed");
-            int size = version * 4 + 17;
-            bool[][] modules = new bool[size][];
-            bool[][] funmask = new bool[size][];
-            for (int i = 0; i < size; i++)
+            else
             {
-                modules[i] = new bool[size];
-                funmask[i] = new bool[size];
+                for (; i < len && ALPHANUMERIC.IndexOf((char)data[i]) != -1; i++)
+                    ;
+                if (i == len)
+                {
+                    mode = 2;
+                    nbits += (len / 2) * 11 + (len & 1) * 6;
+                }
+                else
+                {
+                    mode = 4;
+                    nbits += len * 8;
+                }
+                mode = i == len ? 2 : 4;
             }
+            for (version = 0; pbits < 0 && ++version <= 40; pbits = getBitCapacity(version, ecl) - nbits - lbits)
+            {
+                if (version < 10)
+                    lbits = mode == 1 ? 10 : mode == 2 ? 9 : 8;
+                else if (version < 27)
+                    lbits = mode == 1 ? 12 : mode == 2 ? 11 : 16;
+                else
+                    lbits = mode == 1 ? 14 : mode == 2 ? 13 : 16;
+            }
+            if (pbits < 0)
+                return null;
+            BitStream bs = new BitStream();
+            bs.Append(mode, 4);
+            bs.Append(len, lbits);
+            switch (mode)
+            {
+                case 1:
+                    for (i = 0; i <= len - 3; i += 3)
+                        bs.Append((data[i] - 48) * 100 + (data[i + 1] - 48) * 10 + (data[i + 2] - 48), 10);
+                    switch (len - i)
+                    {
+                        case 2:
+                            bs.Append((data[i] - 48) * 10 + (data[i + 1] - 48), 7);
+                            break;
+                        case 1:
+                            bs.Append((data[i] - 48), 4);
+                            break;
+                    }
+                    break;
+                case 2:
+                    for (i = 0; i <= len - 2; i += 2)
+                        bs.Append(ALPHANUMERIC.IndexOf((char)data[i]) * 45 + ALPHANUMERIC.IndexOf((char)data[i + 1]), 11);
+                    if (i < len)
+                        bs.Append(ALPHANUMERIC.IndexOf((char)data[i]), 6);
+                    break;
+                default:
+                    foreach (byte b in data)
+                        bs.Append(b & 0xff, 8);
+                    break;
+            }
+            if (pbits >= 4)
+            {
+                bs.Append(0, 4);
+                pbits -= 4;
+            }
+            pbytes = pbits >> 3;
+            pbits &= 7;
+            if (pbits != 0)
+                bs.Append(0, 8 - pbits);
+            for (; pbytes >= 2; pbytes -= 2)
+                bs.Append(0xec11, 16);
+            if (pbytes > 0)
+                bs.Append(0xec, 8);
+            data = bs.ToByteArray();
+            int size = version * 4 + 17;
+            bool[] modules = new bool[size * size];
+            bool[] funmask = new bool[size * size];
             initializeVersion(version, modules, funmask, size);
             placeErrorCorrectionCodewords(modules, funmask, size, generateErrorCorrectionCodewords(data, version, ecl));
             int pattern = selectMaskPattern(modules, funmask, size, ecl);
@@ -2224,9 +2283,9 @@ namespace limax.codec
             placeMask(modules, funmask, size, ecl, pattern);
             return new QrCode(modules, size);
         }
-        private readonly bool[][] modules;
+        private readonly bool[] modules;
         private readonly int size;
-        private QrCode(bool[][] modules, int size)
+        private QrCode(bool[] modules, int size)
         {
             this.modules = modules;
             this.size = size;
@@ -2241,34 +2300,18 @@ namespace limax.codec
                     + "\" stroke=\"none\">\n");
             sb.Append("\t<rect width=\"100%\" height=\"100%\" fill=\"#FFFFFF\"/>\n");
             sb.Append("\t<path d=\"");
-            for (int y = 0; y < size; y++)
+            for (int p = 0, y = 0; y < size; y++)
                 for (int x = 0; x < size; x++)
-                    if (modules[y][x])
+                    if (modules[p++])
                         sb.Append(String.Format("M{0},{1}h1v1h-1z ", x + 4, y + 4));
             sb[sb.Length - 1] = '"';
             sb.Append(" fill=\"#000000\"/>\n");
             sb.Append("</svg>\n");
             return sb.ToString();
         }
-        public byte[] ToByteArray()
+        public bool[] getModules()
         {
-            BitStream bs = new BitStream();
-            for (int i = 0; i < size; i++)
-                for (int j = 0; j < size; j++)
-                    bs.Append(modules[i][j] ? (ulong)1 : 0, 1);
-            return bs.ToByteArray();
-        }
-        public static QrCode FromByteArray(byte[] array)
-        {
-            int size = (int)Math.Sqrt(array.Length * 8);
-            bool[][] modules = new bool[size][];
-            for (int p = 0, i = 0; i < size; i++)
-            {
-                modules[i] = new bool[size];
-                for (int j = 0; j < size; j++, p++)
-                    modules[i][j] = (array[p >> 3] & (1 << (7 - (p & 7)))) != 0;
-            }
-            return new QrCode(modules, size);
+            return modules;
         }
     }
     #endregion

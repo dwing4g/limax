@@ -1,7 +1,5 @@
 package limax.xmlgen;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 
 import org.w3c.dom.Element;
@@ -18,8 +16,6 @@ public class Table extends Naming implements Dependency {
 	private boolean memory;
 	private String foreign = "";
 	private String capacity = "";
-
-	private Map<String, String> otherAttrs = new HashMap<String, String>();
 
 	private int cacheCapValue;
 	private Type keyType;
@@ -41,7 +37,6 @@ public class Table extends Naming implements Dependency {
 		foreign = eh.getString("foreign");
 		capacity = eh.getString("capacity");
 		cacheCap = eh.getString("cacheCapacity");
-		otherAttrs = eh.getUnused("name");
 		if (getName().equalsIgnoreCase("_Meta_"))
 			throw new RuntimeException("Table name \"" + getName() + "\" is not permitted.");
 		if (getName().equalsIgnoreCase("_Tables_"))
@@ -94,11 +89,6 @@ public class Table extends Naming implements Dependency {
 
 		public Builder capacity(String capacity) {
 			table.capacity = capacity;
-			return this;
-		}
-
-		public Builder attr(String k, String v) {
-			table.otherAttrs.put(k, v);
 			return this;
 		}
 	}
@@ -161,10 +151,6 @@ public class Table extends Naming implements Dependency {
 
 	public String getCacheCap() {
 		return cacheCap;
-	}
-
-	public Map<String, String> getOtherAttrs() {
-		return otherAttrs;
 	}
 
 	public Type getKeyType() {

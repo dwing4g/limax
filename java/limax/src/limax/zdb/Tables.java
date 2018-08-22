@@ -1,5 +1,8 @@
 package limax.zdb;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,10 +11,12 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Stream;
 
 final class Tables {
 	private final Map<String, AbstractTable> tables = new HashMap<>();
 	private final ReentrantReadWriteLock flushLock = new ReentrantReadWriteLock();
+	private Path preload;
 	private LoggerEngine logger;
 
 	private List<StorageInterface> storages = new ArrayList<>();
@@ -37,6 +42,11 @@ final class Tables {
 			logger = new LoggerEdb(meta);
 			break;
 		}
+		if (!meta.getPreload().isEmpty())
+			try {
+				preload = Files.createDirectories(Paths.get(meta.getPreload()));
+			} catch (Exception e) {
+			}
 		storages.add(tableSys.open(null, logger));
 		tableSys.getAutoKeys().remove(unusedTables);
 		Map<String, Integer> map = new HashMap<>();
@@ -47,8 +57,19 @@ final class Tables {
 				storages.add(storage);
 			TTable<?, ?> ttable = (TTable<?, ?>) table;
 			ttable.setLockId(map.computeIfAbsent(ttable.getLockName(), k -> idAlloc.incrementAndGet()));
+			ttable.preload(preload);
 		}
 		add(tableSys);
+		if (preload != null)
+			try (Stream<Path> stream = Files.list(preload)) {
+				stream.forEach(path -> {
+					try {
+						Files.delete(path);
+					} catch (Exception e) {
+					}
+				});
+			} catch (Exception e) {
+			}
 	}
 
 	final void close() {

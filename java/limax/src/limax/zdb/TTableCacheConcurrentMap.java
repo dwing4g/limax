@@ -1,5 +1,6 @@
 package limax.zdb;
 
+import java.util.Collection;
 import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -117,5 +118,10 @@ class TTableCacheConcurrentMap<K, V> extends TTableCache<K, V> {
 	@Override
 	TRecord<K, V> remove(K key) {
 		return map.remove(key);
+	}
+
+	@Override
+	Collection<TRecord<K, V>> values() {
+		return map.values();
 	}
 }

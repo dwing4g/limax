@@ -1,9 +1,11 @@
 package limax.zdb;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.WeakHashMap;
 
 class TTableCacheNull<K, V> extends TTableCache<K, V> {
-	private WeakHashMap<K, TRecord<K, V>> weakmap = new WeakHashMap<K, TRecord<K, V>>(16, 0.75f);
+	private final WeakHashMap<K, TRecord<K, V>> weakmap = new WeakHashMap<K, TRecord<K, V>>(16, 0.75f);
 
 	@Override
 	void initialize(TTable<K, V> table, limax.xmlgen.Table meta) {
@@ -49,4 +51,8 @@ class TTableCacheNull<K, V> extends TTableCache<K, V> {
 		return weakmap.remove(k);
 	}
 
+	@Override
+	Collection<TRecord<K, V>> values() {
+		return Collections.emptyList();
+	}
 }

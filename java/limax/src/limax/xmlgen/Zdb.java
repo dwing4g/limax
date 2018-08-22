@@ -24,6 +24,7 @@ public class Zdb extends Naming {
 	private boolean dynamic = false;
 	private String dbhome;
 	private String trnhome;
+	private String preload;
 
 	private String defaultTableCache = "limax.zdb.TTableCacheLRU";
 	private boolean zdbVerify = true;
@@ -115,6 +116,7 @@ public class Zdb extends Naming {
 		dynamic = eh.getBoolean("dynamic", false);
 		dbhome = eh.getString("dbhome", "zdb");
 		trnhome = eh.getString("trnhome");
+		preload = eh.getString("preload");
 		jdbcPoolSize = eh.getInt("jdbcPoolSize", jdbcPoolSize);
 		defaultTableCache = eh.getString("defaultTableCache", defaultTableCache);
 		zdbVerify = eh.getBoolean("zdbVerify", true);
@@ -285,6 +287,10 @@ public class Zdb extends Naming {
 		return trnhome == null ? "" : trnhome;
 	}
 
+	public String getPreload() {
+		return preload == null ? "" : preload;
+	}
+
 	public int getAutoKeyInitValue() {
 		return autoKeyInitValue;
 	}
@@ -344,5 +350,4 @@ public class Zdb extends Naming {
 	public void setDbHome(String dbhome) {
 		this.dbhome = dbhome;
 	}
-
 }

@@ -1,5 +1,10 @@
 package limax.zdb;
 
+import java.io.BufferedOutputStream;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -16,6 +21,7 @@ public abstract class TTable<K, V> extends AbstractTable implements TTableMBean 
 	private String lockname;
 	private int lockId;
 	private limax.xmlgen.Table meta;
+	private Path preload;
 	private AutoKeys.AutoKey autoKey;
 	private Resource mbean;
 
@@ -168,6 +174,21 @@ public abstract class TTable<K, V> extends AbstractTable implements TTableMBean 
 		return storage;
 	}
 
+	void preload(Path dir) {
+		if (dir == null)
+			return;
+		try {
+			for (OctetsStream os = OctetsStream
+					.wrap(Octets.wrap(Files.readAllBytes(preload = dir.resolve(getName())))); !os.eos();) {
+				K key = unmarshalKey(os);
+				V value = unmarshalValue(os);
+				Lockey lockey = Lockeys.getLockey(getLockId(), key);
+				cache.addNoLog(key, new TRecord<K, V>(this, value, lockey, TRecord.State.INDB_GET));
+			}
+		} catch (Exception e) {
+		}
+	}
+
 	public limax.xmlgen.Table meta() {
 		return meta;
 	}
@@ -178,6 +199,15 @@ public abstract class TTable<K, V> extends AbstractTable implements TTableMBean 
 			storage = null;
 		if (mbean != null)
 			mbean.close();
+		if (preload == null)
+			return;
+		try (OutputStream os = new BufferedOutputStream(new FileOutputStream(preload.toFile()))) {
+			for (TRecord<K, V> r : cache.values()) {
+				os.write(marshalKey(r.getKey()).getBytes());
+				os.write(marshalValue(r.getValue()).getBytes());
+			}
+		} catch (Exception e) {
+		}
 	}
 
 	protected abstract V newValue();

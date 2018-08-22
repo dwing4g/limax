@@ -3,7 +3,6 @@ package limax.xmlgen.java;
 import java.io.PrintStream;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -152,10 +151,6 @@ class TableMeta {
 			sb.append(").foreign(" + StringUtils.quote(table.getForeign()));
 		if (!table.getCapacity().isEmpty())
 			sb.append(").capacity(" + StringUtils.quote(table.getCapacity()));
-
-		for (Map.Entry<String, String> e : table.getOtherAttrs().entrySet()) {
-			sb.append(").attr(" + StringUtils.quote(e.getKey()) + ", " + StringUtils.quote(e.getValue()));
-		}
 
 		sb.append(");");
 		ps.println(prefix + sb.toString());

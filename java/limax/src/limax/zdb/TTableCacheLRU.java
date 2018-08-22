@@ -149,4 +149,9 @@ final class TTableCacheLRU<K, V> extends TTableCache<K, V> {
 			lock.unlock();
 		}
 	}
+
+	@Override
+	Collection<TRecord<K, V>> values() {
+		return lru.values();
+	}
 }

@@ -39,13 +39,12 @@ public abstract class TTableCache<K, V> {
 	}
 
 	static <K, V> TTableCache<K, V> newInstance(TTable<K, V> table, limax.xmlgen.Table meta) {
-		String cacheClass = meta.getOtherAttrs().get("cacheClass");
-		cacheClass = cacheClass == null ? Zdb.meta().getDefaultTableCache() : cacheClass.trim();
 		try {
 			@SuppressWarnings("unchecked")
-			TTableCache<K, V> theCache = (TTableCache<K, V>) Class.forName(cacheClass).newInstance();
-			theCache.initialize(table, meta);
-			return theCache;
+			TTableCache<K, V> cache = (TTableCache<K, V>) Class.forName(Zdb.meta().getDefaultTableCache())
+					.newInstance();
+			cache.initialize(table, meta);
+			return cache;
 		} catch (Throwable e) {
 			throw new XError(e);
 		}
@@ -71,6 +70,8 @@ public abstract class TTableCache<K, V> {
 	 *            the callback
 	 */
 	public abstract void walk(Query<K, V> query);
+
+	abstract Collection<TRecord<K, V>> values();
 
 	abstract int size();
 

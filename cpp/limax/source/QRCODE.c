@@ -1907,7 +1907,6 @@ static struct bit_stream* eciTerminate(struct bit_stream* src, int eci) {
 	bit_stream_append(dst, eci % 10 / 1 + 48, 8);
 	int length = bit_stream_bytelength(src);
 	char *p = (char *)src->data;
-	bit_stream_free(src);
 	for (int i = 0; i < length; i++) {
 		char b = p[i];
 		if (b == '\\')

@@ -65,7 +65,7 @@ class PollTask implements Runnable, Comparable<PollTask> {
 				throw new IOException("the channel has reached end-of-stream");
 			if (!rbuf.hasRemaining()) {
 				key.interestOps(key.interestOps() & ~SelectionKey.OP_READ);
-				op.onReadBufferEmpty();
+				op.onReadBufferFull();
 			}
 		}
 	}

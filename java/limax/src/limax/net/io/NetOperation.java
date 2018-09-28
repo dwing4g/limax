@@ -22,7 +22,7 @@ interface NetOperation {
 
 	void schedule();
 
-	void onReadBufferEmpty();
+	void onReadBufferFull();
 
 	void onWriteBufferEmpty();
 }

@@ -510,8 +510,8 @@ class WebSocketServerTask implements WebSocketTask, NetOperation, NetProcessor {
 	}
 
 	@Override
-	public void onReadBufferEmpty() {
-		task.onReadBufferEmpty();
+	public void onReadBufferFull() {
+		task.onReadBufferFull();
 	}
 
 	@Override

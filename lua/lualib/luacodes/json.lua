@@ -230,6 +230,8 @@ local function stringify(o)
           s = s .. '\\r'
         elseif c == '\t' then
           s = s .. '\\t'
+        elseif c < ' ' then
+          s = s .. string.format("\\u%04x", c:byte())
         else
           s = s .. c
         end

@@ -377,10 +377,10 @@ static char *piece_join(struct piece *p, size_t *l) {
 }
 
 static void _stringify(lua_State *L, struct piece *p) {
+	static char *conchars = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 	lua_Integer i, len;
-	size_t size, n;
+	size_t size;
 	const char *s;
-	const char *sp;
 	int comma;
 	switch (lua_type(L, -1)) {
 	case LUA_TNIL:
@@ -426,11 +426,8 @@ static void _stringify(lua_State *L, struct piece *p) {
 		break;
 	case LUA_TSTRING:
 		piece_append(p, "\"", 1);
-		for (sp = s = lua_tolstring(L, -1, &size); (sp = strpbrk(s, "\"\\\b\f\n\r\t")) != NULL; size -= n + 1, s = sp + 1){
-			n = sp - s;
-			if (n)
-				piece_append(p, s, n);
-			switch (*sp)
+		for (s = lua_tolstring(L, -1, &size); size-- > 0; s++) {
+			switch (*s)
 			{
 			case '\"':
 				piece_append(p, "\\\"", 2);
@@ -453,10 +450,16 @@ static void _stringify(lua_State *L, struct piece *p) {
 			case '\t':
 				piece_append(p, "\\t", 2);
 				break;
+			default:
+				if (*s < ' ') {
+					piece_append(p, "\\u00", 4);
+					piece_append(p, conchars + (*s << 1), 2);
+				}
+				else
+					piece_append(p, s, 1);
+				break;
 			}
 		}
-		if (size)
-			piece_append(p, s, size);
 		piece_append(p, "\"", 1);
 		break;
 	case LUA_TNUMBER:

@@ -52,7 +52,10 @@ public final class JSONEncoder {
 				a.append("\\t");
 				break;
 			default:
-				a.append(c);
+				if (c < ' ')
+					a.append(String.format("\\u%04x", (int) c));
+				else
+					a.append(c);
 			}
 		}
 		a.append('"');
@@ -157,11 +160,10 @@ public final class JSONEncoder {
 				a.append(jb.toString());
 			} else
 				actions.computeIfAbsent(c,
-						k -> packFieldActions(
-								Arrays.stream(c.getDeclaredFields())
-										.filter(field -> (field.getModifiers()
-												& (Modifier.TRANSIENT | Modifier.STATIC)) == 0)
-						.map(field -> makeFieldAction(field)).toArray(Action[]::new))).apply(l, v, a);
+						k -> packFieldActions(Arrays.stream(c.getDeclaredFields())
+								.filter(field -> (field.getModifiers() & (Modifier.TRANSIENT | Modifier.STATIC)) == 0)
+								.map(field -> makeFieldAction(field)).toArray(Action[]::new)))
+						.apply(l, v, a);
 			l.remove(v);
 		} else if (v != null) {
 			Class<?> c = v.getClass();

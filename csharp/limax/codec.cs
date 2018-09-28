@@ -2932,7 +2932,10 @@ namespace limax.codec
                         a.Append("\\t");
                         break;
                     default:
-                        a.Append(c);
+                        if (c < ' ')
+                            a.Append(string.Format("\\u{0,4:x4}", (ushort)c));
+                        else
+                            a.Append(c);
                         break;
                 }
             a.Append('"');

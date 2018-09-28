@@ -152,7 +152,7 @@ abstract class NetTaskImpl implements Runnable, NetTask, NetOperation {
 	}
 
 	@Override
-	public void onReadBufferEmpty() {
+	public void onReadBufferFull() {
 	}
 
 	@Override

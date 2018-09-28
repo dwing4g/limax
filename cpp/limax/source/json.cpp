@@ -34,7 +34,17 @@ namespace limax {
 				sb.append("\\t");
 				break;
 			default:
-				sb.push_back(c);
+				if (c < ' ') {
+					sb.append("\\u00");
+					sb.push_back((c >> 4) + '0');
+					c &= 15;
+					if (c < 10)
+						sb.push_back(c + '0');
+					else
+						sb.push_back(c - 10 + 'a');
+				}
+				else
+					sb.push_back(c);
 			}
 		}
 
@@ -636,7 +646,7 @@ namespace limax {
 			stage = 2;
 		}
 
-		JSONDecoder::_JSONString::_JSONString(JSONDecoder& _decoder) 
+		JSONDecoder::_JSONString::_JSONString(JSONDecoder& _decoder)
 			: decoder(_decoder), parent(_decoder.current), sb(std::make_shared<typename String::element_type>())
 		{}
 
@@ -785,7 +795,7 @@ namespace limax {
 			return parent->accept(c);
 		}
 
-		JSONDecoder::_JSONConst::_JSONConst(JSONDecoder& _decoder, std::string _match, Object _value) 
+		JSONDecoder::_JSONConst::_JSONConst(JSONDecoder& _decoder, std::string _match, Object _value)
 			: decoder(_decoder), parent(_decoder.current), match(_match), value(_value)
 		{}
 

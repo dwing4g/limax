@@ -130,6 +130,7 @@ public abstract class TemporaryView extends AutoView {
 			for (int i = 0; i < partitions.length; i++)
 				flush();
 			sendCloseToClients(members.keySet());
+			members.clear();
 		}
 
 		void dispatch(SyncViewToClients protocol) {
@@ -438,7 +439,7 @@ public abstract class TemporaryView extends AutoView {
 
 	@Override
 	void flush() {
-		if (membership.blocking || membership.current().collect())
+		if (isClosed() || membership.blocking || membership.current().collect())
 			return;
 		membership.flush();
 		membership.loop();
@@ -513,16 +514,16 @@ public abstract class TemporaryView extends AutoView {
 	@Override
 	void close() {
 		schedule(() -> {
-			membership.close();
-			members.keySet().forEach(sessionid -> {
-				try {
-					unsubscribe(sessionid);
-					onDetached(sessionid, DetachReasonClose);
-				} catch (Throwable e) {
-				}
+			super.close(() -> {
+				members.keySet().forEach(sessionid -> {
+					try {
+						unsubscribe(sessionid);
+						onDetached(sessionid, DetachReasonClose);
+					} catch (Throwable e) {
+					}
+				});
+				membership.close();
 			});
-			members.clear();
-			super.close();
 		});
 	}
 

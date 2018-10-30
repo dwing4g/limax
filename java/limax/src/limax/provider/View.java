@@ -94,10 +94,19 @@ public abstract class View {
 	}
 
 	void close() {
+		close(() -> {
+		});
+	}
+
+	void close(Runnable cleanup) {
 		closed = true;
 		resource.close();
-		onClose();
-		context.onClosed(this);
+		try {
+			cleanup.run();
+		} finally {
+			onClose();
+			context.onClosed(this);
+		}
 	}
 
 	boolean isClosed() {

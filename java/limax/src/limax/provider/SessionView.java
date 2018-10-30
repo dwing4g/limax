@@ -59,6 +59,8 @@ public abstract class SessionView extends AutoView {
 
 	@Override
 	void flush() {
+		if (isClosed())
+			return;
 		SyncViewToClients p = protocol(SyncViewToClients.DT_VIEW_DATA);
 		p.sessionids.add(sessionid);
 		cb.binary().collect(() -> p.vardatas, List::add, List::addAll);

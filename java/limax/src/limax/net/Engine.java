@@ -131,7 +131,7 @@ public class Engine {
 		engineExecutor.await();
 		ConcurrentEnvironment.getInstance().shutdown("limax.net.Engine.protocolScheduler",
 				"limax.net.Engine.applicationExecutor");
-		NetModel.uninitialize();
+		NetModel.unInitialize();
 		lock.lock();
 		try {
 			closed = true;

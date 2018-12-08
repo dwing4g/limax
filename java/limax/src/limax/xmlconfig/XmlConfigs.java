@@ -432,7 +432,8 @@ public class XmlConfigs {
 			serverPort = eh.getInt("serverPort", 0);
 			host = eh.getString("host", host);
 			if (rmiPort > 0 && serverPort > 0)
-				Service.addRunAfterEngineStopTask(MBeanServer.start(host, serverPort, rmiPort));
+				Service.addRunAfterEngineStopTask(MBeanServer.start(host, serverPort, rmiPort,
+						self.getAttribute("username"), self.getAttribute("password")));
 			Service.JMXRegister(this, "limax.xmlconfig:type=XmlConfigs,name=jmxserver");
 		}
 

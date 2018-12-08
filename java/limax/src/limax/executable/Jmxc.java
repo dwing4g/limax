@@ -1,8 +1,7 @@
 package limax.executable;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Collections;
 import java.util.Set;
 
 import javax.management.Attribute;
@@ -63,11 +62,7 @@ class Jmxc {
 	}
 
 	public static Jmxc connect(String url, String username, String password) throws Exception {
-		if (username != null && !username.isEmpty()) {
-			Map<String, Object> auth = new HashMap<String, Object>();
-			auth.put(JMXConnector.CREDENTIALS, new String[] { username, password });
-			return new Jmxc(JMXConnectorFactory.connect(new JMXServiceURL(url), auth));
-		}
-		return new Jmxc(JMXConnectorFactory.connect(new JMXServiceURL(url)));
+		return new Jmxc(JMXConnectorFactory.connect(new JMXServiceURL(url), username == null || username.isEmpty()
+				? null : Collections.singletonMap(JMXConnector.CREDENTIALS, new String[] { username, password })));
 	}
 }

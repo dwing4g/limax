@@ -10,7 +10,7 @@ public final class MBeans {
 	private MBeans() {
 	}
 
-	private static Resource root = Resource.createRoot();
+	private final static Resource root = Resource.createRoot();
 
 	public static Resource register(Resource parent, Object object, String name) {
 		return Resource.create(parent, _register(object, name));

@@ -1,6 +1,6 @@
 package limax.net.io;
 
-interface SSLSwitcher {
+public interface SSLSwitcher {
 	void attach(String host, int port, boolean clientMode, byte[] sendBeforeHandshake);
 
 	void detach();

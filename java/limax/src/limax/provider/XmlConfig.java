@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 
 import org.w3c.dom.Element;
 
+import limax.codec.ByteArrayCodecFunction;
 import limax.codec.CodecException;
 import limax.codec.MarshalException;
 import limax.codec.Octets;
@@ -21,7 +22,6 @@ import limax.key.KeyAllocator;
 import limax.key.ed.Compressor;
 import limax.key.ed.KeyProtector;
 import limax.key.ed.Transformer;
-import limax.key.ed.Transformer.Encoder;
 import limax.net.Config;
 import limax.net.Engine;
 import limax.net.Manager;
@@ -175,21 +175,22 @@ public final class XmlConfig {
 					throw new RuntimeException("defaultGroup " + this.defaultGroup + " not configured.");
 			}
 			this.encoders = groups.stream().collect(Collectors.toMap(group -> group, group -> {
-				Encoder encoder = transformer.getEncoder(group, keyProtector, compressor);
+				ByteArrayCodecFunction encodeFunction = transformer.getEncoder(group, keyProtector, compressor);
 				Long _expire = expires.get(group);
 				long expire = _expire == null ? defaultExpire : _expire;
 				return (label, data) -> {
 					try {
-						return Octets.wrap(encoder.encode(new OctetsStream().marshal(label)
+						return Octets.wrap(encodeFunction.apply(new OctetsStream().marshal(label)
 								.marshal(System.currentTimeMillis() + expire).marshal(data).getBytes()));
 					} catch (CodecException e) {
 						throw new TunnelException(TunnelException.Type.CODEC, e);
 					}
 				};
 			}));
+			ByteArrayCodecFunction decodeFunction = transformer.getDecoder();
 			this.decoder = (label, data) -> {
 				try {
-					OctetsStream os = OctetsStream.wrap(Octets.wrap(transformer.decode(data.getBytes())));
+					OctetsStream os = OctetsStream.wrap(Octets.wrap(decodeFunction.apply(data.getBytes())));
 					if (os.unmarshal_int() != label)
 						throw new TunnelException(TunnelException.Type.LABEL);
 					if (System.currentTimeMillis() > os.unmarshal_long())

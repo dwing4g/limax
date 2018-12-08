@@ -143,7 +143,8 @@ class ViewFormatter {
 				ps.println("			Set<_" + name + "> views = _map_" + table.getName() + "_.get(key);");
 				ps.println("			if (views == null)");
 				ps.println("				return;");
-				ps.println("			boolean script = views.stream().anyMatch(view -> view.isScriptEnabled());");
+				if (Main.scriptSupport)
+					ps.println("			boolean script = views.stream().anyMatch(view -> view.isScriptEnabled());");
 				String m = marshals.get(var);
 				if (var.getType() instanceof TypeMap) {
 					Type kt = ((TypeMap) var.getType()).getKeyType();

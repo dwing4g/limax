@@ -5,10 +5,12 @@ class ClientTask extends NetTaskImpl {
 		super(rsize, wsize, processor);
 	}
 
+	@Override
 	protected final void onBindKey() throws Exception {
 		super.onBindKey();
 	}
 
+	@Override
 	protected final void onUnbindKey() {
 	}
 }

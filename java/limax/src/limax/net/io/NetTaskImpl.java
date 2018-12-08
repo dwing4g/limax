@@ -181,8 +181,7 @@ abstract class NetTaskImpl implements Runnable, NetTask, NetOperation {
 
 	@Override
 	public void enableWrite() {
-		if (getSendBufferSize() > 0 || fin == 1)
-			interestOps(SelectionKey.OP_WRITE, true);
+		interestOps(SelectionKey.OP_WRITE, true);
 	}
 
 	@Override
@@ -252,13 +251,16 @@ abstract class NetTaskImpl implements Runnable, NetTask, NetOperation {
 	}
 
 	void send(ByteBuffer buffer) {
+		boolean needWrite;
 		synchronized (vbuf) {
 			if (fin == 0) {
 				wremain += buffer.limit();
 				vbuf.offer(buffer);
 			}
+			needWrite = wremain > 0 || fin == 1;
 		}
-		enableWrite();
+		if (needWrite)
+			enableWrite();
 	}
 
 	@Override

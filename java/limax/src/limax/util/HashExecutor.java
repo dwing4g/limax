@@ -3,17 +3,14 @@ package limax.util;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.LockSupport;
 
-public final class HashExecutor {
-	private final AtomicInteger running = new AtomicInteger();
-	private final ThreadPoolExecutor executor;
+import limax.util.ConcurrentEnvironment.ThreadPoolExecutorWrapper;
+
+public class HashExecutor {
+	private final ThreadPoolExecutorWrapper executor;
 	private final SerialExecutor pool[];
-	private volatile Thread shutdownThread;
 
-	HashExecutor(ThreadPoolExecutor executor, int concurrencyLevel) {
+	HashExecutor(ThreadPoolExecutorWrapper executor, int concurrencyLevel) {
 		this.executor = executor;
 		int capacity = 1;
 		while (capacity < concurrencyLevel)
@@ -23,19 +20,8 @@ public final class HashExecutor {
 			this.pool[i] = new SerialExecutor();
 	}
 
-	void shutdown() {
-		shutdownThread = Thread.currentThread();
-	}
-
-	void awaitTermination() {
-		while (running.get() != 0)
-			LockSupport.park(running);
-	}
-
 	public void execute(Runnable command) {
-		if (shutdownThread != null)
-			executor.getRejectedExecutionHandler().rejectedExecution(command, executor);
-		else
+		if (executor.permit(command))
 			executor.execute(command);
 	}
 
@@ -49,9 +35,7 @@ public final class HashExecutor {
 	}
 
 	public void execute(Object key, Runnable command) {
-		if (shutdownThread != null)
-			executor.getRejectedExecutionHandler().rejectedExecution(command, executor);
-		else
+		if (executor.permit(command))
 			getExecutor(key).execute(command);
 	}
 
@@ -74,7 +58,7 @@ public final class HashExecutor {
 				}
 			});
 			if (active == null) {
-				running.incrementAndGet();
+				executor.enter();
 				scheduleNext();
 			}
 		}
@@ -82,8 +66,8 @@ public final class HashExecutor {
 		private void scheduleNext() {
 			if ((active = queue.poll()) != null)
 				executor.execute(active);
-			else if (running.decrementAndGet() == 0)
-				LockSupport.unpark(shutdownThread);
+			else
+				executor.leave();
 		}
 	}
 }

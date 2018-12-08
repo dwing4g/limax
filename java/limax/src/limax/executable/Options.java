@@ -82,10 +82,9 @@ class Options {
 				throw new java.lang.IllegalStateException(this + " : no value");
 			if (null != value)
 				return value;
-			if (valueDefault != null && valueDefault.equals("!")) // value must
-																	// present
+			if (valueDefault != null && valueDefault.equals("!"))
 				throw new IllegalArgumentException(this + " : value required!");
-			return valueDefault; // maybe null
+			return valueDefault;
 		}
 
 		public void setValue(String value) {
@@ -142,7 +141,7 @@ class Options {
 				last.setPresent();
 			} else if (null != last) {
 				last.setValue(arg);
-				last = null; // a option has one value
+				last = null;
 			} else {
 				tokens.add(arg);
 			}

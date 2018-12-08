@@ -3,46 +3,57 @@ package limax.util;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ThreadPoolExecutor;
 
-public final class BoundedExecutor implements Executor {
-	private final ThreadPoolExecutor executor;
-	private final int maxOutstanding;
+import limax.util.ConcurrentEnvironment.ThreadPoolExecutorWrapper;
+
+public class BoundedExecutor implements Executor {
+	private final ThreadPoolExecutorWrapper executor;
+	private final int concurrencyLevel;
 	private final int maxQueueCapacity;
-	private final Queue<Runnable> queue = new ArrayDeque<>();
-	private int outstanding = 0;
+	private final Queue<Runnable> queue = new ArrayDeque<Runnable>();
+	private int currency = 0;
 	private Runnable active;
 
-	public BoundedExecutor(ThreadPoolExecutor executor, int maxOutstanding, int maxQueueCapacity) {
-		if (maxOutstanding < 1)
-			throw new IllegalArgumentException("maxOutstanding at least 1 but " + maxOutstanding);
+	BoundedExecutor(ThreadPoolExecutorWrapper executor, int concurrencyLevel, int maxQueueCapacity) {
+		if (concurrencyLevel < 1)
+			throw new IllegalArgumentException("maxOutstanding at least 1 but " + concurrencyLevel);
 		if (maxQueueCapacity < 0)
 			throw new IllegalArgumentException("maxCapacity must nonnegative but " + maxQueueCapacity);
 		this.executor = executor;
-		this.maxOutstanding = maxOutstanding;
+		this.concurrencyLevel = concurrencyLevel;
 		this.maxQueueCapacity = maxQueueCapacity;
 	}
 
 	@Override
-	public synchronized void execute(Runnable command) {
-		if (outstanding == maxOutstanding && queue.size() == maxQueueCapacity)
-			executor.getRejectedExecutionHandler().rejectedExecution(command, executor);
-		queue.offer(() -> {
-			try {
-				command.run();
-			} finally {
-				synchronized (BoundedExecutor.this) {
-					outstanding--;
-					scheduleNext();
+	public synchronized void execute(final Runnable command) {
+		if (!executor.permit(command))
+			return;
+		if (currency == concurrencyLevel && queue.size() == maxQueueCapacity)
+			executor.reject(command);
+		queue.offer(new Runnable() {
+			public void run() {
+				try {
+					command.run();
+				} finally {
+					synchronized (BoundedExecutor.this) {
+						currency--;
+						scheduleNext();
+					}
 				}
 			}
 		});
-		if (active == null)
+		if (active == null) {
+			executor.enter();
 			scheduleNext();
+		}
 	}
 
 	private void scheduleNext() {
-		while ((active = queue.poll()) != null && outstanding++ < maxOutstanding)
+		while ((active = queue.poll()) != null) {
 			executor.execute(active);
+			if (++currency == concurrencyLevel)
+				return;
+		}
+		executor.leave();
 	}
 }

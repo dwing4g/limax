@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import limax.codec.BoundCheck;
@@ -19,11 +18,10 @@ import limax.codec.StreamSource;
 
 public class HttpClientService {
 	private final int defaultMaxContentLength;
-	private final int defaultMaxOutstanding;
+	private final int defaultConcurrencyLevelPerHost;
 	private final int defaultMaxQueueCapacity;
 	private final int defaultTimeout;
 	private final String name;
-	private final ThreadPoolExecutor executor;
 	private final AtomicBoolean stopped = new AtomicBoolean();
 	private final Map<String, BoundedExecutor> classifyExecutor = new ConcurrentHashMap<>();
 
@@ -103,11 +101,11 @@ public class HttpClientService {
 		}
 	}
 
-	public HttpClientService(int corePoolSize, int defaultMaxOutstanding, int defaultMaxQueueCapacity,
+	public HttpClientService(int corePoolSize, int defaultConcurrencyLevelPerHost, int defaultMaxQueueCapacity,
 			int defaultMaxContentLength, int defaultTimeout) {
 		this.name = "HttpClientSerivce-" + System.currentTimeMillis();
-		this.executor = ConcurrentEnvironment.getInstance().newThreadPool(name, corePoolSize);
-		this.defaultMaxOutstanding = defaultMaxOutstanding;
+		ConcurrentEnvironment.getInstance().newThreadPool(name, corePoolSize);
+		this.defaultConcurrencyLevelPerHost = defaultConcurrencyLevelPerHost;
 		this.defaultMaxQueueCapacity = defaultMaxQueueCapacity;
 		this.defaultMaxContentLength = defaultMaxContentLength;
 		this.defaultTimeout = defaultTimeout;
@@ -120,15 +118,14 @@ public class HttpClientService {
 
 	private Future<Response> submit(Request req) {
 		FutureTask<Response> task = new FutureTask<>(() -> req.execute());
-		classifyExecutor
-				.computeIfAbsent(req.getClassify(),
-						k -> new BoundedExecutor(executor, defaultMaxOutstanding, defaultMaxQueueCapacity))
-				.execute(task);
+		classifyExecutor.computeIfAbsent(req.getClassify(), k -> ConcurrentEnvironment.getInstance()
+				.newBoundedExecutor(name, defaultConcurrencyLevelPerHost, defaultMaxQueueCapacity)).execute(task);
 		return task;
 	}
 
 	public void initHost(String host, int maxOutstanding, int maxQueueCapacity) {
-		classifyExecutor.put(host, new BoundedExecutor(executor, maxOutstanding, maxQueueCapacity));
+		classifyExecutor.put(host,
+				ConcurrentEnvironment.getInstance().newBoundedExecutor(name, maxOutstanding, maxQueueCapacity));
 	}
 
 	public Request makeGetRequest(URL url, int maxContentLength, int timeout) {

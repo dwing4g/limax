@@ -336,21 +336,22 @@ public class ViewDataCollector {
 														.collect(Collectors.toList())))
 										.values().stream().flatMap(e -> e.stream()))
 						.collect(Collectors.toList());
-			return cache.stream().map(mapper);
+			return cache.isEmpty() ? null : cache.stream().map(mapper);
 		}
 
 		@Override
 		public Stream<ViewVariableData> binary() {
-			Stream<ViewVariableData> s = Stream.concat(cache(e -> e.binary(varindex)),
-					Stream.of(Data.createSpecial(varindex)));
-			return Stream.concat(value.binary(varindex), s);
+			Stream<ViewVariableData> r = value.binary(varindex);
+			Stream<ViewVariableData> i = cache(e -> e.binary(varindex));
+			return i != null ? Stream.concat(r, Stream.concat(i, Stream.of(Data.createSpecial(varindex)))) : r;
 		}
 
 		@Override
 		public Stream<String> string() {
-			Stream<String> s = Stream.of(cache(e -> e.text).collect(() -> new StringBuilder(prefix[varindex] + "W"),
-					StringBuilder::append, StringBuilder::append).append(":").toString());
-			return Stream.concat(value.string(prefix[varindex]), s);
+			Stream<String> r = value.string(prefix[varindex]);
+			Stream<String> i = cache(e -> e.text);
+			return i != null ? Stream.concat(r, Stream.of(i.collect(() -> new StringBuilder(prefix[varindex] + "W"),
+					StringBuilder::append, StringBuilder::append).append(":").toString())) : r;
 		}
 	}
 

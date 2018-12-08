@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -14,6 +13,8 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
 
 public final class ConcurrentEnvironment {
 	private final static int timeoutSchedulerSize = Integer
@@ -21,7 +22,7 @@ public final class ConcurrentEnvironment {
 	private final static ThreadFactory standaloneFactory = Worker.newFactory("Standalone", false);
 	private final static ConcurrentEnvironment instance = new ConcurrentEnvironment();
 	private final Map<String, ThreadPoolExecutorMBean> map = new HashMap<String, ThreadPoolExecutorMBean>();
-	private final Map<ThreadPoolExecutor, Collection<HashExecutor>> mapChildren = new IdentityHashMap<ThreadPoolExecutor, Collection<HashExecutor>>();
+	private final Map<String, Collection<ThreadPoolExecutorWrapper>> mapChildren = new HashMap<String, Collection<ThreadPoolExecutorWrapper>>();
 	private ScheduledExecutorService timeoutScheduler;
 
 	private ConcurrentEnvironment() {
@@ -99,13 +100,23 @@ public final class ConcurrentEnvironment {
 	}
 
 	public synchronized HashExecutor newHashExecutor(String name, int concurrencyLevel) {
-		ThreadPoolExecutor executor = getThreadPool(name);
-		HashExecutor hashExecutor = new HashExecutor(executor, concurrencyLevel);
-		Collection<HashExecutor> children = mapChildren.get(executor);
+		ThreadPoolExecutorWrapper wrapper = new ThreadPoolExecutorWrapper(getThreadPool(name));
+		HashExecutor hashExecutor = new HashExecutor(wrapper, concurrencyLevel);
+		Collection<ThreadPoolExecutorWrapper> children = mapChildren.get(name);
 		if (children == null)
-			mapChildren.put(executor, children = new ArrayList<HashExecutor>());
-		children.add(hashExecutor);
+			mapChildren.put(name, children = new ArrayList<ThreadPoolExecutorWrapper>());
+		children.add(wrapper);
 		return hashExecutor;
+	}
+
+	public synchronized BoundedExecutor newBoundedExecutor(String name, int concurrencyLevel, int maxQueueCapacity) {
+		ThreadPoolExecutorWrapper wrapper = new ThreadPoolExecutorWrapper(getThreadPool(name));
+		BoundedExecutor boundedExecutor = new BoundedExecutor(wrapper, concurrencyLevel, maxQueueCapacity);
+		Collection<ThreadPoolExecutorWrapper> children = mapChildren.get(name);
+		if (children == null)
+			mapChildren.put(name, children = new ArrayList<ThreadPoolExecutorWrapper>());
+		children.add(wrapper);
+		return boundedExecutor;
 	}
 
 	private void shutdown(String name) {
@@ -117,11 +128,11 @@ public final class ConcurrentEnvironment {
 		if (Thread.currentThread() instanceof Worker
 				&& ((Worker) Thread.currentThread()).getThreadFactory().equals(executor.getThreadFactory()))
 			throw new RuntimeException("self shutdown name = " + name + " executor = " + executor);
-		Collection<HashExecutor> children = mapChildren.remove(executor);
+		Collection<ThreadPoolExecutorWrapper> children = mapChildren.remove(name);
 		if (children != null) {
-			for (HashExecutor e : children)
+			for (ThreadPoolExecutorWrapper e : children)
 				e.shutdown();
-			for (HashExecutor e : children)
+			for (ThreadPoolExecutorWrapper e : children)
 				e.awaitTermination();
 		}
 		for (executor.shutdown(); true;)
@@ -141,6 +152,49 @@ public final class ConcurrentEnvironment {
 
 	public synchronized void shutdown() {
 		shutdown(map.keySet().toArray(new String[0]));
+	}
+
+	class ThreadPoolExecutorWrapper {
+		private final ThreadPoolExecutor executor;
+		private final AtomicInteger running = new AtomicInteger();
+		private volatile Thread shutdownThread;
+
+		ThreadPoolExecutorWrapper(ThreadPoolExecutor executor) {
+			this.executor = executor;
+		}
+
+		void shutdown() {
+			shutdownThread = Thread.currentThread();
+		}
+
+		void awaitTermination() {
+			while (running.get() != 0)
+				LockSupport.park(running);
+		}
+
+		void execute(Runnable command) {
+			executor.execute(command);
+		}
+
+		void reject(Runnable command) {
+			executor.getRejectedExecutionHandler().rejectedExecution(command, executor);
+		}
+
+		boolean permit(Runnable command) {
+			if (shutdownThread == null)
+				return true;
+			reject(command);
+			return false;
+		}
+
+		void enter() {
+			running.incrementAndGet();
+		}
+
+		void leave() {
+			if (running.decrementAndGet() == 0)
+				LockSupport.unpark(shutdownThread);
+		}
 	}
 
 	public Runnable executeStandaloneTask(Runnable r) {

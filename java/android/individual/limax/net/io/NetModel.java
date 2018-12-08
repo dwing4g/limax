@@ -12,7 +12,6 @@ import javax.net.ssl.SSLContext;
 
 import limax.util.ConcurrentEnvironment;
 import limax.util.HashExecutor;
-import limax.util.JMXException;
 import limax.util.MBeans;
 import limax.util.Resource;
 
@@ -30,7 +29,7 @@ public final class NetModel {
 	private NetModel() {
 	}
 
-	public static void initialize(PollPolicy pp, int processPoolSize) throws IOException, JMXException {
+	public static void initialize(PollPolicy pp, int processPoolSize) throws IOException {
 		ConcurrentEnvironment env = ConcurrentEnvironment.getInstance();
 		pollPolicy = pp;
 		env.newFixedThreadPool("limax.net.io.NetModel.processPool", processPoolSize);
@@ -54,7 +53,7 @@ public final class NetModel {
 		}, "limax.net.io:type=NetModel,name=TaskState");
 	}
 
-	public static void uninitialize() {
+	public static void unInitialize() {
 		ConcurrentEnvironment env = ConcurrentEnvironment.getInstance();
 		pollPolicy.cleanup();
 		env.shutdown("limax.net.io.NetModel.delayPool", "limax.net.io.NetModel.processPool");

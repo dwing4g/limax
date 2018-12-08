@@ -1,6 +1,8 @@
 package limax.key;
 
-public class KeyException extends Exception {
+import limax.codec.CodecException;
+
+public class KeyException extends CodecException {
 	public static enum Type {
 		SubjectAltNameWithoutDNSName, SubjectAltNameWithoutURI, MalformedKeyIdent, UnsupportedURI, ServerRekeyed
 	}
@@ -8,12 +10,12 @@ public class KeyException extends Exception {
 	private static final long serialVersionUID = -1277781410788961548L;
 	private final Type type;
 
-	KeyException(Type type, String message) {
+	public KeyException(Type type, String message) {
 		super(type.toString() + "/" + message);
 		this.type = type;
 	}
 
-	KeyException(Type type) {
+	public KeyException(Type type) {
 		super(type.toString());
 		this.type = type;
 	}

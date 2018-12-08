@@ -19,7 +19,6 @@
 			<arg value="-script" />
 			<arg value="-variant" />
 			<arg value="-jsTemplate" />
-			<arg value="-sizepolicyxml" />
 			<arg value="../xmls/chatserver.xml" />
 		</java>
 	</target>

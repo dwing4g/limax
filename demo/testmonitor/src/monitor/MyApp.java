@@ -9,7 +9,7 @@ import testmonitor.Online;
 public class MyApp {
 
 	public static void main(String[] args) throws Exception {
-		MBeanServer.start("127.0.0.1", 10202, 10201);
+		MBeanServer.start("127.0.0.1", 10202, 10201, null, null);
 		String[] plat = { "apple", "onesdk", "xiaomi", "meizu" };
 
 		Random r = new Random();

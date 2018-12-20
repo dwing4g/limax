@@ -18,7 +18,7 @@ import java.util.stream.Stream;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
-import limax.util.SQLExecutor;
+import limax.sql.SQLExecutor;
 
 public class MonitorCollector implements CollectorController {
 	private interface RecordHandler {

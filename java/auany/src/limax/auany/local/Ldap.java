@@ -2,8 +2,8 @@ package limax.auany.local;
 
 import java.util.Properties;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -25,7 +25,7 @@ class Ldap implements Authenticate {
 	private final String url;
 	private final LdapName baseDN;
 	private final String key;
-	private final Queue<RequestContext> contexts = new LinkedBlockingQueue<>();
+	private final Queue<RequestContext> contexts = new ConcurrentLinkedQueue<>();
 	private final long timeout;
 	private boolean stopped = false;
 
@@ -66,8 +66,8 @@ class Ldap implements Authenticate {
 			} catch (AuthenticationException e) {
 				response(Result.Reject);
 			} catch (Throwable t) {
-				if (Trace.isErrorEnabled())
-					Trace.error("ldap authentication", t);
+				if (Trace.isDebugEnabled())
+					Trace.debug("ldap authentication", t);
 				close();
 				return false;
 			}
@@ -105,7 +105,7 @@ class Ldap implements Authenticate {
 				r = new RequestContext();
 			if (r.requestBind(username, password, response))
 				contexts.offer(r);
-		} , null);
+		}, null);
 	}
 
 	@Override

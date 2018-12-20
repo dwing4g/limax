@@ -22,10 +22,6 @@ class StaticWebData {
 		this.etag = Base64.getEncoder().encodeToString(SHA1.digest(this.content));
 	}
 
-	byte[] getContent() {
-		return content;
-	}
-
 	void transfer(HttpExchange exchange) throws IOException {
 		Headers headers = exchange.getRequestHeaders();
 		List<String> etags = headers.get("If-None-Match");

@@ -70,8 +70,8 @@ public class Zdb extends Naming {
 		switch (getEngineType(dbhome)) {
 		case MYSQL:
 			try (Connection conn = DriverManager.getConnection(dbhome)) {
-				try (Statement stmt = conn.createStatement();
-						ResultSet rs = stmt.executeQuery("SELECT value FROM _meta_ WHERE id=0")) {
+				try (Statement st = conn.createStatement();
+						ResultSet rs = st.executeQuery("SELECT value FROM _meta_ WHERE id=0")) {
 					if (!rs.next())
 						return null;
 					zdb = new Zdb(new Naming.Root(), XMLUtils.getRootElement(rs.getBlob(1).getBinaryStream()));

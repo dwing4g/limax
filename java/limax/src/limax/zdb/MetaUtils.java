@@ -64,13 +64,13 @@ final class MetaUtils {
 			switch (meta.getEngineType()) {
 			case MYSQL:
 				try (Connection conn = DriverManager.getConnection(meta.getDbHome())) {
-					try (Statement stmt = conn.createStatement()) {
-						stmt.execute(
+					try (Statement st = conn.createStatement()) {
+						st.execute(
 								"CREATE TABLE IF NOT EXISTS _meta_(id INT NOT NULL PRIMARY KEY, value MEDIUMBLOB NOT NULL)ENGINE=INNODB");
 					}
-					try (PreparedStatement stmt = conn.prepareStatement("REPLACE INTO _meta_ VALUES(0, ?)")) {
-						stmt.setBytes(1, data);
-						stmt.executeUpdate();
+					try (PreparedStatement ps = conn.prepareStatement("REPLACE INTO _meta_ VALUES(0, ?)")) {
+						ps.setBytes(1, data);
+						ps.executeUpdate();
 					}
 				}
 				break;

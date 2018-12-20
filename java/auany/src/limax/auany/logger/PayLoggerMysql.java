@@ -1,12 +1,10 @@
 package limax.auany.logger;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.w3c.dom.Element;
@@ -15,6 +13,8 @@ import limax.auany.PayDelivery;
 import limax.auany.PayLogger;
 import limax.auany.PayOrder;
 import limax.auany.paygws.AppStore.Request;
+import limax.sql.SQLConnectionConsumer;
+import limax.sql.SQLPooledExecutor;
 import limax.util.ConcurrentEnvironment;
 import limax.util.ElementHelper;
 import limax.util.HashExecutor;
@@ -28,63 +28,39 @@ public class PayLoggerMysql implements PayLogger {
 	public final static int ST_EXPIRE = 3;
 	public final static int ST_DEAD = 4;
 
-	private static LinkedBlockingQueue<Connection> conns = new LinkedBlockingQueue<>();
 	private static HashExecutor executor;
+	private static SQLPooledExecutor sqlExecutor;
 
 	@Override
 	public void close() throws Exception {
 		ConcurrentEnvironment.getInstance().shutdown("PayLoggerMysql");
-		for (Connection conn; (conn = conns.poll()) != null;)
-			conn.close();
+		sqlExecutor.shutdown();
 	}
 
 	@Override
 	public void initialize(Element e) throws Exception {
-		String url = e.getAttribute("url");
-		Connection conn = DriverManager.getConnection(url);
-		conn.setAutoCommit(false);
 		List<String> sqls = XMLUtils.getChildElements(e).stream().filter(node -> node.getNodeName().equals("sql"))
 				.map(node -> XMLUtils.getCDataTextChildren(node)).collect(Collectors.toList());
-		try (Statement st = conn.createStatement()) {
-			for (String sql : sqls)
-				st.execute(sql);
-		}
 		int pool = new ElementHelper(e).getInt("pool", 3);
-		conns.add(conn);
-		for (int i = 1; i < pool; i++) {
-			conn = DriverManager.getConnection(url);
-			conn.setAutoCommit(false);
-			conns.add(conn);
-		}
+		sqlExecutor = new SQLPooledExecutor(e.getAttribute("url"), pool);
+		sqlExecutor.execute(conn -> {
+			try (Statement st = conn.createStatement()) {
+				for (String sql : sqls)
+					st.execute(sql);
+			}
+		});
 		ConcurrentEnvironment.getInstance().newFixedThreadPool("PayLoggerMysql", pool);
 		executor = ConcurrentEnvironment.getInstance().newHashExecutor("PayLoggerMysql", pool);
 	}
 
-	@FunctionalInterface
-	private interface ConnectionConsumer {
-		void accept(Connection conn) throws Exception;
-	}
-
-	private void execute(Object key, ConnectionConsumer consumer) {
+	private void execute(Object key, SQLConnectionConsumer consumer, Function<Exception, String> e2s) {
 		executor.execute(key, () -> {
-			Connection conn;
-			while (true) {
-				try {
-					conn = conns.take();
-					break;
-				} catch (InterruptedException e) {
-				}
-			}
 			try {
-				consumer.accept(conn);
-				conn.commit();
+				sqlExecutor.execute(consumer);
 			} catch (Exception e) {
-				try {
-					conn.rollback();
-				} catch (Exception e1) {
-				}
+				if (Trace.isErrorEnabled())
+					Trace.error(e2s.apply(e));
 			}
-			conns.offer(conn);
 		});
 	}
 
@@ -105,12 +81,8 @@ public class PayLoggerMysql implements PayLogger {
 				ps.setInt(10, ST_CREATE);
 				ps.setString(11, "");
 				ps.execute();
-			} catch (Exception e) {
-				if (Trace.isErrorEnabled())
-					Trace.error("PayLoggerMysql.logCreate " + order + "[" + e.getMessage() + "]");
-				throw e;
 			}
-		});
+		}, e -> "PayLoggerMysql.logCreate " + order + "[" + e.getMessage() + "]");
 	}
 
 	@Override
@@ -122,13 +94,8 @@ public class PayLoggerMysql implements PayLogger {
 				ps.setInt(3, expect);
 				ps.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
 				ps.execute();
-			} catch (Exception e) {
-				if (Trace.isErrorEnabled())
-					Trace.error("PayLoggerMysql.logFake " + serial + "," + gateway + "," + expect + "[" + e.getMessage()
-							+ "]");
-				throw e;
 			}
-		});
+		}, e -> "PayLoggerMysql.logFake " + serial + "," + gateway + "," + expect + "[" + e.getMessage() + "]");
 	}
 
 	@Override
@@ -140,12 +107,8 @@ public class PayLoggerMysql implements PayLogger {
 				ps.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
 				ps.setLong(3, order.getSerial());
 				ps.execute();
-			} catch (Exception e) {
-				if (Trace.isErrorEnabled())
-					Trace.error("PayLoggerMysql.logExpire " + order.getSerial() + "[" + e.getMessage() + "]");
-				throw e;
 			}
-		});
+		}, e -> "PayLoggerMysql.logExpire " + order.getSerial() + "[" + e.getMessage() + "]");
 	}
 
 	@Override
@@ -157,12 +120,8 @@ public class PayLoggerMysql implements PayLogger {
 				ps.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
 				ps.setLong(3, order.getSerial());
 				ps.execute();
-			} catch (Exception e) {
-				if (Trace.isErrorEnabled())
-					Trace.error("PayLoggerMysql.logOk " + order.getSerial() + "[" + e.getMessage() + "]");
-				throw e;
 			}
-		});
+		}, e -> "PayLoggerMysql.logOk " + order.getSerial() + "[" + e.getMessage() + "]");
 	}
 
 	@Override
@@ -175,18 +134,14 @@ public class PayLoggerMysql implements PayLogger {
 				ps.setString(3, gatewayMessage);
 				ps.setLong(4, order.getSerial());
 				ps.execute();
-			} catch (Exception e) {
-				if (Trace.isErrorEnabled())
-					Trace.error("PayLoggerMysql.logFail " + order.getSerial() + "," + gatewayMessage + "["
-							+ e.getMessage() + "]");
-				throw e;
 			}
-		});
+		}, e -> "PayLoggerMysql.logFail " + order.getSerial() + "," + gatewayMessage + "[" + e.getMessage() + "]");
 	}
 
 	@Override
 	public void logDead(PayDelivery pd) {
 		execute(pd.getSerial(), conn -> {
+			conn.setAutoCommit(false);
 			try (PreparedStatement ps0 = conn
 					.prepareStatement("UPDATE `order` SET `status`=?,`mtime`=? WHERE `serial`=?");
 					PreparedStatement ps1 = conn
@@ -200,12 +155,8 @@ public class PayLoggerMysql implements PayLogger {
 				ps1.setLong(3, pd.getSerial());
 				ps0.execute();
 				ps1.execute();
-			} catch (Exception e) {
-				if (Trace.isErrorEnabled())
-					Trace.error("PayLoggerMysql.logDead " + pd.getSerial() + "[" + e.getMessage() + "]");
-				throw e;
 			}
-		});
+		}, e -> "PayLoggerMysql.logDead " + pd.getSerial() + "[" + e.getMessage() + "]");
 	}
 
 	@Override
@@ -226,12 +177,8 @@ public class PayLoggerMysql implements PayLogger {
 				ps.setInt(10, ST_CREATE);
 				ps.setInt(11, 0);
 				ps.execute();
-			} catch (Exception e) {
-				if (Trace.isErrorEnabled())
-					Trace.error("PayLoggerMysql.logAppStoreCreate " + req + "," + gateway + "[" + e.getMessage() + "]");
-				throw e;
 			}
-		});
+		}, e -> "PayLoggerMysql.logAppStoreCreate " + req + "," + gateway + "[" + e.getMessage() + "]");
 	}
 
 	@Override
@@ -243,12 +190,8 @@ public class PayLoggerMysql implements PayLogger {
 				ps.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
 				ps.setLong(3, req.getSerial());
 				ps.execute();
-			} catch (Exception e) {
-				if (Trace.isErrorEnabled())
-					Trace.error("PayLoggerMysql.logAppStoreSucceed " + req.getSerial() + "[" + e.getMessage() + "]");
-				throw e;
 			}
-		});
+		}, e -> "PayLoggerMysql.logAppStoreSucceed " + req.getSerial() + "[" + e.getMessage() + "]");
 	}
 
 	@Override
@@ -261,12 +204,8 @@ public class PayLoggerMysql implements PayLogger {
 				ps.setInt(3, status);
 				ps.setLong(4, req.getSerial());
 				ps.execute();
-			} catch (Exception e) {
-				if (Trace.isErrorEnabled())
-					Trace.error("PayLoggerMysql.logAppStoreFail " + req.getSerial() + "[" + e.getMessage() + "]");
-				throw e;
 			}
-		});
+		}, e -> "PayLoggerMysql.logAppStoreFail " + req.getSerial() + "[" + e.getMessage() + "]");
 	}
 
 	@Override
@@ -276,11 +215,7 @@ public class PayLoggerMysql implements PayLogger {
 				ps.setLong(1, req.getTid());
 				ps.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
 				ps.execute();
-			} catch (Exception e) {
-				if (Trace.isErrorEnabled())
-					Trace.error("PayLoggerMysql.logAppStoreReceiptReplay " + req.getTid() + "[" + e.getMessage() + "]");
-				throw e;
 			}
-		});
+		}, e -> "PayLoggerMysql.logAppStoreReceiptReplay " + req.getTid() + "[" + e.getMessage() + "]");
 	}
 }

@@ -73,20 +73,22 @@ public abstract class XBean implements Marshal {
 	protected final Runnable verifyStandaloneOrLockHeld(String methodName, boolean readonly) {
 		if (!Zdb.meta().isZdbVerify())
 			return donothing;
-		if (Transaction.current() == null)
-			return donothing;
-		if (Zdb.tables().isFlushWriteLockHeldByCurrentThread())
+		Transaction current = Transaction.current();
+		if (current == null)
 			return donothing;
 		TRecord<?, ?> record = getRecord();
 		if (record == null)
 			return donothing;
-		Lockey lockey = record.getLockey();
-		if (lockey.isWriteLockedByCurrentThread())
+		switch (current.getLockeyHolderType(record.getLockey())) {
+		case WRITE:
 			return donothing;
-		if (readonly && lockey.isReadLockedByCurrentThread())
-			return () -> {
-				throw new XLockLackedError(getClass().getName() + "." + methodName);
-			};
+		case READ:
+			if (readonly)
+				return () -> {
+					throw new XLockLackedError(getClass().getName() + "." + methodName);
+				};
+		default:
+		}
 		throw new XLockLackedError(getClass().getName() + "." + methodName);
 	}
 

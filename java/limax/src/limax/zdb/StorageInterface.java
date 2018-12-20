@@ -3,11 +3,19 @@ package limax.zdb;
 interface StorageInterface {
 	StorageEngine getEngine();
 
-	int marshalN();
+	long marshalN();
 
-	int marshal0();
+	long marshal0();
 
-	int snapshot();
+	long snapshot();
 
-	int flush();
+	long flush0();
+
+	void cleanup();
+
+	default long flush1() {
+		long count = flush0();
+		cleanup();
+		return count;
+	}
 }

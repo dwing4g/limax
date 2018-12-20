@@ -1,29 +1,23 @@
 package limax.zdb;
 
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import limax.util.Trace;
+import limax.sql.RestartTransactionException;
+import limax.sql.SQLConnectionConsumer;
+import limax.sql.SQLExecutor;
+import limax.sql.SQLPooledExecutor;
 
 class LoggerMysql implements LoggerEngine {
-	private final String url;
-	private final Connection writeConnection;
-	private final BlockingQueue<Connection> readPool = new LinkedBlockingDeque<Connection>();
-	private final AtomicInteger readCurrentPoolSize = new AtomicInteger();
-	private final int readPoolSize;
+	private final SQLPooledExecutor reader;
+	private final SQLPooledExecutor writer;
 
 	public LoggerMysql(limax.xmlgen.Zdb meta) {
 		try {
-			this.url = meta.getDbHome();
-			this.readPoolSize = meta.getJdbcPoolSize();
-			this.writeConnection = DriverManager.getConnection(url);
-			this.writeConnection.setAutoCommit(false);
+			String url = meta.getDbHome();
+			this.reader = new SQLPooledExecutor(url, meta.getJdbcPoolSize());
+			this.writer = new SQLPooledExecutor(url, 1, true);
 		} catch (Exception e) {
 			throw new XError(e);
 		}
@@ -32,35 +26,18 @@ class LoggerMysql implements LoggerEngine {
 	@Override
 	public void checkpoint() {
 		try {
-			writeConnection.commit();
-		} catch (SQLException e) {
-			try {
-				writeConnection.rollback();
-			} catch (SQLException e1) {
-			}
+			writer.execute(SQLExecutor.COMMIT);
+		} catch (RestartTransactionException e) {
+			throw e;
+		} catch (Exception e) {
 			throw new XError(e);
 		}
 	}
 
 	@Override
 	public void close() {
-		try {
-			writeConnection.close();
-		} catch (SQLException e) {
-			if (Trace.isErrorEnabled())
-				Trace.error("close connection", e);
-		}
-		while (true) {
-			Connection cc = readPool.poll();
-			if (cc == null)
-				break;
-			try {
-				cc.close();
-			} catch (SQLException e) {
-				if (Trace.isErrorEnabled())
-					Trace.error("close connection", e);
-			}
-		}
+		writer.shutdown();
+		reader.shutdown();
 	}
 
 	@Override
@@ -69,52 +46,26 @@ class LoggerMysql implements LoggerEngine {
 
 	@Override
 	public void dropTables(String[] tableNames) throws Exception {
-		for (String tableName : tableNames) {
-			try (Statement stmt = writeConnection.createStatement()) {
-				stmt.execute("DROP TABLE IF EXISTS " + tableName);
-			} catch (SQLException e) {
-				throw new XError(e);
-			}
-		}
-	}
-
-	public Connection getReadConnection() {
-		Connection connection = readPool.poll();
-		if (null != connection)
-			return connection;
-		int readHoldSize = readCurrentPoolSize.incrementAndGet();
-		if (readHoldSize > readPoolSize) {
-			readCurrentPoolSize.decrementAndGet();
-			try {
-				return readPool.take();
-			} catch (InterruptedException e) {
-				throw new XError(e);
-			}
-		}
 		try {
-			return DriverManager.getConnection(url);
-		} catch (SQLException e) {
-			readCurrentPoolSize.decrementAndGet();
+			reader.execute(conn -> {
+				for (String tableName : tableNames) {
+					try (Statement st = conn.createStatement()) {
+						st.execute("DROP TABLE IF EXISTS " + tableName);
+					} catch (SQLException e) {
+						throw new XError(e);
+					}
+				}
+			});
+		} catch (Exception e) {
 			throw new XError(e);
 		}
 	}
 
-	public void freeReadConnection(Connection connection, boolean closeNow) {
-		try {
-			if (closeNow) {
-				readCurrentPoolSize.decrementAndGet();
-				connection.close();
-			} else {
-				readPool.put(connection);
-			}
-		} catch (Exception e) {
-			if (Trace.isErrorEnabled())
-				Trace.error("freeReadConnection", e);
-		}
+	public void read(SQLConnectionConsumer consumer) throws Exception {
+		reader.execute(consumer);
 	}
 
-	public Connection getWriteConnection() {
-		return writeConnection;
+	public void write(SQLConnectionConsumer consumer) throws Exception {
+		writer.execute(consumer);
 	}
-
 }

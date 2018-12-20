@@ -24,14 +24,6 @@ final class Lockey implements Comparable<Lockey> {
 		return this;
 	}
 
-	boolean isWriteLockedByCurrentThread() {
-		return wlock.isHeldByCurrentThread();
-	}
-
-	boolean isReadLockedByCurrentThread() {
-		return rlock.isHeldByCurrentThread();
-	}
-
 	Object getKey() {
 		return key;
 	}

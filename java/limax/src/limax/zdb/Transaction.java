@@ -23,18 +23,30 @@ public final class Transaction {
 
 	final Map<LogKey, Object> wrappers = new HashMap<>();
 
+	enum LockeyHolderType {
+		WRITE, READ, NONE
+	}
+
 	private static class LockeyHolder implements Comparable<LockeyHolder> {
 		final Lockey lockey;
-		boolean write;
+		LockeyHolderType type;
 
-		LockeyHolder(Lockey lockey, boolean write) {
+		LockeyHolder(Lockey lockey, LockeyHolderType type) {
 			this.lockey = lockey;
-			this.write = write;
+			this.type = type;
+		}
+
+		void cleanup() {
+			if (type == LockeyHolderType.WRITE)
+				lockey.wUnlock();
+			else
+				lockey.rUnlock();
 		}
 
 		@Override
 		public int compareTo(LockeyHolder o) {
-			return lockey.compareTo(o.lockey);
+			int c = lockey.compareTo(o.lockey);
+			return c != 0 ? c : type.ordinal() - o.type.ordinal();
 		}
 	}
 
@@ -51,19 +63,24 @@ public final class Transaction {
 		return duration;
 	}
 
+	LockeyHolderType getLockeyHolderType(Lockey lockey) {
+		LockeyHolder holder = locks.get(lockey);
+		return holder != null ? holder.type : LockeyHolderType.NONE;
+	}
+
 	void rAddLockey(Lockey lockey) {
 		if (locks.containsKey(lockey))
 			return;
 		lockey.rLock();
-		locks.put(lockey, new LockeyHolder(lockey, false));
+		locks.put(lockey, new LockeyHolder(lockey, LockeyHolderType.READ));
 	}
 
 	void wAddLockey(Lockey lockey) {
 		LockeyHolder holder = locks.get(lockey);
 		if (holder == null) {
 			lockey.wLock();
-			locks.put(lockey, new LockeyHolder(lockey, true));
-		} else if (!holder.write) {
+			locks.put(lockey, new LockeyHolder(lockey, LockeyHolderType.WRITE));
+		} else if (holder.type == LockeyHolderType.READ) {
 			holder.lockey.rUnlock();
 			try {
 				holder.lockey.wLock();
@@ -71,7 +88,7 @@ public final class Transaction {
 				locks.remove(lockey);
 				throw e;
 			}
-			holder.write = true;
+			holder.type = LockeyHolderType.WRITE;
 		}
 	}
 
@@ -106,12 +123,7 @@ public final class Transaction {
 
 	private void finish() {
 		wrappers.clear();
-		locks.values().forEach(holder -> {
-			if (holder.write)
-				holder.lockey.wUnlock();
-			else
-				holder.lockey.rUnlock();
-		});
+		locks.values().forEach(LockeyHolder::cleanup);
 		locks.clear();
 		cachedTRecord.clear();
 	}
@@ -325,7 +337,7 @@ public final class Transaction {
 	 * 
 	 */
 	public final class LockContext {
-		private Collection<LockeyHolder> lockCollection = new ArrayList<>();
+		private final Collection<LockeyHolder> lockCollection = new ArrayList<>();
 
 		private LockContext() {
 		}
@@ -344,7 +356,7 @@ public final class Transaction {
 				keys.add(obj);
 		}
 
-		private LockContext add(boolean write, Object key, TTable<?, ?>... ttables) {
+		private LockContext add(LockeyHolderType type, Object key, TTable<?, ?>... ttables) {
 			if (key instanceof Collection<?>) {
 				Collection<Object> keys = new ArrayList<>();
 				Collection<TTable<?, ?>> ttables2 = new ArrayList<>();
@@ -352,45 +364,45 @@ public final class Transaction {
 				Stream.concat(Arrays.stream(ttables), ttables2.stream()).map(t -> t.getLockId()).distinct()
 						.forEach(lockId -> {
 							for (Object k : keys)
-								lockCollection.add(new LockeyHolder(Lockeys.getLockey(lockId, k), write));
+								lockCollection.add(new LockeyHolder(Lockeys.getLockey(lockId, k), type));
 						});
 			} else
 				Arrays.stream(ttables).map(t -> t.getLockId()).distinct()
-						.forEach(lockId -> lockCollection.add(new LockeyHolder(Lockeys.getLockey(lockId, key), write)));
+						.forEach(lockId -> lockCollection.add(new LockeyHolder(Lockeys.getLockey(lockId, key), type)));
 			return this;
 		}
 
-		private LockContext add(boolean write, Object... mix) {
+		private LockContext add(LockeyHolderType type, Object... mix) {
 			Collection<Object> keys = new ArrayList<>();
 			Collection<TTable<?, ?>> ttables = new ArrayList<>();
 			for (Object obj : mix)
 				classify(obj, keys, ttables);
 			ttables.stream().map(t -> t.getLockId()).distinct().forEach(lockId -> {
 				for (Object key : keys)
-					lockCollection.add(new LockeyHolder(Lockeys.getLockey(lockId, key), write));
+					lockCollection.add(new LockeyHolder(Lockeys.getLockey(lockId, key), type));
 			});
 			return this;
 		}
 
 		public LockContext rAdd(Object key, TTable<?, ?>... ttables) {
-			return add(false, key, ttables);
+			return add(LockeyHolderType.READ, key, ttables);
 		}
 
 		public LockContext rAdd(Object... mix) {
-			return add(false, mix);
+			return add(LockeyHolderType.READ, mix);
 		}
 
 		public LockContext wAdd(Object key, TTable<?, ?>... ttables) {
-			return add(true, key, ttables);
+			return add(LockeyHolderType.WRITE, key, ttables);
 		}
 
 		public LockContext wAdd(Object... mix) {
-			return add(true, mix);
+			return add(LockeyHolderType.WRITE, mix);
 		}
 
 		public void lock() {
 			lockCollection.stream().sorted().forEach(holder -> {
-				if (holder.write)
+				if (holder.type == LockeyHolderType.WRITE)
 					wAddLockey(holder.lockey);
 				else
 					rAddLockey(holder.lockey);

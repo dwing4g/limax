@@ -599,7 +599,7 @@ class CertServer {
 		try (InputStream in = CertServer.class.getResourceAsStream("CertServer.js")) {
 			new StreamSource(in, new SinkOctets(data)).flush();
 		}
-		StaticWebData js = new StaticWebData(data.getBytes(), "application/x-javascript; charset=utf-8");
+		StaticWebData js = new StaticWebData(data.getBytes(), "text/javascript; charset=utf-8");
 		server.createContext("/CertServer.js", exchange -> js.transfer(exchange));
 		server.setExecutor(executor);
 		server.start();

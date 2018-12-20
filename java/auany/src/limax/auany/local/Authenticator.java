@@ -104,6 +104,6 @@ public class Authenticator implements PlatProcess {
 				errorCode = ErrorCodes.AUANY_AUTHENTICATE_FAIL;
 			}
 			result.apply(ErrorSource.LIMAX, errorCode, username);
-		} , index.getAndIncrement()).action();
+		}, index.getAndIncrement()).action();
 	}
 }

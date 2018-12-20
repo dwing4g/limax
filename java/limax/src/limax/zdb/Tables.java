@@ -85,10 +85,6 @@ final class Tables {
 		return flushLock.readLock();
 	}
 
-	boolean isFlushWriteLockHeldByCurrentThread() {
-		return flushLock.isWriteLockedByCurrentThread();
-	}
-
 	Lock flushWriteLock() {
 		return flushLock.writeLock();
 	}

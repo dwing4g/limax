@@ -6,6 +6,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
+import limax.sql.RestartTransactionException;
 import limax.util.Elapse;
 import limax.util.MBeans;
 import limax.util.Trace;
@@ -52,7 +53,7 @@ final class Checkpoint implements Runnable, CheckpointMBean {
 			if (meta.getMarshalPeriod() >= 0 && nextMarshalTime <= now) {
 				nextMarshalTime = now + meta.getMarshalPeriod();
 				long start = System.nanoTime();
-				int countMarshalN = tables.getStorages().stream().mapToInt(StorageInterface::marshalN).sum();
+				long countMarshalN = tables.getStorages().stream().mapToLong(StorageInterface::marshalN).sum();
 				this.marshalNCount += countMarshalN;
 				this.marshalNTotalTime += System.nanoTime() - start;
 				if (Trace.isDebugEnabled())
@@ -82,8 +83,8 @@ final class Checkpoint implements Runnable, CheckpointMBean {
 				Trace.warn("marshalN disabled");
 
 		elapse.reset();
-		for (int i = 1; i <= meta.getMarshalN(); ++i) {
-			int countMarshalN = storages.stream().mapToInt(StorageInterface::marshalN).sum();
+		for (long i = 1; i <= meta.getMarshalN(); ++i) {
+			long countMarshalN = storages.stream().mapToLong(StorageInterface::marshalN).sum();
 			this.marshalNCount += countMarshalN;
 			if (Trace.isDebugEnabled())
 				Trace.debug("marshalN=" + i + "/" + countMarshalN);
@@ -91,14 +92,14 @@ final class Checkpoint implements Runnable, CheckpointMBean {
 		this.marshalNTotalTime += elapse.elapsed();
 		Runnable cleanupDuration;
 		{
-			int countSnapshot;
-			int countMarshal0;
+			long countSnapshot;
+			long countMarshal0;
 			Lock lock = tables.flushWriteLock();
 			lock.lock();
 			elapse.reset();
 			try {
-				countMarshal0 = storages.stream().mapToInt(StorageInterface::marshal0).sum();
-				countSnapshot = storages.stream().mapToInt(StorageInterface::snapshot).sum();
+				countMarshal0 = storages.stream().mapToLong(StorageInterface::marshal0).sum();
+				countSnapshot = storages.stream().mapToLong(StorageInterface::snapshot).sum();
 				cleanupDuration = Zdb.checkpointDuration();
 			} finally {
 				lock.unlock();
@@ -113,12 +114,28 @@ final class Checkpoint implements Runnable, CheckpointMBean {
 			if (Trace.isDebugEnabled())
 				Trace.debug("snapshot=" + countSnapshot + " marshal0=" + countMarshal0);
 		}
-		int countFlush = storages.stream().mapToInt(StorageInterface::flush).sum();
+		long countFlush;
+		if (this.tables.getLogger() instanceof LoggerEdb) {
+			countFlush = storages.stream().mapToLong(StorageInterface::flush1).sum();
+			if (countFlush > 0)
+				this.tables.getLogger().checkpoint();
+		} else {
+			while (true)
+				try {
+					countFlush = storages.stream().mapToLong(StorageInterface::flush0).sum();
+					if (countFlush > 0) {
+						this.tables.getLogger().checkpoint();
+						storages.stream().forEach(StorageInterface::cleanup);
+					}
+					break;
+				} catch (RestartTransactionException e) {
+					if (Trace.isWarnEnabled())
+						Trace.warn("checkpoint restart...", e);
+				}
+		}
 		this.flushTotalTime += elapse.elapsedAndReset();
 		if (Trace.isDebugEnabled())
 			Trace.debug("flush=" + countFlush);
-		if (countFlush > 0)
-			this.tables.getLogger().checkpoint();
 		if (countFlush > 0) {
 			this.flushCount += countFlush;
 			this.checkpointTotalTime += elapse.elapsedAndReset();

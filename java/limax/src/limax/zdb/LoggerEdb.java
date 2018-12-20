@@ -21,8 +21,8 @@ class LoggerEdb implements LoggerEngine {
 			env.setCheckpointPeriod(0);
 			env.setCheckpointOnCacheFull(false);
 			database = new DataBase(env, Paths.get(dbhome));
-		} catch (Exception ex) {
-			throw new XError(ex);
+		} catch (Exception e) {
+			throw new XError(e);
 		}
 	}
 
@@ -34,8 +34,8 @@ class LoggerEdb implements LoggerEngine {
 	public void checkpoint() {
 		try {
 			database.checkpoint();
-		} catch (Exception ex) {
-			throw new XError(ex);
+		} catch (Exception e) {
+			throw new XError(e);
 		}
 	}
 
@@ -43,8 +43,8 @@ class LoggerEdb implements LoggerEngine {
 	public void close() {
 		try {
 			database.close();
-		} catch (Exception ex) {
-			throw new XError(ex);
+		} catch (Exception e) {
+			throw new XError(e);
 		}
 	}
 

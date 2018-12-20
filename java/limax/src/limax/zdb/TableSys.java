@@ -66,28 +66,32 @@ final class TableSys extends AbstractTable {
 		}
 
 		@Override
-		public int marshalN() {
+		public long marshalN() {
 			return 0;
 		}
 
 		@Override
-		public int marshal0() {
+		public long marshal0() {
 			snapshotValue = autoKeys.encodeValue();
 			return null != snapshotValue ? 1 : 0;
 		}
 
 		@Override
-		public int snapshot() {
+		public long snapshot() {
 			return null != snapshotValue ? 1 : 0;
 		}
 
 		@Override
-		public int flush() {
+		public long flush0() {
 			if (null == snapshotValue)
 				return 0;
 			engine.replace(keyOfAutoKeys, snapshotValue);
-			snapshotValue = null;
 			return 1;
+		}
+
+		@Override
+		public void cleanup() {
+			snapshotValue = null;
 		}
 	}
 }

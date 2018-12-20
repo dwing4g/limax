@@ -1,6 +1,5 @@
 package limax.auany.local;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -32,7 +31,6 @@ class Radius implements Authenticate {
 	private final long timeout;
 	private final ScheduledExecutorService scheduler;
 	private final Dispatcher dispatcher;
-	private volatile boolean neterror = false;
 	private volatile boolean stopped = false;
 
 	private class RequestContext {
@@ -49,8 +47,8 @@ class Radius implements Authenticate {
 			}
 		}
 
-		RequestContext(Consumer<Result> response) throws InterruptedException {
-			identifier = slot.take();
+		RequestContext(byte identifier, Consumer<Result> response, long timeout) {
+			this.identifier = identifier;
 			outstanding.put(identifier, this);
 			this.response = response;
 			this.future = scheduler.schedule(() -> response(Result.Timeout), timeout, TimeUnit.MILLISECONDS);
@@ -64,11 +62,10 @@ class Radius implements Authenticate {
 	private final static byte User_Password = 2;
 	private final static byte NAS_Identifier = 32;
 	private final static byte NAS_Port_Type = 61;
-	private final int NAS_Port_Type_VIRTUAL = 5;
+	private final static int NAS_Port_Type_VIRTUAL = 5;
 
-	private void sendRequest(String username, String password, Consumer<Result> response) throws Exception {
+	private void sendRequest(RequestContext rc, String username, String password) throws Exception {
 		ByteBuffer r = ByteBuffer.allocateDirect(4096).order(ByteOrder.BIG_ENDIAN);
-		RequestContext rc = new RequestContext(response);
 		byte[] name = username.getBytes(StandardCharsets.UTF_8);
 		byte[] pass = makePassword(rc.authenticator, password.getBytes(StandardCharsets.UTF_8));
 		r.put(Access_Request);
@@ -138,19 +135,26 @@ class Radius implements Authenticate {
 
 	@Override
 	public synchronized void access(String username, String password, Consumer<Result> response) {
-		if (neterror || stopped) {
+		if (stopped) {
 			response.accept(Result.Fail);
 			return;
 		}
 		dispatcher.execute(() -> {
 			try {
-				sendRequest(username, password, response);
+				long start = System.currentTimeMillis();
+				Byte identifier = slot.poll(timeout, TimeUnit.MILLISECONDS);
+				if (identifier != null)
+					sendRequest(
+							new RequestContext(identifier, response, timeout - (System.currentTimeMillis() - start)),
+							username, password);
+				else
+					response.accept(Result.Timeout);
 			} catch (Exception e) {
 				response.accept(Result.Fail);
-				if (Trace.isErrorEnabled())
-					Trace.error("request exception", e);
+				if (Trace.isDebugEnabled())
+					Trace.debug("request exception", e);
 			}
-		} , null);
+		}, null);
 	}
 
 	@Override
@@ -182,26 +186,14 @@ class Radius implements Authenticate {
 				try {
 					r.clear();
 					channel.read(r);
-					neterror = false;
 					r.flip();
 					parseResponse(r);
 				} catch (ClosedChannelException e) {
 					new ArrayList<>(outstanding.values()).forEach(rc -> rc.response(Result.Fail));
 					return;
-				} catch (IOException e) {
-					if (Trace.isErrorEnabled())
-						Trace.error("neterror occured, schedule retry", e);
-					neterror = true;
-					scheduler.schedule(() -> {
-						try {
-							sendRequest("", "", _r -> {
-							});
-						} catch (Exception e1) {
-						}
-					} , 1, TimeUnit.SECONDS);
 				} catch (Exception e) {
-					if (Trace.isWarnEnabled())
-						Trace.warn("response exception", e);
+					if (Trace.isDebugEnabled())
+						Trace.debug("response exception", e);
 				}
 			}
 		});

@@ -1,4 +1,4 @@
-package limax.util;
+package limax.sql;
 
 import java.sql.Connection;
 

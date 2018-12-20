@@ -29,8 +29,6 @@ public final class LockEnvironment {
 		boolean tryLock();
 
 		void unlock();
-
-		boolean isHeldByCurrentThread();
 	}
 
 	public interface StatusMXBean {
@@ -150,12 +148,6 @@ public final class LockEnvironment {
 			public void unlock() {
 				lock.unlock();
 				removeHolder(ref);
-			}
-
-			@Override
-			public boolean isHeldByCurrentThread() {
-				Map<Object, Integer> map = holding.get(Thread.currentThread());
-				return map == null ? false : map.containsKey(ref);
 			}
 		};
 	}

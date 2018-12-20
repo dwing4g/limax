@@ -1,13 +1,12 @@
 package limax.zdb;
 
 import java.io.ByteArrayInputStream;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 
 import limax.codec.Octets;
+import limax.sql.RestartTransactionException;
 
 class StorageMysql implements StorageEngine {
 	private final LoggerMysql logger;
@@ -16,35 +15,48 @@ class StorageMysql implements StorageEngine {
 	public StorageMysql(LoggerMysql logger, String tableName) {
 		this.logger = logger;
 		this.tableName = tableName;
-		Connection connection = logger.getWriteConnection();
-		try (Statement stmt = connection.createStatement()) {
-			stmt.execute("CREATE TABLE IF NOT EXISTS " + tableName
-					+ "(id VARBINARY(767) NOT NULL PRIMARY KEY, value MEDIUMBLOB NOT NULL)ENGINE=INNODB");
-		} catch (SQLException e) {
+		try {
+			logger.read(conn -> {
+				try (Statement st = conn.createStatement()) {
+					st.execute("CREATE TABLE IF NOT EXISTS " + tableName
+							+ "(id VARBINARY(767) NOT NULL PRIMARY KEY, value MEDIUMBLOB NOT NULL)ENGINE=INNODB");
+				}
+			});
+		} catch (Exception e) {
 			throw new XError(e);
 		}
 	}
 
 	@Override
 	public void replace(Octets key, Octets value) {
-		Connection connection = logger.getWriteConnection();
-		try (PreparedStatement stmt = connection.prepareStatement("REPLACE INTO " + tableName + " VALUES(?, ?)")) {
-			stmt.setBlob(1, new ByteArrayInputStream(key.array(), 0, key.size()));
-			stmt.setBlob(2, new ByteArrayInputStream(value.array(), 0, value.size()));
-			stmt.executeUpdate();
-		} catch (SQLException e) {
+		try {
+			logger.write(conn -> {
+				try (PreparedStatement ps = conn.prepareStatement("REPLACE INTO " + tableName + " VALUES(?, ?)")) {
+					ps.setBlob(1, new ByteArrayInputStream(key.array(), 0, key.size()));
+					ps.setBlob(2, new ByteArrayInputStream(value.array(), 0, value.size()));
+					ps.executeUpdate();
+				}
+			});
+		} catch (RestartTransactionException e) {
+			throw e;
+		} catch (Exception e) {
 			throw new XError(e);
 		}
 	}
 
 	@Override
 	public boolean insert(Octets key, Octets value) {
-		Connection connection = logger.getWriteConnection();
-		try (PreparedStatement stmt = connection.prepareStatement("INSERT INTO " + tableName + " VALUES(?, ?)")) {
-			stmt.setBlob(1, new ByteArrayInputStream(key.array(), 0, key.size()));
-			stmt.setBlob(2, new ByteArrayInputStream(value.array(), 0, value.size()));
-			stmt.executeUpdate();
-		} catch (SQLException e) {
+		try {
+			logger.write(conn -> {
+				try (PreparedStatement ps = conn.prepareStatement("INSERT INTO " + tableName + " VALUES(?, ?)")) {
+					ps.setBlob(1, new ByteArrayInputStream(key.array(), 0, key.size()));
+					ps.setBlob(2, new ByteArrayInputStream(value.array(), 0, value.size()));
+					ps.executeUpdate();
+				}
+			});
+		} catch (RestartTransactionException e) {
+			throw e;
+		} catch (Exception e) {
 			return false;
 		}
 		return true;
@@ -52,64 +64,72 @@ class StorageMysql implements StorageEngine {
 
 	@Override
 	public void remove(Octets key) {
-		Connection connection = logger.getWriteConnection();
-		try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM " + tableName + " WHERE id=?")) {
-			stmt.setBlob(1, new ByteArrayInputStream(key.array(), 0, key.size()));
-			stmt.executeUpdate();
-		} catch (SQLException e) {
+		try {
+			logger.write(conn -> {
+				try (PreparedStatement ps = conn.prepareStatement("DELETE FROM " + tableName + " WHERE id=?")) {
+					ps.setBlob(1, new ByteArrayInputStream(key.array(), 0, key.size()));
+					ps.executeUpdate();
+				}
+			});
+		} catch (RestartTransactionException e) {
+			throw e;
+		} catch (Exception e) {
 			throw new XError(e);
 		}
 	}
 
 	@Override
 	public boolean exist(Octets key) {
-		Connection connection = logger.getReadConnection();
-		try (PreparedStatement stmt = connection.prepareStatement("SELECT 1 FROM " + tableName + " WHERE id=?")) {
-			stmt.setBlob(1, new ByteArrayInputStream(key.array(), 0, key.size()));
-			try (ResultSet rs = stmt.executeQuery()) {
-				return rs.next();
-			}
-		} catch (SQLException e) {
+		try {
+			boolean[] r = new boolean[1];
+			logger.read(conn -> {
+				try (PreparedStatement ps = conn.prepareStatement("SELECT 1 FROM " + tableName + " WHERE id=?")) {
+					ps.setBlob(1, new ByteArrayInputStream(key.array(), 0, key.size()));
+					try (ResultSet rs = ps.executeQuery()) {
+						r[0] = rs.next();
+					}
+				}
+			});
+			return r[0];
+		} catch (Exception e) {
 			throw new XError(e);
-		} finally {
-			logger.freeReadConnection(connection, false);
 		}
 	}
 
 	@Override
 	public Octets find(Octets key) {
-		Connection connection = logger.getReadConnection();
-		try (PreparedStatement stmt = connection.prepareStatement("SELECT value FROM " + tableName + " WHERE id=?")) {
-			stmt.setBlob(1, new ByteArrayInputStream(key.array(), 0, key.size()));
-			try (ResultSet rs = stmt.executeQuery()) {
-				return rs.next() ? Octets.wrap(rs.getBytes(1)) : null;
-			}
-		} catch (SQLException e) {
+		try {
+			byte[][] r = new byte[1][];
+			logger.read(conn -> {
+				try (PreparedStatement ps = conn.prepareStatement("SELECT value FROM " + tableName + " WHERE id=?")) {
+					ps.setBlob(1, new ByteArrayInputStream(key.array(), 0, key.size()));
+					try (ResultSet rs = ps.executeQuery()) {
+						if (rs.next())
+							r[0] = rs.getBytes(1);
+					}
+				}
+			});
+			return r[0] != null ? Octets.wrap(r[0]) : null;
+		} catch (Exception e) {
 			throw new XError(e);
-		} finally {
-			logger.freeReadConnection(connection, false);
 		}
 	}
 
 	@Override
 	public void walk(IWalk iw) {
-		Connection connection = logger.getReadConnection();
-		boolean closeNow = false;
-		try (PreparedStatement stmt = connection.prepareStatement("SELECT id, value FROM " + tableName,
-				ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
-			stmt.setFetchSize(5000);
-			try (ResultSet rs = stmt.executeQuery()) {
-				while (rs.next()) {
-					if (false == iw.onRecord(rs.getBytes(1), rs.getBytes(2))) {
-						closeNow = true;
-						break;
+		try {
+			logger.read(conn -> {
+				try (PreparedStatement ps = conn.prepareStatement("SELECT id, value FROM " + tableName,
+						ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+					ps.setFetchSize(5000);
+					try (ResultSet rs = ps.executeQuery()) {
+						while (rs.next() && iw.onRecord(rs.getBytes(1), rs.getBytes(2)))
+							;
 					}
 				}
-			}
-		} catch (SQLException e) {
+			});
+		} catch (Exception e) {
 			throw new XError(e);
-		} finally {
-			logger.freeReadConnection(connection, closeNow);
 		}
 	}
 }

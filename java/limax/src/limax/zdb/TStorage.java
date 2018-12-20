@@ -71,9 +71,9 @@ final class TStorage<K, V> implements StorageInterface {
 	volatile long flushValueSize = 0;
 
 	@Override
-	public int marshalN() {
-		int marshaled = 0;
-		int tryFail = 0;
+	public long marshalN() {
+		long marshaled = 0;
+		long tryFail = 0;
 		for (Iterator<TRecord<K, V>> it = changed.values().iterator(); it.hasNext();) {
 			TRecord<K, V> r = it.next();
 			if (r.tryMarshalN()) {
@@ -89,27 +89,33 @@ final class TStorage<K, V> implements StorageInterface {
 	}
 
 	@Override
-	public int marshal0() {
+	public long marshal0() {
 		marshal.putAll(changed);
-		int count = (int) changed.values().stream().peek(TRecord::marshal0).count();
+		long count = changed.values().stream().peek(TRecord::marshal0).count();
 		changed.clear();
 		countMarshal0 += count;
 		return count;
 	}
 
 	@Override
-	public int snapshot() {
+	public long snapshot() {
 		Map<K, TRecord<K, V>> tmp = snapshot;
 		snapshot = marshal;
 		marshal = tmp;
-		int count = (int) snapshot.values().stream().peek(TRecord::snapshot).count();
+		long count = snapshot.values().stream().peek(TRecord::snapshot).count();
 		countSnapshot += count;
 		return count;
 	}
 
 	@Override
-	public int flush() {
-		int count = (int) snapshot.values().stream().filter(r -> r.flush(this)).count();
+	public long flush0() {
+		long count = snapshot.values().stream().filter(r -> r.flush(this)).count();
+		countFlush += count;
+		return count;
+	}
+
+	@Override
+	public void cleanup() {
 		Map<K, TRecord<K, V>> tmp;
 		Lock lock = snapshotLock.writeLock();
 		lock.lock();
@@ -120,8 +126,6 @@ final class TStorage<K, V> implements StorageInterface {
 			lock.unlock();
 		}
 		tmp.values().forEach(TRecord::clear);
-		countFlush += count;
-		return count;
 	}
 
 	final boolean exist(K key, TTable<K, V> table) {

@@ -1,0 +1,9 @@
+/bin/
+/java/auany/bin/
+/java/auany/gen/
+/java/globalid/bin/
+/java/globalid/gen/
+/java/limax/bin/
+/java/limax/gen/
+/java/limax/service-endpoint.xml
+/java/limax/service-provider.xml

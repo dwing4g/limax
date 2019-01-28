@@ -49,7 +49,7 @@ class ServerConfig {
 	}
 
 	char[] getAuthCode() {
-		char[] authCode = root.getAttribute("authCode").toCharArray();
+		char[] authCode = new ElementHelper(root).getString("authCode").toCharArray();
 		if (authCode.length == 0) {
 			authCode = System.console().readPassword("authCode:");
 			if (!Arrays.equals(authCode, System.console().readPassword("Confirm authCode:")))
@@ -60,14 +60,14 @@ class ServerConfig {
 	}
 
 	Archive getArchive() {
-		String archive = root.getAttribute("archive");
+		String archive = new ElementHelper(root).getString("archive");
 		if (archive.isEmpty())
 			throw new RuntimeException("missing archive directory");
 		return new Archive(archive);
 	}
 
 	String getDomain() {
-		String domain = root.getAttribute("domain");
+		String domain = new ElementHelper(root).getString("domain");
 		if (domain.isEmpty())
 			throw new RuntimeException("missing domain");
 		return domain;
@@ -77,10 +77,11 @@ class ServerConfig {
 		CAService ca = null;
 		for (Element e : XMLUtils.getChildElements(root)) {
 			if (e.getTagName().equals("CAService")) {
-				URI location = URI.create(e.getAttribute("location"));
+				ElementHelper eh = new ElementHelper(e);
+				URI location = URI.create(eh.getString("location"));
 				if (Trace.isInfoEnabled())
 					Trace.info("CAService " + location + " loading");
-				String passphrase = e.getAttribute("passphrase");
+				String passphrase = eh.getString("passphrase");
 				if (!passphrase.isEmpty() && Trace.isWarnEnabled())
 					Trace.warn("CAService " + location
 							+ " passphrase SHOULD NOT contains in config file, except for test.");

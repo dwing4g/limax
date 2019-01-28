@@ -4,7 +4,7 @@ import java.io.IOException;
 
 public interface ServerContext {
 	interface NetTaskConstructor {
-		Object newInstance(ServerContext context);
+		NetTask newInstance(ServerContext context);
 
 		String getServiceName();
 	}

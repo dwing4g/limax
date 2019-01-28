@@ -255,13 +255,13 @@ namespace limax.net
             this.state = config.getDefaultState();
             this.cleanup = cleanup;
         }
-        public void setup(Alarm alarm) { this.alarm = alarm; }
-        public void setup(IPEndPoint local, IPEndPoint peer, NetworkStream ns)
+        public void setupAlarm(Alarm alarm) { this.alarm = alarm; }
+        public void startup(NetworkStream ns, IPEndPoint local, IPEndPoint peer)
         {
             resetAlarm(0);
+            this.ns = ns;
             this.local = local;
             this.peer = peer;
-            this.ns = ns;
             ManagerConfig config = manager.getConfig();
             setInputSecurityCodec(config.getInputSecurityBytes(), config.isInputCompress());
             setOutputSecurityCodec(config.getOutputSecurityBytes(), config.isOutputCompress());
@@ -310,13 +310,13 @@ namespace limax.net
             }
             catch (Exception e) { close(e); }
         }
-        public void shutdown(bool eventually, Exception closeReason)
+        public void shutdown(Exception closeReason)
         {
             lock (locker)
             {
                 this.closeReason = closeReason;
             }
-            if (eventually)
+            if (this.local != null)
                 manager.removeProtocolTransport(this);
             else
                 ((ClientManagerImpl)manager).connectAbort(this);
@@ -347,7 +347,7 @@ namespace limax.net
             input.Dispose();
             input = codec;
         }
-        private void _close(bool eventually, Exception closeReason)
+        private void _close(Exception closeReason)
         {
             if (Interlocked.Exchange(ref underlyingclosed, 1) == 1)
                 return;
@@ -355,12 +355,11 @@ namespace limax.net
             if (ns != null)
                 ns.Close();
             cleanup();
-            shutdown(eventually, closeReason);
+            shutdown(closeReason);
             input.Dispose();
             output.Dispose();
         }
-        internal void close(Exception closeReason) { _close(true, closeReason); }
-        internal void abort(Exception closeReason) { _close(false, closeReason); }
+        internal void close(Exception closeReason) { _close(closeReason); }
         internal void close() { close(new Exception("channel closed manually")); }
         public void sendTypedData(int type, Octets data) { sendData(new OctetsStream().marshal(type).marshal(data)); }
         private void sendData(Octets data)
@@ -505,7 +504,7 @@ namespace limax.net
                 c.ReceiveBufferSize = config.getInputBufferSize();
                 c.SendBufferSize = config.getOutputBufferSize();
                 transport = new StateTransportImpl(this, () => c.Close());
-                transport.setup(new Alarm(() => transport.close(new Exception("connect timeout"))));
+                transport.setupAlarm(new Alarm(() => transport.close(new Exception("connect timeout"))));
                 transport.resetAlarm(config.getConnectTimeout());
                 lock (locker)
                 {
@@ -514,13 +513,13 @@ namespace limax.net
                         try
                         {
                             c.EndConnect(ar);
-                            transport.setup((IPEndPoint)c.Client.LocalEndPoint, (IPEndPoint)c.Client.RemoteEndPoint, c.GetStream());
+                            transport.startup(c.GetStream(), (IPEndPoint)c.Client.LocalEndPoint, (IPEndPoint)c.Client.RemoteEndPoint);
                         }
                         catch (Exception e)
                         {
                             if (Trace.isErrorEnabled())
                                 Trace.error("ClientManagerImpl.doConnect", e);
-                            transport.abort(e);
+                            transport.close(e);
                         }
                     }, null);
                     state = State.CONNECTING;

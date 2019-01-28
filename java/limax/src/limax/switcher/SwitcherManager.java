@@ -1,6 +1,5 @@
 package limax.switcher;
 
-import java.io.Closeable;
 import java.io.IOException;
 
 import limax.codec.CodecException;
@@ -21,6 +20,7 @@ import limax.net.SupportWebSocketProtocol;
 import limax.net.Transport;
 import limax.net.UnknownProtocolHandler;
 import limax.net.WebSocketProtocol;
+import limax.util.Closeable;
 
 final class SwitcherManager implements ServerManager, SupportTypedDataBroadcast, SupportRpcContext,
 		SupportUnknownProtocol, SupportDispatch, SupportWebSocketProtocol, SupportWebSocketBroadcast {

@@ -2740,7 +2740,7 @@ namespace limax.codec
                     return c - 'A' + 10;
                 if (c >= 'a' && c <= 'f')
                     return c - 'a' + 10;
-                throw new JSONException("bad hex char [" + c + "]");
+                throw new JSONException("bad hex char <" + c + ">");
             }
             public bool accept(char c)
             {
@@ -2758,10 +2758,9 @@ namespace limax.codec
                     switch (c)
                     {
                         case '"':
-                            sb.Append('"');
-                            break;
                         case '\\':
-                            sb.Append('\\');
+                        case '/':
+                            sb.Append(c);
                             break;
                         case 'b':
                             sb.Append('\b');
@@ -2781,6 +2780,8 @@ namespace limax.codec
                         case 'u':
                             stage = -16;
                             break;
+                        default:
+                            throw new JSONException("unsupported escape character <" + c + ">");
                     }
                     stage &= ~0x20000000;
                 }

@@ -40,48 +40,43 @@ final class StateTransportImpl extends AbstractTransport
 
 	@Override
 	public void process(byte[] data) {
-		if (data.length > 0) {
-			if (Trace.isDebugEnabled())
-				Trace.debug(manager + " " + this + " process size = " + data.length);
-			try {
-				input.update(data, 0, data.length);
-				input.flush();
-			} catch (Throwable e) {
-				if (Trace.isInfoEnabled())
-					Trace.info(manager + " " + this + " process Exception : " + Helper.toHexString(data), e);
-				throw new RuntimeException(e);// force close
-			}
+		if (Trace.isDebugEnabled())
+			Trace.debug(manager + " " + this + " process size = " + data.length);
+		try {
+			input.update(data, 0, data.length);
+			input.flush();
+		} catch (Throwable e) {
+			if (Trace.isInfoEnabled())
+				Trace.info(manager + " " + this + " process Exception : " + Helper.toHexString(data), e);
+			throw new RuntimeException(e);// force close
 		}
 	}
 
 	@Override
-	public void shutdown(boolean eventually, Throwable closeReason) {
+	public void shutdown(Throwable closeReason) {
+		boolean close;
 		lock.lock();
 		try {
-			if (closeReason != null)
-				setCloseReason(closeReason);
-			close();
+			setCloseReason(closeReason);
+			if (close = local != null)
+				close();
 		} finally {
 			lock.unlock();
 		}
-		if (eventually)
+		if (close)
 			manager.removeProtocolTransport(this);
 		else
 			((ClientManagerImpl) manager).connectAbort(this);
 	}
 
 	@Override
-	public void setup(NetTask nettask) {
+	public boolean startup(NetTask nettask, SocketAddress local, SocketAddress peer) {
 		lock.lock();
 		try {
 			this.nettask = nettask;
 		} finally {
 			lock.unlock();
 		}
-	}
-
-	@Override
-	public boolean setup(SocketAddress local, SocketAddress peer) {
 		this.local = local;
 		this.peer = peer;
 		setInputSecurityCodec(config.getInputSecurityBytes(), config.isInputCompress());

@@ -37,10 +37,9 @@ final class Firewall {
 			permitmap = XMLUtils
 					.getChildElements(
 							DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(is).getDocumentElement())
-					.stream().filter(e -> e.getTagName().equals("permit")).map(e -> {
+					.stream().filter(e -> e.getTagName().equals("permit")).map(ElementHelper::new).map(e -> {
 						try {
-							return new Pair<>(Integer.parseInt(e.getAttribute("pvid")),
-									InetAddress.getByName(e.getAttribute("host")));
+							return new Pair<>(e.getInt("pvid"), InetAddress.getByName(e.getString("host")));
 						} catch (Exception e1) {
 							return null;
 						}

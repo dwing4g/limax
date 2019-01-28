@@ -62,7 +62,7 @@ class App {
 
 		class PrivateProvider extends Provider {
 			private PrivateProvider(Element self, Context ctx) {
-				super(Integer.parseInt(self.getAttribute("id")), self.getAttribute("key"));
+				super(new ElementHelper(self).getInt("id"), new ElementHelper(self).getString("key"));
 				if (getId() <= 0)
 					ctx.updateErrorMessage("App.id = " + getApp().id + " Service.id = " + getService().id
 							+ " Provider id must > 0, but " + getId());
@@ -106,8 +106,9 @@ class App {
 		}
 
 		private Service(Element self, Context ctx) {
-			this.id = Integer.parseInt(self.getAttribute("id"));
-			this.switchers = Arrays.stream(self.getAttribute("switcher").split(",")).map(String::trim)
+			ElementHelper eh = new ElementHelper(self);
+			this.id = eh.getInt("id");
+			this.switchers = Arrays.stream(eh.getString("switcher").split(",")).map(String::trim)
 					.filter(s -> !s.isEmpty()).map(s -> Objects.requireNonNull(Switcher.get(ctx, Integer.parseInt(s))))
 					.collect(Collectors.groupingBy(Switcher::getType));
 			this.providers = XMLUtils.getChildElements(self).stream().filter(e -> e.getTagName().equals("provider"))
@@ -119,10 +120,9 @@ class App {
 				ctx.updateErrorMessage("App.id = " + getApp().id + " Service.id = " + id
 						+ " service must have at least one provider.");
 			this.pvids = providers.stream().map(Provider::getId).collect(Collectors.toSet());
-			List<Provider> shareProviders = Arrays.stream(self.getAttribute("shareProvider").split(","))
-					.map(String::trim).filter(s -> !s.isEmpty()).map(Integer::parseInt)
-					.map(pvid -> ShareProvider.get(ctx, pvid)).peek(cp -> cp.link(App.this))
-					.collect(Collectors.toList());
+			List<Provider> shareProviders = Arrays.stream(eh.getString("shareProvider").split(",")).map(String::trim)
+					.filter(s -> !s.isEmpty()).map(Integer::parseInt).map(pvid -> ShareProvider.get(ctx, pvid))
+					.peek(cp -> cp.link(App.this)).collect(Collectors.toList());
 			this.sharePvids = shareProviders.stream().map(Provider::getId).collect(Collectors.toList());
 			if (sharePvids.contains(SessionManager.providerId))
 				ctx.updateErrorMessage("app.id = " + id + " service.id = " + id + " CANNOT reference ProviderId = "
@@ -172,7 +172,7 @@ class App {
 
 	private App(Element self, Context ctx) {
 		ElementHelper eh = new ElementHelper(self);
-		this.id = Integer.parseInt(self.getAttribute("id"));
+		this.id = eh.getInt("id");
 		this.maxSubordinates = eh.getInt("maxSubordinates", 0);
 		this.jsonPublishDelayMin = eh.getLong("jsonPublishDelayMin", 30000l);
 		this.providerMatchBidirectionally = eh.getBoolean("providerMatchBidirectionally", true);
@@ -184,7 +184,7 @@ class App {
 		this.switchers = this.services.values().stream().flatMap(s -> s.switchers.values().stream())
 				.flatMap(e -> e.stream()).peek(s -> s.getApps().add(this))
 				.collect(Collectors.groupingBy(Switcher::getType));
-		List<Provider> shareProviders = Arrays.stream(self.getAttribute("shareProvider").split(",")).map(String::trim)
+		List<Provider> shareProviders = Arrays.stream(eh.getString("shareProvider").split(",")).map(String::trim)
 				.filter(s -> !s.isEmpty()).map(Integer::parseInt).map(pvid -> ShareProvider.get(ctx, pvid))
 				.peek(cp -> cp.link(this)).collect(Collectors.toList());
 		this.sharePvids = shareProviders.stream().map(Provider::getId).collect(Collectors.toList());

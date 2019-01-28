@@ -27,7 +27,8 @@ class ThreadPoolExecutorMBean implements DynamicMBean {
 				new MBeanAttributeInfo("CorePoolSize", "java.lang.Integer", "CorePoolSize", true, true, false),
 				new MBeanAttributeInfo("MaximumPoolSize", "java.lang.Integer", "MaximumPoolSize", true, true, false),
 				new MBeanAttributeInfo("LargestPoolSize", "java.lang.Integer", "LargestPoolSize", true, false, false),
-				new MBeanAttributeInfo("KeepAliveTime", "java.lang.Long", "KeepAliveTime", true, true, false), };
+				new MBeanAttributeInfo("KeepAliveTime", "java.lang.Long", "KeepAliveTime", true, true, false),
+				new MBeanAttributeInfo("QueueLength", "java.lang.Integer", "QueueLength", true, false, false), };
 		this.info = new MBeanInfo(getClass().getName(), name, attrinfo, null, null, null);
 		this.resource = MBeans.register(MBeans.root(), this, "limax.util:type=ConcurrentEnvironment,name=" + name);
 	}
@@ -59,6 +60,8 @@ class ThreadPoolExecutorMBean implements DynamicMBean {
 			return executor.getLargestPoolSize();
 		case "KeepAliveTime":
 			return executor.getKeepAliveTime(TimeUnit.MILLISECONDS);
+		case "QueueLength":
+			return executor.getQueue().size();
 		}
 		return null;
 	}

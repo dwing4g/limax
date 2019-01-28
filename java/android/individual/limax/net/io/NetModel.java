@@ -16,7 +16,13 @@ import limax.util.MBeans;
 import limax.util.Resource;
 
 public final class NetModel {
+	public final static int SSL_NEED_CLIENT_AUTH = 1;
+	public final static int SSL_WANT_CLIENT_AUTH = 2;
+	final static int SSL_SERVER_MODE = 4;
+
 	private final static int delayPoolSize = Integer.getInteger("limax.net.io.NetModel.delayPoolSize", 1).intValue();
+	private final static List<ServerContext> serverContexts = new ArrayList<ServerContext>();
+	private static volatile boolean closed = true;
 	static PollPolicy pollPolicy;
 	static HashExecutor processPool;
 	static ScheduledThreadPoolExecutor delayPool;
@@ -29,7 +35,9 @@ public final class NetModel {
 	private NetModel() {
 	}
 
-	public static void initialize(PollPolicy pp, int processPoolSize) throws IOException {
+	public static synchronized void initialize(PollPolicy pp, int processPoolSize) throws IOException {
+		if (!closed)
+			return;
 		ConcurrentEnvironment env = ConcurrentEnvironment.getInstance();
 		pollPolicy = pp;
 		env.newFixedThreadPool("limax.net.io.NetModel.processPool", processPoolSize);
@@ -37,11 +45,11 @@ public final class NetModel {
 		delayPool = env.newScheduledThreadPool("limax.net.io.NetModel.delayPool", delayPoolSize);
 		mbeans = MBeans.register(MBeans.root(), new TaskStateMXBean() {
 			public long getTotal() {
-				return NetTaskImpl.total.longValue();
+				return AbstractNetTask.total.longValue();
 			}
 
 			public long getRunning() {
-				return NetTaskImpl.running.longValue();
+				return AbstractNetTask.running.longValue();
 			}
 
 			public List<Integer> getPollTaskSize() {
@@ -51,44 +59,58 @@ public final class NetModel {
 				return l;
 			}
 		}, "limax.net.io:type=NetModel,name=TaskState");
+		closed = false;
 	}
 
-	public static void unInitialize() {
+	public static synchronized void unInitialize() {
+		if (closed)
+			return;
 		ConcurrentEnvironment env = ConcurrentEnvironment.getInstance();
-		pollPolicy.cleanup();
+		for (ServerContext context : serverContexts)
+			try {
+				context.close();
+			} catch (IOException e) {
+			}
+		serverContexts.clear();
+		pollPolicy.shutdown();
 		env.shutdown("limax.net.io.NetModel.delayPool", "limax.net.io.NetModel.processPool");
 		mbeans.close();
+		closed = true;
 	}
 
-	public static ServerContext addServer(SocketAddress sa, int backlog, int rsize, int wsize,
-			ServerContext.NetTaskConstructor constructor, boolean autoOpen) throws IOException {
-		ServerContextImpl context = new ServerContextImpl(sa, backlog, rsize, wsize, constructor);
+	public static ServerContext addServer(SocketAddress sa, int backlog, int rsize, int wsize, SSLContext sslContext,
+			int sslMode, ServerContext.NetTaskConstructor constructor, boolean autoOpen, boolean asynchronous)
+			throws IOException {
+		if (closed)
+			throw new IllegalStateException("NetModel closed");
+		PollServerContext context = new PollServerContext(sa, backlog, rsize, wsize, sslContext, sslMode, constructor);
 		if (autoOpen)
 			context.open();
+		synchronized (NetModel.class) {
+			serverContexts.add(context);
+		}
 		return context;
 	}
 
 	public static void addClient(SocketAddress sa, NetTask task) throws IOException {
+		if (closed)
+			throw new IllegalStateException("NetModel closed");
 		SocketChannel sc = SocketChannel.open();
 		sc.configureBlocking(false);
 		sc.connect(sa);
 		pollPolicy.addChannel(sc, SelectionKey.OP_CONNECT, task);
 	}
 
-	public static NetTask createClientTask(int rsize, int wsize, NetProcessor processor) {
-		return new ClientTask(rsize, wsize, processor);
+	public static NetTask createClientTask(int rsize, int wsize, SSLContext sslContext, NetProcessor processor,
+			boolean asynchronous) {
+		if (closed)
+			throw new IllegalStateException("NetModel closed");
+		return new PollClientTask(rsize, wsize, sslContext, processor);
 	}
 
 	public static NetTask createServerTask(ServerContext context, NetProcessor processor) {
-		return new ServerTask((ServerContextImpl) context, processor);
-	}
-
-	public static WebSocketTask createWebSocketServerTask(ServerContext context, WebSocketProcessor processor) {
-		throw new UnsupportedOperationException();
-	}
-
-	public static WebSocketTask createWebSocketServerTask(ServerContext context, WebSocketProcessor processor,
-			SSLContext sslContext) {
-		throw new UnsupportedOperationException();
+		if (closed)
+			throw new IllegalStateException("NetModel closed");
+		return new PollServerTask((AbstractServerContext) context, processor);
 	}
 }

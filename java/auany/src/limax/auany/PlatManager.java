@@ -26,6 +26,7 @@ import limax.endpoint.AuanyService.Result;
 import limax.switcher.LmkMasquerade;
 import limax.switcherauany.AuanyAuthArg;
 import limax.switcherauany.AuanyAuthRes;
+import limax.util.ElementHelper;
 import limax.util.Trace;
 
 final class PlatManager {
@@ -91,9 +92,10 @@ final class PlatManager {
 
 	private static void parsePlatElement(Element e, Map<String, HttpHandler> httphandlers)
 			throws ClassNotFoundException, InstantiationException, IllegalAccessException {
-		String classname = e.getAttribute("className");
-		String platname = e.getAttribute("name").toUpperCase();
-		if (null == classname || classname.isEmpty())
+		ElementHelper eh = new ElementHelper(e);
+		String classname = eh.getString("className");
+		String platname = eh.getString("name").toUpperCase();
+		if (classname.isEmpty())
 			return;
 		if (Trace.isDebugEnabled())
 			Trace.debug("Config.load plat classname = " + classname + " platname = " + platname);
@@ -228,8 +230,8 @@ final class PlatManager {
 					res.errorCode = errorCode;
 					response(rpc);
 				} else {
-					if ("flowcontrol".equals(platflag))
-						res.flags |= SessionFlags.FLAG_CAN_FLOW_CONTROL;
+					if ("portforward".equals(platflag))
+						res.flags |= SessionFlags.FLAG_CAN_PORT_FORWARD;
 					Account.login(uid, subid, appid, done(rpc));
 				}
 			});

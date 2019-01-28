@@ -1,4 +1,4 @@
-package limax.net.io;
+package limax.net;
 
 import java.net.SocketAddress;
 
@@ -9,9 +9,7 @@ public interface WebSocketProcessor {
 
 	void process(int code, String reason) throws Exception;
 
-	void shutdown(boolean eventually, Throwable closeReason);
+	void shutdown(Throwable closeReason);
 
-	void setup(WebSocketTask nettask);
-
-	boolean setup(SocketAddress local, WebSocketAddress peer) throws Exception;
+	boolean startup(WebSocketTask nettask, SocketAddress local, WebSocketAddress peer) throws Exception;
 }

@@ -37,7 +37,7 @@ DESTLIMAXLUALIBS_IOS = $(DESTLIMAXLUALIB).$(PLAT_SIMULATOR).$(ARCH_I386).$(LIB_E
 DESTLIMAXLUALIBS_ARM64 = $(DESTLIMAXLUALIB).$(PLAT_IOS).$(ARCH_ARM64).$(LIB_EXT)
 
 DEVELOPER_MACOS = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer
-SDKPATH_MACOS = $(DEVELOPER_MACOS)/SDKs/MacOSX10.11.sdk
+SDKPATH_MACOS = $(DEVELOPER_MACOS)/SDKs/MacOSX.sdk
 
 DEVELOPER_IOS = /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer
 SDKPATH_IOS = $(DEVELOPER_IOS)/SDKs/iPhoneOS.sdk

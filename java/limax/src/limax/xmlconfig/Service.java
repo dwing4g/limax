@@ -122,7 +122,7 @@ public class Service {
 		public Loader() {
 
 			propertiesParserCreator = self0 -> self -> {
-				String filename = self.getAttribute("file");
+				String filename = new ElementHelper(self).getString("file");
 				Properties properties = new Properties();
 				properties.load(new InputStreamReader(new FileInputStream(filename), StandardCharsets.UTF_8));
 				ElementHelper.setProperties(properties);
@@ -132,8 +132,8 @@ public class Service {
 			});
 
 			priorcreatormap.put("Trace", self0 -> self -> {
-				final Trace.Config config = new Trace.Config();
-				final ElementHelper eh = new ElementHelper(self);
+				Trace.Config config = new Trace.Config();
+				ElementHelper eh = new ElementHelper(self);
 				config.setOutDir(eh.getString("outDir", "./trace"));
 				config.setConsole(eh.getBoolean("console", true));
 				config.setRotateHourOfDay(eh.getInt("rotateHourOfDay", 6));
@@ -167,28 +167,29 @@ public class Service {
 		}
 
 		private void loadPropertiesElements(Element self) throws Exception {
-			final NodeList childnodes = self.getElementsByTagName("Properties");
+			NodeList childnodes = self.getElementsByTagName("Properties");
 			for (int i = 0; i < childnodes.getLength(); ++i) {
-				final Node node = childnodes.item(i);
+				Node node = childnodes.item(i);
 				if (Node.ELEMENT_NODE != node.getNodeType())
 					continue;
-				final Element e = (Element) node;
+				Element e = (Element) node;
 				propertiesParserCreator.createConfigParse(e).parse(e);
 			}
 		}
 
 		private ConfigParser getConfigParserInstance(Element e) throws Exception {
-			final String creatorclass = e.getAttribute("parserCreatorClass");
+			ElementHelper eh = new ElementHelper(e);
+			String creatorclass = eh.getString("parserCreatorClass");
 			if (null != creatorclass && creatorclass.length() > 0) {
-				final ConfigParserCreator creator = (ConfigParserCreator) Class.forName(creatorclass).newInstance();
+				ConfigParserCreator creator = (ConfigParserCreator) Class.forName(creatorclass).newInstance();
 				return creator.createConfigParse(e);
 			}
-			final String parserclass = e.getAttribute("parserClass");
+			String parserclass = eh.getString("parserClass");
 			if (null != parserclass && parserclass.length() > 0)
 				return (ConfigParser) Class.forName(parserclass).newInstance();
 
-			final String n = e.getNodeName();
-			final ConfigParserCreator creator = normalcreatormap.get(n);
+			String n = e.getNodeName();
+			ConfigParserCreator creator = normalcreatormap.get(n);
 			if (null == creator)
 				throw new RuntimeException("unknown element name = " + n + "!");
 			return creator.createConfigParse(e);

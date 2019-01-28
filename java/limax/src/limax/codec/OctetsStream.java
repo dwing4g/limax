@@ -3,7 +3,7 @@ package limax.codec;
 import java.nio.charset.Charset;
 
 public final class OctetsStream extends Octets {
-	private static Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
+	private static final Charset DEFAULT_CHARSET = Charset.forName("UTF-8");
 
 	private static final long serialVersionUID = 5287217526924957555L;
 	private static final int MAXSPARE = 8192;

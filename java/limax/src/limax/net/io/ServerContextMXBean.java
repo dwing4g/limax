@@ -1,13 +1,13 @@
 package limax.net.io;
 
 public interface ServerContextMXBean extends ServerContext {
-	int getReadBufferSize();
+	int getRecvBufferSize();
 
-	void setReadBufferSize(int size);
+	void setRecvBufferSize(int size);
 
-	int getWriteBufferSize();
+	int getSendBufferSize();
 
-	void setWriteBufferSize(int size);
+	void setSendBufferSize(int size);
 
 	int getBacklog();
 

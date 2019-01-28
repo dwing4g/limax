@@ -8,14 +8,12 @@ import java.util.Set;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import javax.net.ssl.SSLContext;
-
 import limax.codec.CodecException;
 import limax.codec.Octets;
 import limax.codec.OctetsStream;
 import limax.net.io.NetModel;
+import limax.net.io.NetTask;
 import limax.net.io.ServerContext;
-import limax.net.io.WebSocketProcessor;
 import limax.util.Dispatcher;
 import limax.util.Trace;
 
@@ -56,17 +54,14 @@ class ServerManagerImpl extends AbstractManager
 		this.config = config;
 		this.listener = listener;
 		final boolean webSocketEnabled = config.isWebSocketEnabled();
-		final SSLContext sslContext = config.getSSLContext();
 		this.context = NetModel.addServer(config.getLocalAddress(), config.getBacklog(), config.getInputBufferSize(),
-				config.getOutputBufferSize(), new ServerContext.NetTaskConstructor() {
+				config.getOutputBufferSize(), config.getSSLContext(), 0, new ServerContext.NetTaskConstructor() {
 					@Override
-					public Object newInstance(ServerContext context) {
-						if (!webSocketEnabled)
-							return NetModel.createServerTask(context, new StateTransportImpl(ServerManagerImpl.this));
-						WebSocketProcessor p = new WebSocketTransportImpl(ServerManagerImpl.this);
-						if (sslContext == null)
-							return NetModel.createWebSocketServerTask(context, p);
-						return NetModel.createWebSocketServerTask(context, p, sslContext);
+					public NetTask newInstance(ServerContext context) {
+						return webSocketEnabled
+								? WebSocketServer.createServerTask(context,
+										new WebSocketTransportImpl(ServerManagerImpl.this))
+								: NetModel.createServerTask(context, new StateTransportImpl(ServerManagerImpl.this));
 					}
 
 					@Override
@@ -74,7 +69,7 @@ class ServerManagerImpl extends AbstractManager
 						return ServerManagerImpl.this.getClass().getName() + " "
 								+ ServerManagerImpl.this.config.getName();
 					}
-				}, false);
+				}, false, config.isAsynchronous());
 		this.wrapper = wrapper;
 		this.dispatcher = config.getDispatcher();
 		listener.onManagerInitialized(this, this.config);

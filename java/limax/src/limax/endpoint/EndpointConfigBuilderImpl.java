@@ -161,6 +161,11 @@ final class EndpointConfigBuilderImpl implements EndpointConfigBuilder {
 			return 5000;
 		}
 
+		@Override
+		public boolean isAsynchronous() {
+			return false;
+		}
+
 	};
 
 	@Override

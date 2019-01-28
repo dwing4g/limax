@@ -9,7 +9,7 @@ final class Alarm {
 	private long delay;
 	private boolean update;
 
-	public Alarm(final Runnable task) {
+	public Alarm(Runnable task) {
 		this.task = task;
 	}
 

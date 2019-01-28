@@ -20,6 +20,7 @@ public class ClientManagerConfigBuilder implements ConfigBuilder {
 	private SocketAddress peerAddress = null;
 	private boolean autoReconnect = false;
 	private long connectTimeout = 5000;
+	private boolean asynchronous;
 
 	public ClientManagerConfigBuilder() {
 	}
@@ -38,6 +39,7 @@ public class ClientManagerConfigBuilder implements ConfigBuilder {
 		this.peerAddress = config.getPeerAddress();
 		this.autoReconnect = config.isAutoReconnect();
 		this.connectTimeout = config.getConnectTimeout();
+		this.asynchronous = config.isAsynchronous();
 	}
 
 	@Override
@@ -112,6 +114,11 @@ public class ClientManagerConfigBuilder implements ConfigBuilder {
 			public String toString() {
 				return name + " " + peerAddress;
 			}
+
+			@Override
+			public boolean isAsynchronous() {
+				return asynchronous;
+			}
 		};
 	}
 
@@ -177,6 +184,11 @@ public class ClientManagerConfigBuilder implements ConfigBuilder {
 
 	public ClientManagerConfigBuilder connectTimeout(long connectTimeout) {
 		this.connectTimeout = connectTimeout;
+		return this;
+	}
+
+	public ClientManagerConfigBuilder asynchronous(boolean asynchronous) {
+		this.asynchronous = asynchronous;
 		return this;
 	}
 }

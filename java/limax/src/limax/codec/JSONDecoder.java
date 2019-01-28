@@ -148,7 +148,10 @@ public final class JSONDecoder implements CharConsumer {
 		@Override
 		public boolean accept(char c) {
 			if (stage < 0) {
-				stage = (stage << 4) | Character.digit(c, 16);
+				int ch = Character.digit(c, 16);
+				if (ch == -1)
+					throw new RuntimeException("bad hex char <" + c + ">");
+				stage = (stage << 4) | ch;
 				if ((stage & 0xffff0000) == 0xfff00000) {
 					sb.append((char) stage);
 					stage = 0x40000000;
@@ -156,10 +159,9 @@ public final class JSONDecoder implements CharConsumer {
 			} else if ((stage & 0x20000000) != 0) {
 				switch (c) {
 				case '"':
-					sb.append('"');
-					break;
 				case '\\':
-					sb.append('\\');
+				case '/':
+					sb.append(c);
 					break;
 				case 'b':
 					sb.append('\b');
@@ -179,6 +181,8 @@ public final class JSONDecoder implements CharConsumer {
 				case 'u':
 					stage = 0xfffffff0;
 					break;
+				default:
+					throw new RuntimeException("unsupported escape character <" + c + ">");
 				}
 				stage &= ~0x20000000;
 			} else if (c == '"') {

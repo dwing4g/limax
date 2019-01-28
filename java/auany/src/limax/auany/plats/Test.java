@@ -10,6 +10,7 @@ import limax.auany.PlatProcess;
 import limax.defines.ErrorCodes;
 import limax.defines.ErrorSource;
 import limax.endpoint.AuanyService.Result;
+import limax.util.ElementHelper;
 
 public final class Test implements PlatProcess {
 
@@ -17,7 +18,7 @@ public final class Test implements PlatProcess {
 
 	@Override
 	public void init(Element ele, Map<String, HttpHandler> httphandlers) {
-		final String temp = ele.getAttribute("password");
+		final String temp = new ElementHelper(ele).getString("password");
 		if (!temp.isEmpty())
 			password = temp;
 	}

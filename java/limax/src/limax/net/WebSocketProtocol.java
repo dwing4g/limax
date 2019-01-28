@@ -86,7 +86,7 @@ public abstract class WebSocketProtocol implements Runnable, Marshal {
 	}
 
 	public Manager getManager() {
-		return getTransport().getManager();
+		return transport.getManager();
 	}
 
 	@Override

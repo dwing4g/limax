@@ -20,7 +20,7 @@ class ShareProvider extends Provider {
 	private long jsonPublishDelayMin;
 
 	private ShareProvider(Element self, Context ctx) {
-		super(Integer.parseInt(self.getAttribute("id")), self.getAttribute("key"));
+		super(new ElementHelper(self).getInt("id"), new ElementHelper(self).getString("key"));
 		if (getId() <= 0)
 			ctx.updateErrorMessage("Provider id must > 0, but " + getId());
 		this.jsonPublishDelayMin = new ElementHelper(self).getLong("jsonPublishDelayMin", 30000l);

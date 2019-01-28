@@ -86,7 +86,7 @@ public final class XmlConfig {
 			allowUseScript = Enable.parse(eh.getString("useScript"));
 			sessionTimeout = eh.getLong("sessionTimeout", 0);
 			state.merge(ProviderClient.getDefaultState());
-			String clsname = self.getAttribute("additionalStateClass");
+			String clsname = eh.getString("additionalStateClass");
 			if (!clsname.isEmpty())
 				state.merge((State) Class.forName(clsname).getMethod("getDefaultState").invoke(null));
 		}
@@ -134,8 +134,8 @@ public final class XmlConfig {
 			KeyProtector keyProtector = KeyProtector.valueOf(eh.getString("keyProtector", "HMACSHA256"));
 			long defaultExpire = eh.getLong("defaultExpire", 3600000L);
 			Map<URI, Long> expires = XMLUtils.getChildElements(self).stream()
-					.filter(e -> e.getNodeName().equals("Expire")).collect(Collectors.toMap(
-							e -> URI.create(e.getAttribute("group")), e -> Long.parseLong(e.getAttribute("value"))));
+					.filter(e -> e.getNodeName().equals("Expire")).map(ElementHelper::new)
+					.collect(Collectors.toMap(e -> URI.create(e.getString("group")), e -> e.getLong("value")));
 			String defaultGroup = eh.getString("defaultGroup", null);
 			Optional<Element> optional = XMLUtils.getChildElements(self).stream()
 					.filter(e -> e.getNodeName().equals("PKIX")).findFirst();
@@ -160,9 +160,9 @@ public final class XmlConfig {
 				groups = keyAllocator.getURIs().keySet();
 			} else {
 				Map<URI, byte[]> keyAllocator = XMLUtils.getChildElements(self).stream()
-						.filter(e -> e.getNodeName().equals("SharedKey"))
-						.map(i -> new Pair<>(URI.create(i.getAttribute("group")),
-								i.getAttribute("key").getBytes(StandardCharsets.UTF_8)))
+						.filter(e -> e.getNodeName().equals("SharedKey")).map(ElementHelper::new)
+						.map(e -> new Pair<>(URI.create(e.getString("group")),
+								e.getString("key").getBytes(StandardCharsets.UTF_8)))
 						.collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
 				transformer = new Transformer(keyAllocator);
 				groups = keyAllocator.keySet();
@@ -319,7 +319,8 @@ public final class XmlConfig {
 
 		@Override
 		public ConfigParser createConfigParse(Element self) throws Exception {
-			String clsname = self.getAttribute("className");
+			ElementHelper eh = new ElementHelper(self);
+			String clsname = eh.getString("className");
 			ProviderListener listener;
 			if (clsname.isEmpty()) {
 				listener = new ProviderListener() {
@@ -346,7 +347,7 @@ public final class XmlConfig {
 				};
 			} else {
 				Class<?> cls = Class.forName(clsname);
-				String singleton = self.getAttribute("classSingleton");
+				String singleton = eh.getString("classSingleton");
 				listener = (ProviderListener) (singleton.isEmpty() ? cls.newInstance()
 						: cls.getMethod(singleton).invoke(null));
 			}
@@ -371,7 +372,7 @@ public final class XmlConfig {
 				for (Element e : XMLUtils.getChildElements(_self).stream()
 						.filter(e -> e.getNodeName().equals("Manager"))
 						.filter(e -> new ElementHelper(e).getBoolean("enable", true)).collect(Collectors.toList())) {
-					String type = e.getAttribute("type");
+					String type = new ElementHelper(e).getString("type");
 					if (type.equalsIgnoreCase("client"))
 						config.addClientManagerConfigBuilder(e);
 					else if (type.equalsIgnoreCase("server"))
@@ -399,7 +400,7 @@ public final class XmlConfig {
 					meta.getProcedure().initialize(e);
 					break;
 				case "Table":
-					meta.getTable(e.getAttribute("name")).initialize(e);
+					meta.getTable(new ElementHelper(e).getString("name")).initialize(e);
 					break;
 				default:
 					Trace.error("unknown tag Zdb." + e.getNodeName());

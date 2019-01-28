@@ -14,6 +14,7 @@ import limax.auany.AccountLogger;
 import limax.sql.SQLConnectionConsumer;
 import limax.sql.SQLPooledExecutor;
 import limax.util.ConcurrentEnvironment;
+import limax.util.ElementHelper;
 import limax.util.Pair;
 import limax.util.Trace;
 import limax.util.XMLUtils;
@@ -37,7 +38,7 @@ public class AccountLoggerMysql implements AccountLogger {
 	public void initialize(Element e) throws Exception {
 		List<String> sqls = XMLUtils.getChildElements(e).stream().filter(node -> node.getNodeName().equals("sql"))
 				.map(node -> XMLUtils.getCDataTextChildren(node)).collect(Collectors.toList());
-		sqlExecutor = new SQLPooledExecutor(e.getAttribute("url"), 1);
+		sqlExecutor = new SQLPooledExecutor(new ElementHelper(e).getString("url"), 1);
 		sqlExecutor.execute(conn -> {
 			try (Statement st = conn.createStatement()) {
 				for (String sql : sqls)

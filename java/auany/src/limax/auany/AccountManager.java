@@ -8,6 +8,7 @@ import org.w3c.dom.Element;
 
 import com.sun.net.httpserver.HttpHandler;
 
+import limax.util.ElementHelper;
 import limax.util.Helper;
 import limax.util.Trace;
 import limax.util.XMLUtils;
@@ -39,7 +40,7 @@ public class AccountManager {
 	static void initialize(Element self, Map<String, HttpHandler> httphandlers) throws Exception {
 		for (Element e : XMLUtils.getChildElements(self).stream().filter(node -> node.getNodeName().equals("logger"))
 				.toArray(Element[]::new)) {
-			Class<?> clazz = Class.forName(e.getAttribute("className"));
+			Class<?> clazz = Class.forName(new ElementHelper(e).getString("className"));
 			if (Helper.interfaceSet(clazz).contains(AccountLogger.class)) {
 				AccountLogger logger = (AccountLogger) clazz.newInstance();
 				logger.initialize(e);

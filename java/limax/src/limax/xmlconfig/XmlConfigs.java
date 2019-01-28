@@ -59,6 +59,8 @@ public class XmlConfigs {
 		boolean isInputCompress();
 
 		boolean isOutputCompress();
+
+		boolean isAsynchronous();
 	}
 
 	private XmlConfigs() {
@@ -106,6 +108,7 @@ public class XmlConfigs {
 			autoListen(eh.getBoolean("autoStartListen", true));
 			boolean enabled = eh.getBoolean("webSocketEnabled", false);
 			webSocketEnabled(enabled);
+			asynchronous(eh.getBoolean("asynchronous", false));
 			if (enabled) {
 				String keyStoreFile = eh.getString("keyStore", "");
 				if (keyStoreFile.length() > 0)
@@ -180,6 +183,11 @@ public class XmlConfigs {
 					public int getBacklog() {
 						return config.getBacklog();
 					}
+
+					@Override
+					public boolean isAsynchronous() {
+						return config.isAsynchronous();
+					}
 				}, "limax.xmlconfig:type=XmlConfigs,name=server-" + name + "_"
 						+ localAddress.toString().replace(':', '_'));
 		}
@@ -204,6 +212,7 @@ public class XmlConfigs {
 			final InetSocketAddress remoteaddr = new InetSocketAddress(remoteIp, remotePort);
 			peerAddress(remoteaddr);
 			autoReconnect(eh.getBoolean("autoReconnect", false));
+			asynchronous(eh.getBoolean("asynchronous", false));
 			if (!name.isEmpty())
 				Service.JMXRegister(new ClientManagerConfigMXBean() {
 					private final ClientManagerConfig config = build();
@@ -259,6 +268,11 @@ public class XmlConfigs {
 					public boolean isAutoreconnect() {
 						return config.isAutoReconnect();
 					}
+
+					@Override
+					public boolean isAsynchronous() {
+						return config.isAsynchronous();
+					}
 				}, "limax.xmlconfig:type=XmlConfigs,name=client-" + name + "_"
 						+ remoteaddr.toString().replace(':', '_'));
 		}
@@ -307,12 +321,13 @@ public class XmlConfigs {
 
 		@Override
 		public ConfigParser createConfigParse(Element self) throws Exception {
-			final String name = self.getAttribute("name");
+			ElementHelper eh = new ElementHelper(self);
+			final String name = eh.getString("name");
 			if (name.isEmpty())
 				throw new IllegalArgumentException("Manager need a name");
-			final String clsname = self.getAttribute("className");
+			final String clsname = eh.getString("className");
 			final Listener listener;
-			final String type = self.getAttribute("type").toLowerCase();
+			final String type = eh.getString("type").toLowerCase();
 			if (clsname.isEmpty()) {
 				if (type.equalsIgnoreCase("client"))
 					listener = defaultClientListener;
@@ -322,7 +337,7 @@ public class XmlConfigs {
 					throw new IllegalArgumentException("Manager name = " + name + " unknown type = " + type);
 			} else {
 				Class<?> cls = Class.forName(clsname);
-				String singleton = self.getAttribute("classSingleton");
+				String singleton = eh.getString("classSingleton");
 				listener = (Listener) (singleton.isEmpty() ? cls.newInstance() : cls.getMethod(singleton).invoke(null));
 			}
 			if (type.equalsIgnoreCase("client")) {
@@ -343,9 +358,10 @@ public class XmlConfigs {
 		}
 
 		public static State getDefaultState(Element self, Listener listener) throws Exception {
-			String classname = self.getAttribute("defaultStateClass");
+			ElementHelper eh = new ElementHelper(self);
+			String classname = eh.getString("defaultStateClass");
 			if (classname.isEmpty())
-				classname = self.getAttribute("className");
+				classname = eh.getString("className");
 			else
 				listener = null;
 			return (State) Class.forName(classname).getMethod("getDefaultState").invoke(listener);
@@ -355,12 +371,13 @@ public class XmlConfigs {
 	public final static class GlobalIdConfigParserCreator implements ConfigParserCreator {
 		@Override
 		public ConfigParser createConfigParse(Element self) throws Exception {
-			GlobalId.setTimeout(new ElementHelper(self).getLong("timeout", 2000));
+			ElementHelper eh = new ElementHelper(self);
+			GlobalId.setTimeout(eh.getLong("timeout", 2000));
 			final ClientManagerConfigBuilder builder = new ClientManagerConfigXmlBuilder()
 					.defaultState(GlobalIdListener.getInstance().getDefaultState());
 			Service.addRunAfterEngineStartTask(
 					() -> launchManagerTask(builder.dispatcher(new Dispatcher(Engine.getProtocolExecutor())),
-							GlobalIdListener.getInstance(), self.getAttribute("name")));
+							GlobalIdListener.getInstance(), eh.getString("name")));
 			return (ConfigParser) builder;
 		}
 	}
@@ -427,13 +444,13 @@ public class XmlConfigs {
 
 		@Override
 		public void parse(Element self) throws Exception {
-			final ElementHelper eh = new ElementHelper(self);
+			ElementHelper eh = new ElementHelper(self);
 			rmiPort = eh.getInt("rmiPort", 0);
 			serverPort = eh.getInt("serverPort", 0);
 			host = eh.getString("host", host);
 			if (rmiPort > 0 && serverPort > 0)
-				Service.addRunAfterEngineStopTask(MBeanServer.start(host, serverPort, rmiPort,
-						self.getAttribute("username"), self.getAttribute("password")));
+				Service.addRunAfterEngineStopTask(MBeanServer.start(host, serverPort, rmiPort, eh.getString("username"),
+						eh.getString("password")));
 			Service.JMXRegister(this, "limax.xmlconfig:type=XmlConfigs,name=jmxserver");
 		}
 
@@ -451,7 +468,7 @@ public class XmlConfigs {
 	public static final class NodeService implements ConfigParser {
 		@Override
 		public void parse(Element self) throws Exception {
-			final ElementHelper eh = new ElementHelper(self);
+			ElementHelper eh = new ElementHelper(self);
 			String module = eh.getString("module");
 			String[] parameters = XMLUtils.getChildElements(self).stream()
 					.filter(e -> e.getNodeName().equalsIgnoreCase("parameter"))

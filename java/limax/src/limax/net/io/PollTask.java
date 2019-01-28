@@ -1,7 +1,6 @@
 package limax.net.io;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectableChannel;
@@ -9,13 +8,12 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.Queue;
 
 import limax.util.Trace;
 
 class PollTask implements Runnable, Comparable<PollTask> {
 	private final Selector sel;
-	private volatile boolean closed;
+	private volatile int closing;
 	private volatile int size;
 
 	int size() {
@@ -35,73 +33,25 @@ class PollTask implements Runnable, Comparable<PollTask> {
 		return ch.register(sel.wakeup(), ops, att);
 	}
 
-	void close() {
-		closed = true;
+	void shutdown() {
+		closing = 1;
 		sel.wakeup();
 	}
 
-	private void doAccept(SelectionKey key) throws IOException {
-		ServerContextImpl context = (ServerContextImpl) key.attachment();
-		NetOperation op = context.newInstance();
-		SocketChannel channel = ((ServerSocketChannel) key.channel()).accept();
-		channel.configureBlocking(false);
-		op.attachKey(NetModel.pollPolicy.addChannel(channel, 0, op));
-	}
-
-	private void doConnect(SelectionKey key) throws IOException {
-		NetOperation op = (NetOperation) key.attachment();
-		SocketChannel channel = (SocketChannel) key.channel();
-		if (!channel.finishConnect())
-			throw new IOException("impossibly, channel's socket is NOT connected");
-		op.attachKey(key.interestOps(0));
-	}
-
-	private void doRead(SelectionKey key) throws IOException {
-		NetOperation op = (NetOperation) key.attachment();
-		SocketChannel channel = (SocketChannel) key.channel();
-		ByteBuffer rbuf = op.getReaderBuffer();
-		synchronized (rbuf) {
-			if (channel.read(rbuf) == -1)
-				throw new IOException("the channel has reached end-of-stream");
-			if (!rbuf.hasRemaining()) {
-				key.interestOps(key.interestOps() & ~SelectionKey.OP_READ);
-				op.onReadBufferFull();
-			}
-		}
-	}
-
-	private void doWrite(SelectionKey key) throws IOException {
-		NetOperation op = (NetOperation) key.attachment();
-		SocketChannel channel = (SocketChannel) key.channel();
-		Queue<ByteBuffer> vbuf = op.getWriteBuffer();
-		synchronized (vbuf) {
-			op.bytesSent(channel.write(vbuf.toArray(new ByteBuffer[0])));
-			while (!vbuf.isEmpty() && !vbuf.peek().hasRemaining())
-				vbuf.poll();
-			if (vbuf.isEmpty()) {
-				if (op.isFinalInitialized()) {
-					op.setFinal();
-					throw new IOException("channel closed manually");
-				}
-				key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);
-				op.onWriteBufferEmpty();
-			}
-		}
-	}
-
-	private void doClose(SelectionKey key, Throwable e) {
-		Object att = key.attachment();
-		if (att instanceof NetOperation)
-			((NetOperation) att).close(e);
-		else if (att instanceof ServerContextImpl)
+	synchronized void awaitTermination() {
+		while (closing != 2 || size != 0)
 			try {
-				((ServerContextImpl) att).close();
-			} catch (IOException e1) {
+				wait();
+			} catch (InterruptedException e) {
 			}
+		try {
+			sel.close();
+		} catch (IOException e) {
+		}
 	}
 
 	@Override
-	public final void run() {
+	public void run() {
 		try {
 			synchronized (this) {
 			}
@@ -109,41 +59,29 @@ class PollTask implements Runnable, Comparable<PollTask> {
 			sel.select();
 			for (SelectionKey key : sel.selectedKeys()) {
 				try {
-					if (key.isAcceptable()) {
+					int readyOps = key.readyOps();
+					if ((readyOps & SelectionKey.OP_ACCEPT) != 0) {
 						try {
-							doAccept(key);
-						} catch (Throwable e) {
+							PollNetTask task = ((PollServerContext) key.attachment()).newInstance();
+							task.attachKey(NetModel.pollPolicy.addChannel(
+									((ServerSocketChannel) key.channel()).accept().configureBlocking(false), 0, task));
+						} catch (Exception e) {
 						}
-					} else if (key.isConnectable()) {
+					} else if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
+						PollNetTask task = (PollNetTask) key.attachment();
 						try {
-							doConnect(key);
-						} catch (Throwable e) {
-							doClose(key, e);
+							((SocketChannel) key.channel()).finishConnect();
+							task.attachKey(key.interestOps(0));
+						} catch (Exception e) {
+							task.close(e);
 						}
 					} else {
-						Throwable catched = null;
-						boolean needsche = false;
-						if (key.isReadable()) {
-							try {
-								doRead(key);
-								needsche = true;
-							} catch (Throwable e) {
-								catched = e;
-							}
+						PollNetTask task = (PollNetTask) key.attachment();
+						synchronized (key) {
+							key.interestOps(key.interestOps() & ~readyOps);
+							task.readyOps |= readyOps;
 						}
-						if (key.isWritable()) {
-							try {
-								doWrite(key);
-								needsche = true;
-							} catch (Throwable e) {
-								if (catched == null)
-									catched = e;
-							}
-						}
-						if (catched != null)
-							doClose(key, catched);
-						else if (needsche)
-							((NetOperation) key.attachment()).schedule();
+						task.schedule();
 					}
 				} catch (CancelledKeyException e) {
 				}
@@ -152,15 +90,27 @@ class PollTask implements Runnable, Comparable<PollTask> {
 			if (Trace.isDebugEnabled())
 				Trace.debug("limax.net.io.PollTask", e);
 		} finally {
-			if (closed) {
-				IOException e = new IOException("channel closed manually");
-				for (SelectionKey key : sel.keys())
-					doClose(key, e);
-				try {
-					sel.close();
-				} catch (IOException e1) {
+			switch (closing) {
+			case 1:
+				for (SelectionKey key : sel.keys()) {
+					Object att = key.attachment();
+					if (att instanceof PollNetTask)
+						((PollNetTask) att).onServiceShutdown();
 				}
-			} else {
+				try {
+					sel.selectNow();
+				} catch (IOException e) {
+				}
+				closing = 2;
+			case 2:
+				if ((size = sel.keys().size()) > 0)
+					NetModel.pollPolicy.schedule(this);
+				else
+					synchronized (this) {
+						notify();
+					}
+				break;
+			default:
 				size = sel.keys().size();
 				NetModel.pollPolicy.schedule(this);
 			}

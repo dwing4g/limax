@@ -43,9 +43,9 @@ import limax.net.SizePolicyException;
 import limax.net.StateTransport;
 import limax.net.Transport;
 import limax.net.UnknownProtocolHandler;
+import limax.net.WebSocketAddress;
 import limax.net.WebSocketProtocol;
 import limax.net.WebSocketTransport;
-import limax.net.io.WebSocketAddress;
 import limax.provider.DirectDispatcher;
 import limax.providerendpoint.ViewMemberData;
 import limax.providerendpoint.ViewVariableData;
@@ -117,8 +117,8 @@ public final class SwitcherListener implements ServerListener {
 			return "sessionid=" + sessionid + ", flags=" + flags + ", pvids=" + pvids;
 		}
 
-		public boolean isCanFlowControl() {
-			return SessionFlags.FLAG_CAN_FLOW_CONTROL == (SessionFlags.FLAG_CAN_FLOW_CONTROL & flags);
+		public boolean isCanPortForward() {
+			return SessionFlags.FLAG_CAN_PORT_FORWARD == (SessionFlags.FLAG_CAN_PORT_FORWARD & flags);
 		}
 
 		private boolean _isReady() {
@@ -425,7 +425,7 @@ public final class SwitcherListener implements ServerListener {
 		StateTransport transport = (StateTransport) p.getTransport();
 		SessionObject so = (SessionObject) transport.getSessionObject();
 		transport.resetAlarm(keepAliveTimeout);
-		if (so.isCanFlowControl()) {
+		if (so.isCanPortForward()) {
 			PortForwardManager.getInstance().onPortForward(p);
 			return;
 		}

@@ -129,7 +129,6 @@ public class SessionManager implements ProviderListener {
 			return AppManager.verifyProviderKey(pvid, key) ? ErrorCodes.SUCCEED
 					: ErrorCodes.AUANY_CHECK_PROVIDER_KEY_BAD_KEY;
 		} catch (Exception e) {
-			e.printStackTrace();
 			return ErrorCodes.AUANY_CHECK_PROVIDER_KEY_UNKNOWN_PVID;
 		}
 	}

@@ -42,7 +42,7 @@ public class PayLoggerMysql implements PayLogger {
 		List<String> sqls = XMLUtils.getChildElements(e).stream().filter(node -> node.getNodeName().equals("sql"))
 				.map(node -> XMLUtils.getCDataTextChildren(node)).collect(Collectors.toList());
 		int pool = new ElementHelper(e).getInt("pool", 3);
-		sqlExecutor = new SQLPooledExecutor(e.getAttribute("url"), pool);
+		sqlExecutor = new SQLPooledExecutor(new ElementHelper(e).getString("url"), pool);
 		sqlExecutor.execute(conn -> {
 			try (Statement st = conn.createStatement()) {
 				for (String sql : sqls)

@@ -707,10 +707,9 @@ namespace limax {
 				switch (c)
 				{
 				case '"':
-					sb->push_back('"');
-					break;
 				case '\\':
-					sb->push_back('\\');
+				case '/':
+					sb->push_back(c);
 					break;
 				case 'b':
 					sb->push_back('\b');

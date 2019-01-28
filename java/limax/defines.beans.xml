@@ -70,7 +70,7 @@
 	<bean name="SessionFlags">
 		<enum name="FLAG_ACCOUNT_BOUND" type="long" value="0x00000001" />
 		<enum name="FLAG_TEMPORARY_LOGIN" type="long" value="0x00000002" />
-		<enum name="FLAG_CAN_FLOW_CONTROL" type="long" value="0x00000004" />
+		<enum name="FLAG_CAN_PORT_FORWARD" type="long" value="0x00000004" />
 	</bean>
 
 	<bean name="TemporaryCredentialUsage">

@@ -11,7 +11,7 @@
     </Zdb>
     <Trace console="true" level="WARN" outDir="./trace"
         rotateHourOfDay="6" rotateMinute="0"/>
-    <Manager autoStartListen="true" backlog="32"
+    <Manager asynchronous="false" autoStartListen="true" backlog="32"
         checkOutputBuffer="false"
         className="limax.globalid.Main$GlobalIdServer"
         classSingleton="getInstance"

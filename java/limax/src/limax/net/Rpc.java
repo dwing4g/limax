@@ -1,6 +1,5 @@
 package limax.net;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
@@ -13,6 +12,7 @@ import limax.codec.Marshal;
 import limax.codec.MarshalException;
 import limax.codec.Octets;
 import limax.codec.OctetsStream;
+import limax.util.Closeable;
 import limax.util.Trace;
 
 public abstract class Rpc<A extends Marshal, R extends Marshal> extends Skeleton {

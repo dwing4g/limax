@@ -22,13 +22,14 @@
 
 	<target name="init">
 		<ant dir="${limax.java.path}" target="xmlgen" inheritAll="false" />
-		
+
 		<!-- gen files -->
 		<copy todir="src/limax/defines">
 			<fileset dir="${limax.java.path}/gen/limax/defines" />
 		</copy>
 		<copy todir="src/limax/endpoint">
-			<fileset dir="${limax.java.path}/gen/limax/endpoint" />
+			<fileset dir="${limax.java.path}/gen/limax/endpoint"
+				excludes="PortForward.java" />
 		</copy>
 		<copy todir="src/limax/providerendpoint">
 			<fileset dir="${limax.java.path}/gen/limax/providerendpoint" />
@@ -44,8 +45,8 @@
 
 		<!-- src files -->
 		<copy todir="src/limax/codec">
-			<fileset dir="${limax.java.path}/src/limax/codec" >
-			     <exclude name="**/asn1/**"/>
+			<fileset dir="${limax.java.path}/src/limax/codec">
+				<exclude name="**/asn1/**" />
 			</fileset>
 		</copy>
 		<copy todir="src/limax/endpoint">

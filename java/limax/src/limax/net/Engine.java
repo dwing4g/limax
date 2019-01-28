@@ -10,8 +10,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import limax.net.io.FixedCpuPoll;
 import limax.net.io.NetModel;
+import limax.net.io.PollPolicy;
 import limax.util.Closeable;
 import limax.util.ConcurrentEnvironment;
 import limax.util.Dispatcher;
@@ -94,7 +94,7 @@ public class Engine {
 		try {
 			if (!closed)
 				throw new IllegalStateException("engine is not closed!");
-			NetModel.initialize(new FixedCpuPoll(nioCpus), netProcessors);
+			NetModel.initialize(PollPolicy.createFixedCpuPoll(nioCpus), netProcessors);
 			ConcurrentEnvironment env = ConcurrentEnvironment.getInstance();
 			engineExecutor = new Dispatcher(env.newThreadPool("limax.net.Engine.applicationExecutor", 0));
 			applicationExecutor = env.newHashExecutor("limax.net.Engine.applicationExecutor", applicationExecutors);

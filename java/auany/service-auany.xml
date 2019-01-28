@@ -31,8 +31,8 @@
         <!-- xi:include href="payloggermysql.xml"/ -->
         <xi:include href="payloggerfile.xml"/>
         <plat className="limax.auany.plats.Test" name="test" password="123456"/>
-        <plat className="limax.auany.plats.FlowControl"
-            name="flowcontrol" password="flowcontrol!!"/>
+        <plat className="limax.auany.plats.PortForward"
+            name="portforward" password="portforward!!"/>
         <plat className="limax.auany.local.Authenticator" name="local"
             scheduler="8" timeout="2000">
             <radius host="192.168.1.1" port="1812" secret="helloworld"/>
@@ -59,8 +59,8 @@
         defaultStateClass="limax.auany.states.AuanyProvider"
         name="AuanyProvider" pvid="1" sessionTimeout="30000"
         shareKey="shareKeyBetweenProviders" useScript="true" viewManagerClass="limax.auany.auanyviews.ViewManager">
-        <Manager autoStartListen="true" backlog="32"
-            checkOutputBuffer="false"
+        <Manager asynchronous="false" autoStartListen="true"
+            backlog="32" checkOutputBuffer="false"
             defaultStateClass="limax.auany.states.AuanyServer"
             inputBufferSize="65536" localPort="10200" maxSize="0"
             name="AuanyServer" outputBufferSize="65536" type="server"/>

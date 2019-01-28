@@ -12,7 +12,7 @@ import limax.defines.ErrorSource;
 import limax.endpoint.AuanyService.Result;
 import limax.util.ElementHelper;
 
-public final class FlowControl implements PlatProcess {
+public final class PortForward implements PlatProcess {
 
 	private String password = "912349h12i3g487608asf601023g2r";
 

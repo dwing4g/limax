@@ -102,7 +102,7 @@ public final class PayManager {
 			int deliveryQueueScheduler = eh.getInt("deliveryQueueScheduler", 4);
 			for (Element e : XMLUtils.getChildElements(self).stream()
 					.filter(node -> node.getNodeName().equals("logger")).toArray(Element[]::new)) {
-				Class<?> clazz = Class.forName(e.getAttribute("className"));
+				Class<?> clazz = Class.forName(new ElementHelper(e).getString("className"));
 				if (Helper.interfaceSet(clazz).contains(PayLogger.class)) {
 					PayLogger logger = (PayLogger) clazz.newInstance();
 					logger.initialize(e);

@@ -3,26 +3,27 @@
     <ThreadPoolSize applicationExecutors="16" netProcessors="4"
         nioCpus="1" protocolSchedulers="4"/>
     <Limit maxSize="16384" name="limit0"/>
-    <Manager autoStartListen="true" backlog="32"
+    <Manager asynchronous="false" autoStartListen="true" backlog="32"
         checkOutputBuffer="false"
         defaultStateClass="limax.switcher.states.SwitcherServer"
         inputBufferSize="16384" limit="limit0" localPort="10000"
         maxSize="0" name="SwitcherServer" outputBufferSize="16384"
         parserCreatorClass="limax.switcher.Config$SwitcherManagerCreator" type="server"/>
-    <Manager autoStartListen="true" backlog="32"
+    <Manager asynchronous="false" autoStartListen="true" backlog="32"
         checkOutputBuffer="false" inputBufferSize="16384" limit="limit0"
         localPort="10001" name="SwitcherServerWebSocket"
         outputBufferSize="16384"
         parserCreatorClass="limax.switcher.Config$SwitcherManagerCreator"
         type="server" webSocketEnabled="true"/>
-    <Manager autoStartListen="true" backlog="32"
+    <Manager asynchronous="false" autoStartListen="true" backlog="32"
         checkOutputBuffer="false"
         className="limax.switcher.ProviderListener"
         classSingleton="getInstance"
         defaultStateClass="limax.switcher.states.ProviderServer"
         inputBufferSize="16384" limit="limit0" localPort="10100"
         maxSize="0" name="ProviderServer" outputBufferSize="16384" type="server"/>
-    <Manager autoReconnect="true" checkOutputBuffer="false"
+    <Manager asynchronous="false" autoReconnect="true"
+        checkOutputBuffer="false"
         className="limax.switcher.AuanyClientListener"
         classSingleton="getInstance" connectTimeout="5000"
         defaultStateClass="limax.switcher.states.AuanyClient"

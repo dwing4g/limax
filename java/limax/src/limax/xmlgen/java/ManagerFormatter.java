@@ -65,12 +65,14 @@ class ManagerFormatter {
 
 		if (manager.isServer()) {
 			self.setAttribute("type", "server");
+			setter.setIfEmpty("asynchronous", "false");
 			setter.setIfEmpty("localPort", manager.getPort());
 			setter.setIfEmpty("backlog", "32");
 			setter.setIfEmpty("maxSize", "0");
 			setter.setIfEmpty("autoStartListen", "true");
 		} else {
 			self.setAttribute("type", "client");
+			setter.setIfEmpty("asynchronous", "false");
 			setter.setIfEmpty("remoteIp", "127.0.0.1");
 			setter.setIfEmpty("remotePort", manager.getPort());
 			setter.setIfEmpty("autoReconnect", manager.isProvider());

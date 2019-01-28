@@ -26,12 +26,13 @@ class Switcher {
 	private volatile String host;
 
 	private Switcher(Element self, Context ctx) {
-		this.id = Integer.parseInt(self.getAttribute("id"));
+		ElementHelper eh = new ElementHelper(self);
+		this.id = eh.getInt("id");
 		if (this.id <= 0)
 			ctx.updateErrorMessage("Switcher id must > 0, but " + this.id);
-		this.key = self.getAttribute("key");
-		this.info = new SwitcherInfo(self.getAttribute("host"), Integer.parseInt(self.getAttribute("port")));
-		this.type = ServiceType.valueOf(self.getAttribute("type").toUpperCase());
+		this.key = eh.getString("key");
+		this.info = new SwitcherInfo(eh.getString("host"), eh.getInt("port"));
+		this.type = ServiceType.valueOf(eh.getString("type").toUpperCase());
 	}
 
 	private Element createElement(Document doc) {

@@ -70,9 +70,7 @@ local function parse(s)
       end
       if c == '\\' then
         C()
-        if c == '"' then
-        elseif c == '\\' then
-          c = '\\'
+        if c == '"' or c == '\\' or c == '/' then
         elseif c == 'b' then
           c = '\b'
         elseif c == 'f' then
@@ -119,7 +117,7 @@ local function parse(s)
             c = string.char((cp >> 12) & 0x0f | 0xe0, (cp >> 6) & 0x3f | 0x80, cp & 0x3f | 0x80)
           end
         else
-          error("unsupported escape character " .. c)
+          error("unsupported escape character <" .. c .. ">")
         end
       end
       m = m .. c

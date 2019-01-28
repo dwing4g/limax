@@ -1,20 +1,17 @@
-package limax.net.io;
+package limax.net;
 
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Queue;
 
-import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
 
 import limax.codec.Codec;
 import limax.codec.CodecException;
@@ -28,7 +25,10 @@ import limax.codec.RFC2118Decode;
 import limax.codec.RFC2118Encode;
 import limax.codec.SHA1;
 import limax.codec.SinkOctets;
-import limax.net.Transport;
+import limax.net.io.NetModel;
+import limax.net.io.NetProcessor;
+import limax.net.io.NetTask;
+import limax.net.io.ServerContext;
 import limax.util.Helper;
 import limax.util.Trace;
 
@@ -53,7 +53,7 @@ class RFC6455Exception extends Exception {
 }
 
 class RFC6455Server {
-	private final static int maxMessageSize = Integer.getInteger("limax.net.io.RFC6455Server.maxMessageSize", 65536);
+	private final static int maxMessageSize = Integer.getInteger("limax.net.WebSocketServer.maxMessageSize", 65536);
 
 	public final static byte opcodeCont = 0;
 	public final static byte opcodeText = 1;
@@ -67,11 +67,11 @@ class RFC6455Server {
 	public final static short closeVolatilePolicy = 1006;
 	public final static short closeSizeExceed = 1009;
 
-	private OctetsStream os = new OctetsStream();
-	private OctetsStream data = new OctetsStream();
+	private final OctetsStream os = new OctetsStream();
+	private final Octets data = new Octets();
 	private byte opcode;
 
-	public byte[] unWrap(byte[] in) throws RFC6455Exception {
+	public byte[] unwrap(byte[] in) throws RFC6455Exception {
 		byte[] res = null;
 		os.insert(os.size(), in);
 		os.begin();
@@ -163,16 +163,14 @@ class RFC6455Server {
 	}
 }
 
-class WebSocketServerTask implements WebSocketTask, NetOperation, NetProcessor {
-	private final static long handShakeTimeout = Long.getLong("limax.net.io.WebSocketServerTask.handShakeTimeout",
-			1000);
-	private final static long keyExchangeTimeout = Long.getLong("limax.net.io.WebSocketServerTask.keyExchangeTimeout",
-			3000);
-	private final static long dhGroupMax = Long.getLong("limax.net.io.WebSocketServerTask.dhGroupMax", 2);
+class WebSocketServerTask implements NetProcessor {
+	private final static long handShakeTimeout = Long.getLong("limax.net.WebSocketServer.handShakeTimeout", 1000);
+	private final static long keyExchangeTimeout = Long.getLong("limax.net.WebSocketServer.keyExchangeTimeout", 3000);
+	private final static long dhGroupMax = Long.getLong("limax.net.WebSocketServer.dhGroupMax", 2);
 	private final static byte[] secureIp;
 	private final static int maxRequestSize = 16384;
 	private final static byte[] zero = new byte[0];
-	private final NetTaskImpl task;
+	private final NetTask nettask;
 	private final WebSocketProcessor processor;
 	private final RFC6455Server server = new RFC6455Server();
 	private byte[] request = new byte[0];
@@ -196,14 +194,13 @@ class WebSocketServerTask implements WebSocketTask, NetOperation, NetProcessor {
 		secureIp = _secureIp;
 	}
 
-	WebSocketServerTask(ServerContextImpl context, WebSocketProcessor processor) {
+	WebSocketServerTask(ServerContext context, WebSocketProcessor processor) {
 		this.processor = processor;
-		this.task = new ServerTask(context, this);
+		this.nettask = NetModel.createServerTask(context, this);
 	}
 
-	WebSocketServerTask(ServerContextImpl context, WebSocketProcessor processor, SSLContext sslContext) {
-		this.processor = processor;
-		this.task = new SSLServerTask(context, this, sslContext);
+	NetTask getNetTask() {
+		return nettask;
 	}
 
 	private boolean _fillRequest(byte[] in) {
@@ -299,7 +296,7 @@ class WebSocketServerTask implements WebSocketTask, NetOperation, NetProcessor {
 		int group = Integer.parseInt(security.substring(0, pos));
 		if (group > dhGroupMax || !Helper.isDHGroupSupported(group))
 			throw new IllegalArgumentException("unsupported dhgroup " + group);
-		resetAlarm(keyExchangeTimeout);
+		nettask.resetAlarm(keyExchangeTimeout);
 		BigInteger data = new BigInteger(Base64.getDecoder().decode(security.substring(pos + 1, security.length())));
 		BigInteger rand = Helper.makeDHRandom();
 		byte[] material = Helper.computeDHKey(group, data, rand).toByteArray();
@@ -319,10 +316,51 @@ class WebSocketServerTask implements WebSocketTask, NetOperation, NetProcessor {
 
 	private void handshaked() throws Exception {
 		request = null;
-		if (processor.setup(local, new WebSocketAddress(peer, requestURI, origin)))
-			task.enableReadWrite();
+		if (processor.startup(new WebSocketTask() {
+			@Override
+			public void send(String text) {
+				byte[] data = text.getBytes(StandardCharsets.UTF_8);
+				WebSocketServerTask.this.send(RFC6455Server.opcodeText, data, 0, data.length);
+			}
+
+			@Override
+			public void send(byte[] binary) {
+				WebSocketServerTask.this.send(RFC6455Server.opcodeBinary, binary, 0, binary.length);
+			}
+
+			@Override
+			public void sendFinal(long timeout) {
+				sendClose(new RFC6455Exception(RFC6455Server.closeNormal, "Close Normal"), timeout);
+			}
+
+			@Override
+			public void sendFinal() {
+				sendFinal(0);
+			}
+
+			@Override
+			public void resetAlarm(long millisecond) {
+				nettask.resetAlarm(millisecond);
+			}
+
+			@Override
+			public void enable() {
+				nettask.enable();
+			}
+
+			@Override
+			public void disable() {
+				nettask.disable();
+			}
+
+			@Override
+			public SSLSession getSSLSession() {
+				return nettask.getSSLSession();
+			}
+		}, local, new WebSocketAddress(peer, requestURI, origin)))
+			nettask.enable();
 		else
-			task.disableReadWrite();
+			nettask.disable();
 	}
 
 	@Override
@@ -335,7 +373,7 @@ class WebSocketServerTask implements WebSocketTask, NetOperation, NetProcessor {
 		}
 		if (request != null) {
 			if (isec != null) {
-				byte[] data = server.unWrap(in);
+				byte[] data = server.unwrap(in);
 				if (data == null)
 					return;
 				requestURI = URI.create(new String(data, StandardCharsets.UTF_8));
@@ -346,23 +384,23 @@ class WebSocketServerTask implements WebSocketTask, NetOperation, NetProcessor {
 					return;
 				try {
 					ParseResult r = parseRequest();
-					task.send(r.message.getBytes());
+					nettask.send(r.message.getBytes());
 					if (r.succeed)
 						handshaked();
 					else if (isec == null)
-						task.sendFinal();
+						nettask.sendFinal();
 				} catch (Exception e) {
 					if (Trace.isErrorEnabled())
 						Trace.error(e);
-					task.send("HTTP/1.1 400 Bad Request\r\n\r\n".getBytes());
-					task.sendFinal();
+					nettask.send("HTTP/1.1 400 Bad Request\r\n\r\n".getBytes());
+					nettask.sendFinal();
 				}
 				return;
 			}
 		}
 		while (true) {
 			try {
-				byte[] data = server.unWrap(in);
+				byte[] data = server.unwrap(in);
 				if (data == null)
 					return;
 				in = zero;
@@ -373,7 +411,7 @@ class WebSocketServerTask implements WebSocketTask, NetOperation, NetProcessor {
 					lastOpcode = opcode;
 				switch (opcode) {
 				case RFC6455Server.opcodePing:
-					task.send(RFC6455Server.wrap(RFC6455Server.opcodePong, data, 0, data.length));
+					nettask.send(RFC6455Server.wrap(RFC6455Server.opcodePong, data, 0, data.length));
 					break;
 				case RFC6455Server.opcodeText:
 					processor.process(new String(data, StandardCharsets.UTF_8));
@@ -388,7 +426,7 @@ class WebSocketServerTask implements WebSocketTask, NetOperation, NetProcessor {
 						processor.process(code, reason);
 					} else
 						processor.process(1000, "");
-					task.sendFinal();
+					nettask.sendFinal();
 					return;
 				case RFC6455Server.opcodePong:
 					break;
@@ -396,31 +434,24 @@ class WebSocketServerTask implements WebSocketTask, NetOperation, NetProcessor {
 					throw new RFC6455Exception(RFC6455Server.closeNotSupportFrame, "Invalid Frame opcode = " + opcode);
 				}
 			} catch (RFC6455Exception e) {
-				sendClose(e);
+				sendClose(e, 0);
 				return;
 			}
 		}
 	}
 
 	@Override
-	public void shutdown(boolean eventually, Throwable closeReason) {
-		processor.shutdown(eventually, closeReason);
+	public void shutdown(Throwable closeReason) {
+		processor.shutdown(closeReason);
 	}
 
 	@Override
-	public void setup(NetTask nettask) {
-		processor.setup(this);
-	}
-
-	@Override
-	public boolean setup(SocketAddress local, SocketAddress peer) {
+	public boolean startup(NetTask nettask, SocketAddress local, SocketAddress peer) {
 		this.local = local;
 		this.peer = peer;
-		if (task instanceof SSLSwitcher) {
-			InetSocketAddress addr = (InetSocketAddress) peer;
-			((SSLSwitcher) task).attach(addr.getHostName(), addr.getPort(), false, null);
-		}
-		resetAlarm(handShakeTimeout);
+		if (nettask.isSSLSupported())
+			nettask.attachSSL(null);
+		nettask.resetAlarm(handShakeTimeout);
 		return true;
 	}
 
@@ -430,92 +461,30 @@ class WebSocketServerTask implements WebSocketTask, NetOperation, NetProcessor {
 				synchronized (osec) {
 					RFC6455Server.wrap(osec, opcode, data, 0, data.length);
 					osec.flush();
-					task.send(obuf.getBytes());
+					nettask.send(obuf.getBytes());
 					obuf.clear();
 				}
 			} catch (CodecException e) {
-				task.close(e);
+				if (Trace.isWarnEnabled())
+					Trace.warn("websocket send", e);
+				nettask.sendFinal();
 			}
 		else
-			task.send(RFC6455Server.wrap(opcode, data, 0, data.length));
+			nettask.send(RFC6455Server.wrap(opcode, data, 0, data.length));
 	}
 
-	@Override
-	public void send(String text) {
-		byte[] data = text.getBytes(StandardCharsets.UTF_8);
-		send(RFC6455Server.opcodeText, data, 0, data.length);
-	}
-
-	@Override
-	public void send(byte[] binary) {
-		send(RFC6455Server.opcodeBinary, binary, 0, binary.length);
-	}
-
-	private void sendClose(RFC6455Exception e) {
+	private void sendClose(RFC6455Exception e, long timeout) {
 		byte[] code = e.getCode();
 		send(RFC6455Server.opcodeClose, code, 0, code.length);
-		if (task instanceof SSLSwitcher)
-			((SSLSwitcher) task).detach();
-		task.sendFinal();
+		nettask.sendFinal(timeout);
+	}
+}
+
+public class WebSocketServer {
+	private WebSocketServer() {
 	}
 
-	@Override
-	public void sendFinal() {
-		sendClose(new RFC6455Exception(RFC6455Server.closeNormal, "Close Normal"));
-	}
-
-	@Override
-	public void resetAlarm(long millisecond) {
-		task.resetAlarm(millisecond);
-	}
-
-	@Override
-	public ByteBuffer getReaderBuffer() {
-		return task.getReaderBuffer();
-	}
-
-	@Override
-	public Queue<ByteBuffer> getWriteBuffer() {
-		return task.getWriteBuffer();
-	}
-
-	@Override
-	public void attachKey(SelectionKey key) throws SocketException {
-		task.attachKey(key);
-	}
-
-	@Override
-	public void close(Throwable e) {
-		task.close(e);
-	}
-
-	@Override
-	public boolean isFinalInitialized() {
-		return task.isFinalInitialized();
-	}
-
-	@Override
-	public void setFinal() {
-		task.setFinal();
-	}
-
-	@Override
-	public void bytesSent(long n) {
-		task.bytesSent(n);
-	}
-
-	@Override
-	public void schedule() {
-		task.schedule();
-	}
-
-	@Override
-	public void onReadBufferFull() {
-		task.onReadBufferFull();
-	}
-
-	@Override
-	public void onWriteBufferEmpty() {
-		task.onWriteBufferEmpty();
+	public static NetTask createServerTask(ServerContext context, WebSocketProcessor processor) {
+		return new WebSocketServerTask(context, processor).getNetTask();
 	}
 }

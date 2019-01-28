@@ -259,18 +259,15 @@ class WebSocketConnector implements NetProcessor, ScriptSender, LmkDataReceiver,
 	}
 
 	@Override
-	public synchronized void shutdown(boolean eventually, Throwable closeReason) {
-		onclose(eventually ? readyState == ReadyState.CLOSING ? CloseStatus.ACTIVE_CLOSE : CloseStatus.PASSIVE_CLOSE
+	public synchronized void shutdown(Throwable closeReason) {
+		onclose(dhRandom != null
+				? readyState == ReadyState.CLOSING ? CloseStatus.ACTIVE_CLOSE : CloseStatus.PASSIVE_CLOSE
 				: CloseStatus.CONNECTION_FAIL);
 		readyState = ReadyState.CLOSED;
 	}
 
 	@Override
-	public void setup(NetTask nettask) {
-	}
-
-	@Override
-	public synchronized boolean setup(SocketAddress local, SocketAddress peer) throws Exception {
+	public synchronized boolean startup(NetTask nettask, SocketAddress local, SocketAddress peer) throws Exception {
 		dhRandom = Helper.makeDHRandom();
 		StringBuilder sb = new StringBuilder(
 				"GET / HTTP/1.1\r\nConnection: Upgrade\r\nUpgrade: WebSocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: AQIDBAUGBwgJCgsMDQ4PEC==\r\nOrigin: null\r\n");
@@ -308,7 +305,8 @@ class WebSocketConnector implements NetProcessor, ScriptSender, LmkDataReceiver,
 		handle.registerLmkDataReceiver(this);
 		if (loginConfig.getProviderLoginDataManager() != null)
 			handle.registerProviderLoginManager(loginConfig.getProviderLoginDataManager());
-		NetModel.addClient(new InetSocketAddress(host, port), nettask = NetModel.createClientTask(rsize, wsize, this));
+		NetModel.addClient(new InetSocketAddress(host, port),
+				nettask = NetModel.createClientTask(rsize, wsize, null, this, false));
 		Engine.add(this);
 	}
 }

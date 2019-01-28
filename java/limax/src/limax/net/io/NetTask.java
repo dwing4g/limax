@@ -1,31 +1,43 @@
 package limax.net.io;
 
+import java.nio.ByteBuffer;
+
+import javax.net.ssl.SSLSession;
+
 public interface NetTask {
+	interface SendBufferNotice {
+		void accept(long size, Object attachment);
+	}
+
+	void send(ByteBuffer bb);
+
 	void send(byte[] data, int off, int len);
 
 	void send(byte[] data);
 
+	void sendFinal(long timeout);
+
 	void sendFinal();
 
-	void suspend(long millisecond, final Runnable finishSuspend);
+	void disable();
 
-	boolean hasReadBufferRemain();
+	void enable();
 
 	long getSendBufferSize();
 
-	void enableRead();
+	void setSendBufferNotice(SendBufferNotice notice, Object attachment);
 
-	void enableWrite();
-
-	void disableRead();
-
-	void disableWrite();
-
-	void enableReadWrite();
-
-	void disableReadWrite();
-
-	void schedule(Runnable r);
+	void setServiceShutdownNotice(Runnable notice);
 
 	void resetAlarm(long millisecond);
+
+	boolean isSSLSupported();
+
+	void attachSSL(byte[] negotiationData);
+
+	void detachSSL();
+
+	void renegotiateSSL();
+
+	SSLSession getSSLSession();
 }

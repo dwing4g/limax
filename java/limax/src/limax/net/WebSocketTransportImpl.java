@@ -2,9 +2,6 @@ package limax.net;
 
 import java.net.SocketAddress;
 
-import limax.net.io.WebSocketAddress;
-import limax.net.io.WebSocketProcessor;
-import limax.net.io.WebSocketTask;
 import limax.util.Trace;
 
 class WebSocketTransportImpl extends AbstractTransport
@@ -18,19 +15,21 @@ class WebSocketTransportImpl extends AbstractTransport
 		this.manager = manager;
 	}
 
-	private void dispatch(WebSocketProtocol protocol) {
+	private void dispatch(Manager _manager, WebSocketProtocol protocol) {
 		protocol.setTransport(this);
-		manager.dispatch(protocol, this);
+		((SupportDispatch) _manager).dispatch(protocol, this);
 	}
 
 	@Override
 	public void process(String in) throws Exception {
-		dispatch(((SupportWebSocketProtocol) getManager()).createWebSocketProtocol(in));
+		Manager _manager = getManager();
+		dispatch(_manager, ((SupportWebSocketProtocol) _manager).createWebSocketProtocol(in));
 	}
 
 	@Override
 	public void process(byte[] in) throws Exception {
-		dispatch(((SupportWebSocketProtocol) getManager()).createWebSocketProtocol(in));
+		Manager _manager = getManager();
+		dispatch(_manager, ((SupportWebSocketProtocol) _manager).createWebSocketProtocol(in));
 	}
 
 	@Override
@@ -40,21 +39,16 @@ class WebSocketTransportImpl extends AbstractTransport
 	}
 
 	@Override
-	public void shutdown(boolean eventually, Throwable closeReason) {
+	public void shutdown(Throwable closeReason) {
 		synchronized (nettask) {
-			if (closeReason != null)
-				setCloseReason(closeReason);
+			setCloseReason(closeReason);
 		}
 		manager.removeProtocolTransport(this);
 	}
 
 	@Override
-	public void setup(WebSocketTask nettask) {
+	public boolean startup(WebSocketTask nettask, SocketAddress local, WebSocketAddress peer) throws Exception {
 		this.nettask = nettask;
-	}
-
-	@Override
-	public boolean setup(SocketAddress local, WebSocketAddress peer) throws Exception {
 		this.local = local;
 		this.peer = peer;
 		resetAlarm(0);

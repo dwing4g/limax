@@ -122,9 +122,9 @@ public final class Net implements Module {
 			this.socket = socket;
 			this.callbackDown = callbackDown;
 			this.callbackPeerInfo = callbackPeerInfo;
-			this.netDataIn = ByteBuffer.allocateDirect(engine.getSession().getPacketBufferSize());
+			this.netDataIn = ByteBuffer.allocate(engine.getSession().getPacketBufferSize());
 			this.netDataOut = ByteBuffer.allocateDirect(engine.getSession().getPacketBufferSize() * 2);
-			appDataIn.add(ByteBuffer.allocateDirect(engine.getSession().getApplicationBufferSize()));
+			appDataIn.add(ByteBuffer.allocate(engine.getSession().getApplicationBufferSize()));
 		}
 
 		private SSLEngineResult wrap() throws SSLException {
@@ -135,9 +135,10 @@ public final class Net implements Module {
 				if (netDataOut.position() > 0) {
 					while (!data.isEmpty() && !data.peek().hasRemaining())
 						data.poll();
-					netDataOut.flip();
-					socket.write(netDataOut, pair != null && data.isEmpty() ? appDataOut.poll().getValue() : NULLCB);
-					netDataOut = netDataOut.duplicate().compact().slice();
+					ByteBuffer tmp = netDataOut;
+					netDataOut = tmp.slice();
+					tmp.flip();
+					socket.write(tmp, pair != null && data.isEmpty() ? appDataOut.poll().getValue() : NULLCB);
 				}
 				switch (rs.getStatus()) {
 				case BUFFER_OVERFLOW:
@@ -155,11 +156,11 @@ public final class Net implements Module {
 				SSLEngineResult rs = engine.unwrap(netDataIn, appDataIn.getLast());
 				switch (rs.getStatus()) {
 				case BUFFER_OVERFLOW:
-					appDataIn.add(ByteBuffer.allocateDirect(engine.getSession().getApplicationBufferSize()));
+					appDataIn.add(ByteBuffer.allocate(engine.getSession().getApplicationBufferSize()));
 					break;
 				case BUFFER_UNDERFLOW:
 					if (netDataIn.capacity() < engine.getSession().getPacketBufferSize())
-						netDataIn = ByteBuffer.allocateDirect(engine.getSession().getPacketBufferSize()).put(netDataIn);
+						netDataIn = ByteBuffer.allocate(engine.getSession().getPacketBufferSize()).put(netDataIn);
 				default:
 					netDataIn.compact();
 					return rs;
@@ -213,19 +214,20 @@ public final class Net implements Module {
 			}
 			if (rs.getHandshakeStatus() == HandshakeStatus.NOT_HANDSHAKING) {
 				if (rs.getStatus() == Status.CLOSED) {
-					appDataIn.add(netDataIn);
+					if (netDataIn.position() > 0) {
+						netDataIn.flip();
+						appDataIn.add(netDataIn);
+					}
 					while (!appDataOut.isEmpty()) {
 						Pair<Deque<ByteBuffer>, Callback> pair = appDataOut.poll();
 						socket.writev(pair.getKey().toArray(new ByteBuffer[0]), pair.getValue());
 					}
 					socket.tls.set(null);
 					callbackDown.call(new Object[] {});
-				} else {
-					if (renegotiate) {
-						engine.getSession().invalidate();
-						engine.beginHandshake();
-						renegotiate = false;
-					}
+				} else if (renegotiate) {
+					engine.getSession().invalidate();
+					engine.beginHandshake();
+					renegotiate = false;
 				}
 			}
 			return rs.getStatus() == Status.OK;
@@ -236,13 +238,13 @@ public final class Net implements Module {
 				int len = netDataIn.position() + in.remaining();
 				if (len > netDataIn.capacity()) {
 					netDataIn.flip();
-					netDataIn = ByteBuffer.allocateDirect(len).put(netDataIn);
+					netDataIn = ByteBuffer.allocate(len).put(netDataIn);
 				}
 				netDataIn.put(in);
 				while (processResult(unwrap()))
 					;
 				if (appDataIn.size() > 1) {
-					ByteBuffer r = ByteBuffer.allocateDirect(appDataIn.stream().mapToInt(bb -> bb.position()).sum());
+					ByteBuffer r = ByteBuffer.allocate(appDataIn.stream().mapToInt(bb -> bb.position()).sum());
 					appDataIn.forEach(bb -> {
 						bb.flip();
 						r.put(bb);
@@ -577,7 +579,7 @@ public final class Net implements Module {
 		}
 
 		public void read(Integer size, Object callback) {
-			ByteBuffer bb = ByteBuffer.allocateDirect(size == null ? 16384 : size);
+			ByteBuffer bb = ByteBuffer.allocate(size == null ? 16384 : size);
 			Callback cb = eventLoop.createCallback(callback);
 			try {
 				asc.read(bb, timeout, TimeUnit.MILLISECONDS, null, new CompletionHandler<Integer, Object>() {

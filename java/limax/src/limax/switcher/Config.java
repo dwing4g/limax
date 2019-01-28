@@ -61,7 +61,13 @@ public class Config {
 
 		int getLocalPort();
 
+		int getBufferSize();
+
 		boolean isAutoStart();
+
+		boolean isAsynchronous();
+
+		void open();
 	}
 
 	public static class Transpond implements ConfigParser, TranspondMXBean {
@@ -70,7 +76,11 @@ public class Config {
 		private String localIp = "";
 		private int serverPort = 0;
 		private int localPort = 0;
+		private int buffersize = 0;
 		private boolean autostart = false;
+		private boolean asynchronous = false;
+		private Runnable openlisten = () -> {
+		};
 
 		@Override
 		public void parse(Element self) throws Exception {
@@ -84,30 +94,35 @@ public class Config {
 			localPort = eh.getInt("localPort");
 			name = eh.getString("name", serverIp + "-" + serverPort);
 			autostart = eh.getBoolean("autostart", false);
-
+			buffersize = eh.getInt("bufferSize", 16384);
+			asynchronous = eh.getBoolean("asynchronous", false);
 			SocketAddress serverAddress = new InetSocketAddress(serverIp, serverPort);
 			SocketAddress localAddress = localIp.isEmpty() ? new InetSocketAddress(localPort)
 					: new InetSocketAddress(localIp, localPort);
 
 			Service.JMXRegister(this, "limax.switcher:type=Config,name=transponds-" + name);
-			if (autostart) {
-				Service.addRunAfterEngineStartTask(() -> {
-					try {
-						ServerContext serverconfig = limax.net.io.Transpond.startTranspond(localAddress, serverAddress);
-						Service.addRunBeforeEngineStopTask(() -> {
-							try {
-								serverconfig.close();
-							} catch (IOException e) {
-								if (Trace.isWarnEnabled())
-									Trace.warn("close transpond", e);
-							}
-						});
-					} catch (Exception e) {
-						if (Trace.isErrorEnabled())
-							Trace.error("start transpond " + this, e);
-					}
-				});
-			}
+			final Runnable open = () -> {
+				try {
+					ServerContext serverconfig = limax.util.transpond.Transpond.startTranspond(localAddress,
+							serverAddress, buffersize, asynchronous);
+					serverconfig.open();
+					Service.addRunBeforeEngineStopTask(() -> {
+						try {
+							serverconfig.close();
+						} catch (IOException e) {
+							if (Trace.isWarnEnabled())
+								Trace.warn("close transpond", e);
+						}
+					});
+				} catch (Exception e) {
+					if (Trace.isErrorEnabled())
+						Trace.error("start transpond " + this, e);
+				}
+			};
+			if (autostart)
+				Service.addRunAfterEngineStartTask(open);
+			else
+				openlisten = open;
 		}
 
 		@Override
@@ -139,6 +154,21 @@ public class Config {
 		public String toString() {
 			return "[name = " + name + " autostart = " + autostart + " serverIp = " + serverIp + " serverPort = "
 					+ serverPort + " localPort = " + localPort + "]";
+		}
+
+		@Override
+		public int getBufferSize() {
+			return buffersize;
+		}
+
+		@Override
+		public boolean isAsynchronous() {
+			return asynchronous;
+		}
+
+		@Override
+		public void open() {
+			openlisten.run();
 		}
 	}
 

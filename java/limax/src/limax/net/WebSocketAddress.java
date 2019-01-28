@@ -1,4 +1,4 @@
-package limax.net.io;
+package limax.net;
 
 import java.net.SocketAddress;
 import java.net.URI;

@@ -112,9 +112,8 @@ static const char* parseS(lua_State *L, const char *s, const char *e) {
 			c = *s++;
 			switch (c) {
 			case '"':
-				break;
 			case '\\':
-				c = '\\';
+			case '/':
 				break;
 			case 'b':
 				c = '\b';
@@ -181,7 +180,7 @@ static const char* parseS(lua_State *L, const char *s, const char *e) {
 				continue;
 			default:
 				free((void *)buf);
-				luaL_error(L, "unsupported escape character %c", c);
+				luaL_error(L, "unsupported escape character <%c>", c);
 			}
 		}
 		if (length == total)

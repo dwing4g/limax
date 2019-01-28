@@ -22,4 +22,6 @@ public interface ManagerConfig extends Config {
 	State getDefaultState();
 
 	Dispatcher getDispatcher();
+
+	boolean isAsynchronous();
 }

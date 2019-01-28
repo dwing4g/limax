@@ -26,6 +26,7 @@ public class ServerManagerConfigBuilder implements ConfigBuilder {
 	private boolean autoListen = true;
 	private boolean webSocketEnabled = false;
 	private SSLContext sslContext;
+	private boolean asynchronous;
 
 	public ServerManagerConfigBuilder() {
 	}
@@ -47,6 +48,7 @@ public class ServerManagerConfigBuilder implements ConfigBuilder {
 		this.autoListen = config.isAutoListen();
 		this.webSocketEnabled = config.isWebSocketEnabled();
 		this.sslContext = config.getSSLContext();
+		this.asynchronous = config.isAsynchronous();
 	}
 
 	@Override
@@ -136,6 +138,11 @@ public class ServerManagerConfigBuilder implements ConfigBuilder {
 			public String toString() {
 				return name + " " + localAddress;
 			}
+
+			@Override
+			public boolean isAsynchronous() {
+				return asynchronous;
+			}
 		};
 	}
 
@@ -216,6 +223,11 @@ public class ServerManagerConfigBuilder implements ConfigBuilder {
 
 	public ServerManagerConfigBuilder sslContext(SSLContext sslContext) {
 		this.sslContext = sslContext;
+		return this;
+	}
+
+	public ServerManagerConfigBuilder asynchronous(boolean asynchronous) {
+		this.asynchronous = asynchronous;
 		return this;
 	}
 }

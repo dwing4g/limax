@@ -44,6 +44,10 @@ class SSLExchange {
 		return sslON;
 	}
 
+	void send(ByteBuffer[] bbs) {
+		exchange.send(bbs);
+	}
+
 	void send(ByteBuffer bb) {
 		exchange.send(bb);
 	}
@@ -200,8 +204,18 @@ class SSLExchange {
 			return appDataIn;
 		}
 
+		void send(ByteBuffer[] bbs) {
+			for (ByteBuffer bb : bbs)
+				appDataOut.offer(bb);
+			flush();
+		}
+
 		void send(ByteBuffer bb) {
 			appDataOut.offer(bb);
+			flush();
+		}
+
+		private void flush() {
 			try {
 				processResult(wrap());
 			} catch (SSLException e) {

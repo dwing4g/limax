@@ -76,9 +76,8 @@ final class TStorage<K, V> implements StorageInterface {
 		long tryFail = 0;
 		for (Iterator<TRecord<K, V>> it = changed.values().iterator(); it.hasNext();) {
 			TRecord<K, V> r = it.next();
-			if (r.tryMarshalN()) {
+			if (r.tryMarshalN(it)) {
 				marshal.put(r.getKey(), r);
-				it.remove();
 				++marshaled;
 			} else
 				++tryFail;

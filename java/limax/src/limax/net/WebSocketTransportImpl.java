@@ -2,6 +2,8 @@ package limax.net;
 
 import java.net.SocketAddress;
 
+import limax.http.WebSocketAddress;
+import limax.http.WebSocketTask;
 import limax.util.Trace;
 
 class WebSocketTransportImpl extends AbstractTransport

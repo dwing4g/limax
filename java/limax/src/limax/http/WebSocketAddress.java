@@ -1,4 +1,4 @@
-package limax.net;
+package limax.http;
 
 import java.net.SocketAddress;
 import java.net.URI;
@@ -30,6 +30,6 @@ public final class WebSocketAddress extends SocketAddress {
 
 	@Override
 	public String toString() {
-		return socketAddress + "/" + requestURI + "/" + origin;
+		return socketAddress + "," + requestURI + "," + origin;
 	}
 }

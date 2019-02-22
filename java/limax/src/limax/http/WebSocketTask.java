@@ -1,4 +1,4 @@
-package limax.net;
+package limax.http;
 
 import javax.net.ssl.SSLSession;
 

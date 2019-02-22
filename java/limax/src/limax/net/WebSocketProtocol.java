@@ -18,15 +18,13 @@ public abstract class WebSocketProtocol implements Runnable, Marshal {
 	}
 
 	protected WebSocketProtocol(String text) {
-		Objects.requireNonNull(text);
-		this.text = text;
+		this.text = Objects.requireNonNull(text);
 		this.binary = null;
 	}
 
 	protected WebSocketProtocol(byte[] binary) {
-		Objects.requireNonNull(binary);
 		this.text = null;
-		this.binary = binary;
+		this.binary = Objects.requireNonNull(binary);
 	}
 
 	final void setTransport(WebSocketTransport transport) {

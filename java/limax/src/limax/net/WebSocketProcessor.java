@@ -2,6 +2,9 @@ package limax.net;
 
 import java.net.SocketAddress;
 
+import limax.http.WebSocketAddress;
+import limax.http.WebSocketTask;
+
 public interface WebSocketProcessor {
 	void process(String in) throws Exception;
 

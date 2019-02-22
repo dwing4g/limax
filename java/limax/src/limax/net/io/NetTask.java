@@ -9,6 +9,8 @@ public interface NetTask {
 		void accept(long size, Object attachment);
 	}
 
+	void send(ByteBuffer[] bbs);
+
 	void send(ByteBuffer bb);
 
 	void send(byte[] data, int off, int len);

@@ -48,7 +48,10 @@ class AsynchronousNetTask extends AbstractNetTask {
 
 	@Override
 	void flush() {
-		sending();
+		try {
+			sending();
+		} catch (Throwable t) {
+		}
 	}
 
 	@Override
@@ -136,11 +139,9 @@ class AsynchronousNetTask extends AbstractNetTask {
 	private void sending() {
 		if (!sending.compareAndSet(ST_READY, ST_RUNNING))
 			return;
-		ByteBuffer[] bba = onCollect();
-		if (bba == null) {
-			sending.set(ST_READY);
+		ByteBuffer[] bba = onCollect(() -> sending.set(ST_READY));
+		if (bba == null)
 			return;
-		}
 		channel.write(bba, 0, bba.length, Long.MAX_VALUE, TimeUnit.MILLISECONDS, null,
 				new CompletionHandler<Long, Object>() {
 					@Override

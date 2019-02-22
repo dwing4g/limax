@@ -6,10 +6,10 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Queue;
 
 import javax.net.ssl.SSLSession;
 
@@ -18,129 +18,32 @@ import limax.codec.CodecException;
 import limax.codec.Decrypt;
 import limax.codec.Encrypt;
 import limax.codec.HmacMD5;
-import limax.codec.MarshalException;
 import limax.codec.Octets;
-import limax.codec.OctetsStream;
 import limax.codec.RFC2118Decode;
 import limax.codec.RFC2118Encode;
 import limax.codec.SHA1;
 import limax.codec.SinkOctets;
+import limax.http.RFC6455;
+import limax.http.RFC6455.RFC6455Exception;
+import limax.http.WebSocketAddress;
+import limax.http.WebSocketTask;
 import limax.net.io.NetModel;
 import limax.net.io.NetProcessor;
 import limax.net.io.NetTask;
 import limax.net.io.ServerContext;
 import limax.util.Helper;
+import limax.util.Pair;
 import limax.util.Trace;
 
-class RFC6455Exception extends Exception {
-	private final static long serialVersionUID = 4618764472702188950L;
-
-	private final byte[] code;
-
-	public RFC6455Exception(short code, String message) {
-		super(message);
-		byte[] tmp = message.getBytes(StandardCharsets.UTF_8);
-		byte[] msg = new byte[tmp.length + 2];
-		msg[0] = (byte) ((code >> 8) & 0xFF);
-		msg[1] = (byte) (code & 0xFF);
-		System.arraycopy(tmp, 0, msg, 2, tmp.length);
-		this.code = msg;
-	}
-
-	public byte[] getCode() {
-		return code;
-	}
-}
-
-class RFC6455Server {
+class RFC6455Server extends RFC6455 {
 	private final static int maxMessageSize = Integer.getInteger("limax.net.WebSocketServer.maxMessageSize", 65536);
 
-	public final static byte opcodeCont = 0;
-	public final static byte opcodeText = 1;
-	public final static byte opcodeBinary = 2;
-	public final static byte opcodeClose = 8;
-	public final static byte opcodePing = 9;
-	public final static byte opcodePong = 10;
-
-	public final static short closeNormal = 1000;
-	public final static short closeNotSupportFrame = 1003;
-	public final static short closeVolatilePolicy = 1006;
-	public final static short closeSizeExceed = 1009;
-
-	private final OctetsStream os = new OctetsStream();
-	private final Octets data = new Octets();
-	private byte opcode;
-
-	public byte[] unwrap(byte[] in) throws RFC6455Exception {
-		byte[] res = null;
-		os.insert(os.size(), in);
-		os.begin();
-		try {
-			opcode = os.unmarshal_byte();
-			boolean fin = ((opcode & 0x80) != 0);
-			opcode = (byte) (opcode & 15);
-			byte t = os.unmarshal_byte();
-			if ((t & 0x80) == 0)
-				throw new RFC6455Exception(closeVolatilePolicy, "Volatile 5.3.");
-			long length = t & 127;
-			if (length == 126)
-				length = os.unmarshal_short() & 0xFFFFL;
-			else if (length == 127)
-				length = os.unmarshal_long();
-			if (length < 0 || length + data.size() > maxMessageSize)
-				throw new RFC6455Exception(closeSizeExceed,
-						"messageSize = " + (length + data.size()) + " but MaxMessageSize = " + maxMessageSize);
-			int len = (int) length;
-			byte[] mask = new byte[] { os.unmarshal_byte(), os.unmarshal_byte(), os.unmarshal_byte(),
-					os.unmarshal_byte() };
-			if (os.remain() >= len) {
-				int pos = os.position();
-				int endpos = pos + len;
-				byte[] array = os.array();
-				for (int i = pos, j = 0; i < endpos; i++, j = (j + 1) & 3)
-					array[i] ^= mask[j];
-				if (fin) {
-					if (data.size() == 0)
-						res = Arrays.copyOfRange(array, pos, endpos);
-					else {
-						data.insert(data.size(), os, pos, endpos - pos);
-						res = data.getBytes();
-						data.clear();
-					}
-				} else
-					data.insert(data.size(), os, pos, endpos - pos);
-				os.position(endpos);
-				os.commit();
-			} else
-				os.rollback();
-		} catch (MarshalException e) {
-			os.rollback();
-		}
-		return res;
+	public RFC6455Server() {
+		super(maxMessageSize, true);
 	}
 
-	public byte getOpcode() {
-		return opcode;
-	}
-
-	public static ByteBuffer wrap(byte opcode, byte[] data, int off, int len) {
-		ByteBuffer bb = ByteBuffer.allocateDirect(len + 14);
-		bb.put((byte) (opcode | 0x80));
-		if (len < 126) {
-			bb.put((byte) len);
-		} else if (len < 65536) {
-			bb.put((byte) 126);
-			bb.put((byte) (len >> 8));
-			bb.put((byte) (len));
-		} else {
-			bb.put((byte) 127);
-			bb.putLong(len);
-		}
-		bb.put(data, off, len).flip();
-		return bb;
-	}
-
-	public static void wrap(Codec codec, byte opcode, byte[] data, int off, int len) throws CodecException {
+	public void wrap(Codec codec, byte opcode, byte[] data) throws CodecException {
+		int len = data.length;
 		codec.update((byte) (opcode | 0x80));
 		if (len < 126) {
 			codec.update((byte) len);
@@ -159,7 +62,7 @@ class RFC6455Server {
 			codec.update((byte) (len >> 8));
 			codec.update((byte) (len));
 		}
-		codec.update(data, off, len);
+		codec.update(data, 0, len);
 	}
 }
 
@@ -169,7 +72,6 @@ class WebSocketServerTask implements NetProcessor {
 	private final static long dhGroupMax = Long.getLong("limax.net.WebSocketServer.dhGroupMax", 2);
 	private final static byte[] secureIp;
 	private final static int maxRequestSize = 16384;
-	private final static byte[] zero = new byte[0];
 	private final NetTask nettask;
 	private final WebSocketProcessor processor;
 	private final RFC6455Server server = new RFC6455Server();
@@ -319,18 +221,18 @@ class WebSocketServerTask implements NetProcessor {
 		if (processor.startup(new WebSocketTask() {
 			@Override
 			public void send(String text) {
-				byte[] data = text.getBytes(StandardCharsets.UTF_8);
-				WebSocketServerTask.this.send(RFC6455Server.opcodeText, data, 0, data.length);
+				server.send(
+						() -> WebSocketServerTask.this.send(RFC6455.opcodeText, text.getBytes(StandardCharsets.UTF_8)));
 			}
 
 			@Override
 			public void send(byte[] binary) {
-				WebSocketServerTask.this.send(RFC6455Server.opcodeBinary, binary, 0, binary.length);
+				server.send(() -> WebSocketServerTask.this.send(RFC6455.opcodeBinary, binary));
 			}
 
 			@Override
 			public void sendFinal(long timeout) {
-				sendClose(new RFC6455Exception(RFC6455Server.closeNormal, "Close Normal"), timeout);
+				sendClose(new RFC6455Exception(RFC6455.closeNormal, "Close Normal"), timeout);
 			}
 
 			@Override
@@ -371,14 +273,14 @@ class WebSocketServerTask implements NetProcessor {
 			in = ibuf.getBytes();
 			ibuf.clear();
 		}
+		Queue<Pair<Byte, byte[]>> queue;
 		if (request != null) {
 			if (isec != null) {
-				byte[] data = server.unwrap(in);
-				if (data == null)
+				queue = server.unwrap(in);
+				if (queue.isEmpty())
 					return;
-				requestURI = URI.create(new String(data, StandardCharsets.UTF_8));
+				requestURI = URI.create(new String(queue.poll().getValue(), StandardCharsets.UTF_8));
 				handshaked();
-				in = zero;
 			} else {
 				if (!fillRequest(in))
 					return;
@@ -397,46 +299,47 @@ class WebSocketServerTask implements NetProcessor {
 				}
 				return;
 			}
-		}
-		while (true) {
-			try {
-				byte[] data = server.unwrap(in);
-				if (data == null)
-					return;
-				in = zero;
-				byte opcode = server.getOpcode();
-				if (opcode == RFC6455Server.opcodeCont)
+		} else
+			queue = server.unwrap(in);
+		try {
+			for (Pair<Byte, byte[]> pair; (pair = queue.poll()) != null;) {
+				byte opcode = pair.getKey();
+				byte data[] = pair.getValue();
+				if (opcode == RFC6455.opcodeCont)
 					opcode = lastOpcode;
 				else
 					lastOpcode = opcode;
 				switch (opcode) {
-				case RFC6455Server.opcodePing:
-					nettask.send(RFC6455Server.wrap(RFC6455Server.opcodePong, data, 0, data.length));
+				case RFC6455.opcodePing:
+					server.send(() -> nettask.send(server.wrap(RFC6455.opcodePong, data)));
 					break;
-				case RFC6455Server.opcodeText:
+				case RFC6455.opcodeText:
 					processor.process(new String(data, StandardCharsets.UTF_8));
 					break;
-				case RFC6455Server.opcodeBinary:
+				case RFC6455.opcodeBinary:
 					processor.process(data);
 					break;
-				case RFC6455Server.opcodeClose:
-					if (data.length >= 2) {
-						int code = ((data[0] << 8) & 0xff) + (data[1] & 0xff);
-						String reason = new String(data, 2, data.length - 2, StandardCharsets.UTF_8);
-						processor.process(code, reason);
-					} else
-						processor.process(1000, "");
-					nettask.sendFinal();
+				case RFC6455.opcodeClose:
+					server.recvClose(data, (code, reason) -> {
+						try {
+							processor.process(code, reason);
+						} catch (Exception e) {
+						}
+					});
+					server.sendClose(() -> {
+						nettask.send(server.wrap(RFC6455.opcodeClose, data));
+						nettask.sendFinal();
+					});
 					return;
-				case RFC6455Server.opcodePong:
+				case RFC6455.opcodePong:
 					break;
 				default:
-					throw new RFC6455Exception(RFC6455Server.closeNotSupportFrame, "Invalid Frame opcode = " + opcode);
+					throw new RFC6455Exception(RFC6455.closeNotSupportFrame, "Invalid Frame opcode = " + opcode);
 				}
-			} catch (RFC6455Exception e) {
-				sendClose(e, 0);
-				return;
 			}
+		} catch (RFC6455Exception e) {
+			sendClose(e, 0);
+			return;
 		}
 	}
 
@@ -455,11 +358,11 @@ class WebSocketServerTask implements NetProcessor {
 		return true;
 	}
 
-	private void send(byte opcode, byte[] data, int off, int len) {
+	private void send(byte opcode, byte[] data) {
 		if (osec != null)
 			try {
 				synchronized (osec) {
-					RFC6455Server.wrap(osec, opcode, data, 0, data.length);
+					server.wrap(osec, opcode, data);
 					osec.flush();
 					nettask.send(obuf.getBytes());
 					obuf.clear();
@@ -470,13 +373,14 @@ class WebSocketServerTask implements NetProcessor {
 				nettask.sendFinal();
 			}
 		else
-			nettask.send(RFC6455Server.wrap(opcode, data, 0, data.length));
+			nettask.send(server.wrap(opcode, data));
 	}
 
 	private void sendClose(RFC6455Exception e, long timeout) {
-		byte[] code = e.getCode();
-		send(RFC6455Server.opcodeClose, code, 0, code.length);
-		nettask.sendFinal(timeout);
+		server.sendClose(() -> {
+			send(RFC6455.opcodeClose, e.getCode());
+			nettask.sendFinal(timeout);
+		});
 	}
 }
 

@@ -46,7 +46,7 @@ abstract class AbstractNetTask implements NetTask {
 	private final Alarm alarm = new Alarm(new Runnable() {
 		@Override
 		public void run() {
-			close(new SocketTimeoutException());
+			close(new SocketTimeoutException("the channel closed by alarm"));
 		}
 	});
 
@@ -118,6 +118,19 @@ abstract class AbstractNetTask implements NetTask {
 	}
 
 	@Override
+	public void send(ByteBuffer[] bbs) {
+		synchronized (sslExchange) {
+			if (finalizing)
+				return;
+			if (sslExchange.on()) {
+				sslExchange.send(bbs);
+				return;
+			}
+		}
+		output(bbs);
+	}
+
+	@Override
 	public void send(ByteBuffer bb) {
 		synchronized (sslExchange) {
 			if (finalizing)
@@ -186,7 +199,7 @@ abstract class AbstractNetTask implements NetTask {
 		}
 	}
 
-	final ByteBuffer[] onCollect() {
+	final ByteBuffer[] onCollect(Runnable emptyAction) {
 		synchronized (vbuf) {
 			if (wremain > 0)
 				return vbuf.toArray(new ByteBuffer[0]);
@@ -205,6 +218,8 @@ abstract class AbstractNetTask implements NetTask {
 					}
 				close(new IOException("the channel closed manually"));
 			}
+			if (emptyAction != null)
+				emptyAction.run();
 			return null;
 		}
 	}
@@ -243,6 +258,22 @@ abstract class AbstractNetTask implements NetTask {
 		close(new IOException("the channel closed by service shutdown"));
 	}
 
+	final void output(ByteBuffer[] bbs) {
+		boolean flush = false;
+		synchronized (vbuf) {
+			for (ByteBuffer bb : bbs) {
+				int remaining = bb.remaining();
+				if (remaining > 0) {
+					wremain += remaining;
+					vbuf.offer(bb);
+					flush = true;
+				}
+			}
+		}
+		if (flush)
+			flush();
+	}
+
 	final void output(ByteBuffer bb) {
 		int remaining = bb.remaining();
 		if (remaining > 0) {
@@ -271,6 +302,9 @@ abstract class AbstractNetTask implements NetTask {
 		if (!closeReason.compareAndSet(null, e))
 			return;
 		running.decrementAndGet();
+		synchronized (sslExchange) {
+			finalizing = true;
+		}
 		close.run();
 		schedule(new Runnable() {
 			@Override

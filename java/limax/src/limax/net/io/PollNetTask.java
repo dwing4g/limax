@@ -86,7 +86,7 @@ class PollNetTask extends AbstractNetTask implements Runnable {
 					readyOps = this.readyOps;
 				}
 				if ((readyOps & SelectionKey.OP_WRITE) != 0) {
-					ByteBuffer[] bba = onCollect();
+					ByteBuffer[] bba = onCollect(null);
 					if (bba != null) {
 						try {
 							onSent(((SocketChannel) key.channel()).write(bba));

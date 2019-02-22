@@ -1,15 +1,12 @@
 package limax.util;
 
 import java.util.ArrayDeque;
-import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 import limax.util.ConcurrentEnvironment.ThreadPoolExecutorWrapper;
 
 public class HashExecutor {
-	private final Map<Object, Object> map = new ConcurrentHashMap<>();
 	private final ThreadPoolExecutorWrapper executor;
 	private final SerialExecutor pool[];
 
@@ -40,17 +37,6 @@ public class HashExecutor {
 	public void execute(Object key, Runnable command) {
 		if (executor.permit(command))
 			getExecutor(key).execute(command);
-	}
-
-	public void schedule(Object key, Runnable command) {
-		if (executor.permit(command))
-			map.computeIfAbsent(key, k -> {
-				getExecutor(key).execute(() -> {
-					map.remove(key);
-					command.run();
-				});
-				return key;
-			});
 	}
 
 	private class SerialExecutor implements Executor {
@@ -84,4 +70,5 @@ public class HashExecutor {
 				executor.leave();
 		}
 	}
+
 }

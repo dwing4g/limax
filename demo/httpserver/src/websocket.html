@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>WebSoket Demo</title>
+<script type="text/javascript">
+	if (!window.WebSocket) {
+		alert("WebSocket not supported by this browser!");
+	}
+
+	function display() {
+		var valueLabel = document.getElementById("valueLabel");
+		valueLabel.innerHTML = "start..";
+		var ws = new WebSocket("ws://localhost/websocket/counter-socket");
+		ws.onmessage = function(evt) {
+			console.log('onmessage ' + evt.data);
+			valueLabel.innerHTML = evt.data;
+		};
+
+		ws.onclose = function(e) {
+			console.log('onclose', e);
+			valueLabel.innerHTML = "onclose";
+		}
+
+		ws.onopen = function() {
+			console.log('onopen');
+			valueLabel.innerHTML = "onopen";
+			var blob = new Blob([ "Hello, Server!" ]);
+			ws.send(blob);
+			ws.send('abc');
+			setTimeout(function() {
+				ws.send("stop");
+				ws.close(1000, "websocket close");
+			}, 5000);
+		};
+	}
+</script>
+</head>
+<body onload="display();">
+	<div id="valueLabel"></div>
+</body>
+</html>
+

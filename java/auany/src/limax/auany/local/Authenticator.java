@@ -9,12 +9,11 @@ import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
 
-import com.sun.net.httpserver.HttpHandler;
-
 import limax.auany.PlatProcess;
 import limax.defines.ErrorCodes;
 import limax.defines.ErrorSource;
 import limax.endpoint.AuanyService.Result;
+import limax.http.HttpHandler;
 import limax.util.ConcurrentEnvironment;
 import limax.util.ElementHelper;
 import limax.util.XMLUtils;

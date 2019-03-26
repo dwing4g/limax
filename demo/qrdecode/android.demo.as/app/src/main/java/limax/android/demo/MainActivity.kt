@@ -8,7 +8,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 import com.otaliastudios.cameraview.Frame
 import com.otaliastudios.cameraview.Gesture
 import com.otaliastudios.cameraview.GestureAction
-import com.otaliastudios.cameraview.Grid
+//import com.otaliastudios.cameraview.Grid
 
 class MainActivity : AppCompatActivity() {
     @Volatile private var decoding = false
@@ -22,6 +22,7 @@ class MainActivity : AppCompatActivity() {
 
         //camera.grid = Grid.DRAW_3X3
         camera.mapGesture(Gesture.TAP, GestureAction.FOCUS_WITH_MARKER)
+        camera.mapGesture(Gesture.PINCH, GestureAction.ZOOM)
 
         camera.addFrameProcessor {
             if (!decoding && !dialogOn) {

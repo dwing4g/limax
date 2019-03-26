@@ -11,8 +11,6 @@ import java.util.function.BiConsumer;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-import com.sun.net.httpserver.HttpHandler;
-
 import limax.auany.Account.LoginResult;
 import limax.auany.appconfig.AppManager;
 import limax.auany.switcherauany.SessionAuthByToken;
@@ -23,6 +21,7 @@ import limax.defines.ErrorCodes;
 import limax.defines.ErrorSource;
 import limax.defines.SessionFlags;
 import limax.endpoint.AuanyService.Result;
+import limax.http.HttpHandler;
 import limax.switcher.LmkMasquerade;
 import limax.switcherauany.AuanyAuthArg;
 import limax.switcherauany.AuanyAuthRes;

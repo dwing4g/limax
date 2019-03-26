@@ -2,10 +2,10 @@ package limax.http;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.FileChannel.MapMode;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,73 +28,90 @@ public class FormData {
 		}
 	}
 
+	private final static int THRESHOLD_MIN = 8192;
+	private final static int THRESHOLD_MAX = Integer.MAX_VALUE;
 	private final static byte CR = 13;
 	private final static byte LF = 10;
 	private final static Pattern filePattern = Pattern.compile("filename\\s*=\\s*\"([^\"]*)\"",
 			Pattern.CASE_INSENSITIVE);
 	private final static Pattern namePattern = Pattern.compile("name\\s*=\\s*\"([^\"]*)\"", Pattern.CASE_INSENSITIVE);
-	private final Map<String, Object> map = new HashMap<>();
+	private final Map<String, List<Object>> map = new HashMap<>();
+	private boolean urlencoded;
 	private MultipartParser parser;
-	private Octets data;
+	private Octets raw = new Octets();
+	private long postLimit;
 	private long amount = 0;
 
-	@SuppressWarnings("unchecked")
 	private void merge(String key, Object value) {
-		map.merge(key, value, (o, n) -> {
-			if (o instanceof List) {
-				((List<Object>) o).add(n);
-				return o;
-			} else {
-				List<Object> list = new ArrayList<>();
-				list.add(o);
-				list.add(n);
-				return list;
-			}
-		});
+		map.computeIfAbsent(key, _key -> new ArrayList<>()).add(value);
 	}
 
 	private void merge(String line) {
 		int pos = line.indexOf("=");
-		if (pos == -1)
-			merge(line, "");
-		else
-			merge(line.substring(0, pos), line.substring(pos + 1));
-	}
-
-	FormData(String query) {
-		if (query != null)
-			for (String line : query.split("&"))
-				merge(line);
-	}
-
-	FormData(boolean multipart) {
-		data = new Octets();
-		if (multipart)
-			parser = new MultipartParser();
-	}
-
-	void process(byte c) {
-		amount++;
-		if (parser != null)
-			parser.process(c);
-		else if (c == LF) {
-			merge(new String(data.array(), 0, data.size(), StandardCharsets.UTF_8));
-			data.clear();
-		} else if (c != CR)
-			data.push_byte(c);
-	}
-
-	void end() {
-		data = null;
-		if (parser != null) {
-			MultipartParser _parser = parser;
-			parser = null;
-			_parser.end();
+		try {
+			if (pos == -1)
+				merge(URLDecoder.decode(line, "utf8"), "");
+			else
+				merge(URLDecoder.decode(line.substring(0, pos), "utf8"),
+						URLDecoder.decode(line.substring(pos + 1), "utf8"));
+		} catch (UnsupportedEncodingException e) {
 		}
 	}
 
-	public Map<String, Object> getData() {
+	private void decode(String rawquery) {
+		for (String line : rawquery.split("&"))
+			merge(line);
+	}
+
+	FormData(URI uri) {
+		if (uri != null) {
+			String rawquery = uri.getRawQuery();
+			if (rawquery != null)
+				decode(rawquery);
+		}
+	}
+
+	FormData(Headers headers, long postLimit) {
+		if (postLimit <= 0)
+			throw new RuntimeException("POST not permitted");
+		try {
+			this.postLimit = postLimit;
+			String contentType = headers.getFirst("content-type").toLowerCase();
+			if (contentType.startsWith("application/x-www-form-urlencoded")) {
+				urlencoded = true;
+			} else if (contentType.startsWith("multipart/form-data")) {
+				parser = new MultipartParser();
+			}
+		} catch (Exception e) {
+		}
+	}
+
+	void process(byte c) {
+		if (++amount > postLimit)
+			throw new RuntimeException("post size exceed limit (" + postLimit + ")");
+		if (parser != null)
+			parser.process(c);
+		else
+			raw.push_byte(c);
+	}
+
+	void end(boolean cancel) {
+		if (parser != null) {
+			MultipartParser _parser = parser;
+			parser = null;
+			_parser.end(cancel);
+		} else if (urlencoded) {
+			decode(new String(raw.array(), 0, raw.size(), StandardCharsets.UTF_8));
+			urlencoded = false;
+		}
+	}
+
+	public Map<String, List<Object>> getData() {
 		return map;
+	}
+
+	public Octets getRaw() {
+		return raw;
 	}
 
 	public long getBytesCount() {
@@ -107,15 +124,16 @@ public class FormData {
 	}
 
 	private class MultipartParser {
+		private Octets data = new Octets();
 		private byte[] boundary;
-		private int stage = 0;
+		private int stage;
 		private int index;
 		private String name;
 		private Object file;
-		private int threshold = Integer.MAX_VALUE;
+		private int threshold = THRESHOLD_MAX;
 
 		void useTempFile(int threshold) {
-			this.threshold = threshold;
+			this.threshold = Math.max(THRESHOLD_MIN, threshold);
 		}
 
 		private void flushFileChannel() {
@@ -144,8 +162,7 @@ public class FormData {
 		}
 
 		private void consume(byte c) {
-			data.push_byte(c);
-			if (data.size() >= threshold) {
+			if (data.push_byte(c).size() >= threshold && file != null && stage > 5) {
 				flushFileChannel();
 				data.clear();
 			}
@@ -157,57 +174,69 @@ public class FormData {
 			int pos = line.indexOf(':');
 			if (pos != -1 && line.substring(0, pos).equalsIgnoreCase("Content-Disposition")) {
 				Matcher matcher = namePattern.matcher(line);
-				if (matcher.find()) {
-					try {
+				try {
+					name = "__NONAME__";
+					if (matcher.find())
 						name = URLDecoder.decode(matcher.group(1), "utf8");
-					} catch (UnsupportedEncodingException e) {
-						name = null;
-					}
+				} catch (UnsupportedEncodingException e) {
 				}
 				matcher = filePattern.matcher(line);
-				file = matcher.find() ? matcher.group(1) : null;
+				if (matcher.find())
+					file = matcher.group(1);
 			}
 		}
 
 		private void commit() {
 			Object value;
 			if (file != null) {
+				List<ByteBuffer> bbs = new ArrayList<>();
 				if (file instanceof FileChannel) {
 					flushFileChannel();
 					if (file instanceof FileChannel) {
 						FileChannel fc = (FileChannel) file;
 						try {
-							value = fc.map(MapMode.READ_ONLY, 0, fc.position());
-						} catch (IOException e) {
-							value = ByteBuffer.allocate(0);
+							DataSupplier ds = DataSupplier.from(fc, 0, fc.position());
+							for (ByteBuffer bb; (bb = ds.get()) != null;)
+								bbs.add(bb);
+						} catch (Exception e) {
 						} finally {
 							try {
 								fc.close();
 							} catch (IOException e) {
 							}
 						}
-					} else {
-						value = ByteBuffer.allocate(0);
 					}
 				} else {
-					value = ByteBuffer.wrap(data.getBytes());
+					bbs.add(ByteBuffer.wrap(data.getBytes()));
 				}
+				value = bbs;
 			} else {
 				value = new String(data.array(), 0, data.size(), StandardCharsets.UTF_8);
 			}
-			if (name != null)
-				merge(name, value);
+			merge(name, value);
 			data.clear();
+			name = null;
+			file = null;
 		}
 
 		private void restore(int len) {
 			consume(CR);
 			consume(LF);
-			data.append(boundary, 0, len);
+			for (int i = 0; i < len; i++)
+				consume(boundary[i]);
 		}
 
 		private void restore() {
 			restore(boundary.length);
+		}
+
+		private void restore(byte c) {
+			if (c == CR)
+				stage = 7;
+			else {
+				consume(c);
+				stage = 6;
+			}
 		}
 
 		void process(byte c) {
@@ -269,13 +298,11 @@ public class FormData {
 				break;
 			case 8:
 				if (boundary[index] == c) {
-					if (boundary.length == ++index) {
+					if (boundary.length == ++index)
 						stage = 9;
-					}
 				} else {
 					restore(index);
-					consume(c);
-					stage = 6;
+					restore(c);
 				}
 				break;
 			case 9:
@@ -285,8 +312,7 @@ public class FormData {
 					stage = 11;
 				else {
 					restore();
-					consume(c);
-					stage = 6;
+					restore(c);
 				}
 				break;
 			case 10:
@@ -301,8 +327,7 @@ public class FormData {
 				else {
 					restore();
 					consume((byte) '-');
-					consume(c);
-					stage = 6;
+					restore(c);
 				}
 				break;
 			case 12:
@@ -312,8 +337,7 @@ public class FormData {
 					restore();
 					consume((byte) '-');
 					consume((byte) '-');
-					consume(c);
-					stage = 6;
+					restore(c);
 				}
 				break;
 			case 13:
@@ -324,12 +348,13 @@ public class FormData {
 			}
 		}
 
-		void end() {
-			try {
-				((FileChannel) file).close();
-			} catch (Throwable t) {
-			}
-			if (stage != 14)
+		void end(boolean cancel) {
+			if (cancel)
+				try {
+					((FileChannel) file).close();
+				} catch (Throwable t) {
+				}
+			else if (stage != 14)
 				throw new MalformException();
 		}
 	}

@@ -151,7 +151,7 @@ public final class XmlConfig {
 				if (trustsPath != null)
 					sslContextAllocator.getTrustManager().addTrust(Paths.get(trustsPath));
 				sslContextAllocator.getTrustManager()
-						.setRecovationCheckerOptions(eh.getString("revocationCheckerOptions"));
+						.setRevocationCheckerOptions(eh.getString("revocationCheckerOptions"));
 				KeyAllocator keyAllocator = new KeyAllocator(sslContextAllocator);
 				String httpsHost = eh.getString("httpsHost", null);
 				if (httpsHost != null)

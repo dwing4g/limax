@@ -14,8 +14,8 @@ abstract class AutoView extends View {
 		setTick(param.getViewStub().getTick());
 	}
 
-	public void setTick(long millisecond) {
-		this.tick = millisecond < 0 ? 0 : millisecond;
+	public void setTick(long milliseconds) {
+		this.tick = milliseconds < 0 ? 0 : milliseconds;
 	}
 
 	public long getTick() {

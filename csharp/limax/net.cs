@@ -25,7 +25,7 @@ namespace limax.net
         void setOutputSecurityCodec(byte[] key, bool compress);
         void setInputSecurityCodec(byte[] key, bool compress);
         void setState(State state);
-        void resetAlarm(long millisecond);
+        void resetAlarm(long milliseconds);
     }
     public interface Listener
     {
@@ -452,9 +452,9 @@ namespace limax.net
         {
             this.state = state;
         }
-        public void resetAlarm(long millisecond)
+        public void resetAlarm(long milliseconds)
         {
-            alarm.reset(millisecond);
+            alarm.reset(milliseconds);
         }
         public IPEndPoint getPeerAddress()
         {

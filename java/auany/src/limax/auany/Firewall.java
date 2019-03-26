@@ -18,8 +18,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.w3c.dom.Element;
 
-import com.sun.net.httpserver.HttpHandler;
-
+import limax.http.HttpHandler;
 import limax.net.Engine;
 import limax.util.ElementHelper;
 import limax.util.Pair;

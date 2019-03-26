@@ -22,8 +22,8 @@
         httpClientDefaultMaxOutstanding="3"
         httpClientDefaultMaxQueueCapacity="16"
         httpClientDefaultTimeout="10000" httpServerIp="0.0.0.0"
-        httpServerPool="100" httpServerPort="8181" identity="0"
-        inviteExpire="60000" keys="3df9xDFFDC" orderExpire="3600000"
+        httpServerPort="8181" identity="0" inviteExpire="60000"
+        keys="3df9xDFFDC" orderExpire="3600000"
         orderQueueConcurrencyBits="3" orderQueueHome="queue"
         parserClass="limax.auany.XmlConfig$LoadConfig" payEnable="true">
         <xi:include href="appconfig.xml"/>

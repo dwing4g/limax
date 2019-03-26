@@ -494,7 +494,7 @@ class ProviderManagerImpl extends AbstractRpcContext
 					keepAliveTimeout = 5000;
 				if (Trace.isWarnEnabled())
 					Trace.warn("provider openlisten failed, pvid = " + config.getProviderId() + " error = " + p.error
-							+ "(PROVIDER_DUPLICATE_ID) and retry " + keepAliveTimeout + " millisecond later");
+							+ "(PROVIDER_DUPLICATE_ID) and retry " + keepAliveTimeout + " milliseconds later");
 				Engine.getProtocolScheduler().schedule(() -> {
 					try {
 						createBindProtocol().send(transport);

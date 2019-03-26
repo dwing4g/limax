@@ -406,10 +406,10 @@ namespace limax.codec
         private long bytes;
         private readonly long deadline;
         private readonly Codec sink;
-        public BoundCheck(long bytes, long millisecond, Codec sink)
+        public BoundCheck(long bytes, long milliseconds, Codec sink)
         {
             this.bytes = bytes;
-            long s = millisecond * TimeSpan.TicksPerMillisecond + DateTime.Now.Ticks;
+            long s = milliseconds * TimeSpan.TicksPerMillisecond + DateTime.Now.Ticks;
             this.deadline = s < 0 ? long.MaxValue : s;
             this.sink = sink;
         }

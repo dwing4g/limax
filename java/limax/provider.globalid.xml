@@ -51,6 +51,6 @@
 		maxsize="0" timeout="2000" />
 
 	<protocol name="KeepAlive" type="53" maxsize="8">
-		<variable name="millisecond" type="long" />
+		<variable name="milliseconds" type="long" />
 	</protocol>
 </namespace>

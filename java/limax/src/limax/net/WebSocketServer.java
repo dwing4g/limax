@@ -6,6 +6,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
@@ -72,6 +73,7 @@ class WebSocketServerTask implements NetProcessor {
 	private final static long dhGroupMax = Long.getLong("limax.net.WebSocketServer.dhGroupMax", 2);
 	private final static byte[] secureIp;
 	private final static int maxRequestSize = 16384;
+	private final static URI defaultContextURI = URI.create("/");
 	private final NetTask nettask;
 	private final WebSocketProcessor processor;
 	private final RFC6455Server server = new RFC6455Server();
@@ -241,8 +243,8 @@ class WebSocketServerTask implements NetProcessor {
 			}
 
 			@Override
-			public void resetAlarm(long millisecond) {
-				nettask.resetAlarm(millisecond);
+			public void resetAlarm(long milliseconds) {
+				nettask.resetAlarm(milliseconds);
 			}
 
 			@Override
@@ -259,7 +261,7 @@ class WebSocketServerTask implements NetProcessor {
 			public SSLSession getSSLSession() {
 				return nettask.getSSLSession();
 			}
-		}, local, new WebSocketAddress(peer, requestURI, origin)))
+		}, local, new WebSocketAddress(peer, defaultContextURI, requestURI, origin)))
 			nettask.enable();
 		else
 			nettask.disable();
@@ -276,7 +278,7 @@ class WebSocketServerTask implements NetProcessor {
 		Queue<Pair<Byte, byte[]>> queue;
 		if (request != null) {
 			if (isec != null) {
-				queue = server.unwrap(in);
+				queue = server.unwrap(ByteBuffer.wrap(in));
 				if (queue.isEmpty())
 					return;
 				requestURI = URI.create(new String(queue.poll().getValue(), StandardCharsets.UTF_8));
@@ -300,7 +302,7 @@ class WebSocketServerTask implements NetProcessor {
 				return;
 			}
 		} else
-			queue = server.unwrap(in);
+			queue = server.unwrap(ByteBuffer.wrap(in));
 		try {
 			for (Pair<Byte, byte[]> pair; (pair = queue.poll()) != null;) {
 				byte opcode = pair.getKey();

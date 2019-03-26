@@ -119,7 +119,7 @@ public class TrustManager implements Cloneable {
 	 *            3. High priority keyword 'DISABLE' <br>
 	 *            4. Other keyword reference to PKIXRevocationChecker.Option
 	 */
-	public void setRecovationCheckerOptions(String options) {
+	public void setRevocationCheckerOptions(String options) {
 		Set<PKIXRevocationChecker.Option> set = new HashSet<>();
 		for (String checker : options.toUpperCase().split(",")) {
 			if (checker.equals("DISABLE")) {
@@ -146,6 +146,7 @@ public class TrustManager implements Cloneable {
 			PKIXRevocationChecker pKIXRevocationChecker = (PKIXRevocationChecker) CertPathValidator.getInstance("PKIX")
 					.getRevocationChecker();
 			pKIXRevocationChecker.setOptions(options);
+			System.out.println(options);
 			pkixBuilderParameters.addCertPathChecker(pKIXRevocationChecker);
 		} else {
 			pkixBuilderParameters.setRevocationEnabled(false);

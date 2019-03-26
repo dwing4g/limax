@@ -1,16 +1,15 @@
 package limax.auany;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.w3c.dom.Element;
 
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
-
 import limax.auany.appconfig.AppManager;
-import limax.util.ConcurrentEnvironment;
+import limax.http.HttpHandler;
+import limax.http.HttpServer;
 import limax.util.ElementHelper;
 import limax.util.Trace;
 import limax.xmlconfig.ConfigParser;
@@ -21,8 +20,6 @@ public class XmlConfig {
 		String getHttpServerIp();
 
 		int getHttpServerPort();
-
-		int getHttpServerPool();
 	}
 
 	public static final class LoadConfig implements ConfigParser {
@@ -31,19 +28,18 @@ public class XmlConfig {
 			ElementHelper eh = new ElementHelper(self);
 			String httpServerIp = eh.getString("httpServerIp", "0.0.0.0");
 			int httpServerPort = eh.getInt("httpServerPort", 80);
-			int httpServerPool = eh.getInt("httpServerPool", 16);
 			Map<String, HttpHandler> httphandlers = new HashMap<>();
 			Service.addRunAfterEngineStartTask(() -> {
 				try {
 					final InetSocketAddress sa = new InetSocketAddress(httpServerIp, httpServerPort);
-					final HttpServer server = HttpServer.create(sa, 0);
-					server.setExecutor(ConcurrentEnvironment.getInstance().newThreadPool("limax.auany.httpServer",
-							httpServerPool));
+					final HttpServer server = HttpServer.create(sa);
 					httphandlers.forEach((context, handler) -> server.createContext(context, handler));
 					server.start();
 					Service.addRunBeforeEngineStopTask(() -> {
-						server.stop(0);
-						ConcurrentEnvironment.getInstance().shutdown("limax.auany.httpServer");
+						try {
+							server.stop();
+						} catch (IOException e) {
+						}
 					});
 				} catch (Exception e) {
 					if (Trace.isErrorEnabled())
@@ -59,11 +55,6 @@ public class XmlConfig {
 				@Override
 				public int getHttpServerPort() {
 					return httpServerPort;
-				}
-
-				@Override
-				public int getHttpServerPool() {
-					return httpServerPool;
 				}
 			}, "limax.auany:type=XmlConfig,name=httpserver");
 			OperationEnvironment.initialize(self, httphandlers);

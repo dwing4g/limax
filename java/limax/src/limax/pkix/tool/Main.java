@@ -29,6 +29,7 @@ import java.util.stream.Stream;
 
 import javax.security.auth.x500.X500Principal;
 
+import limax.net.Engine;
 import limax.pkix.CAService;
 import limax.pkix.ExtKeyUsage;
 import limax.pkix.GeneralName;
@@ -102,12 +103,15 @@ public class Main {
 			mainGencrl(args);
 			break;
 		case "CA":
+			Engine.open(4, 16, 64);
 			mainCa(args);
 			break;
 		case "LMK":
+			Engine.open(4, 16, 64);
 			mainLmk(args);
 			break;
 		case "OCSP":
+			Engine.open(4, 16, 64);
 			mainOcsp(args);
 			break;
 		default:

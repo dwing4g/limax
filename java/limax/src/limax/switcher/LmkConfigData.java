@@ -84,7 +84,7 @@ public class LmkConfigData {
 
 	private TrustManager loadTrustManager() throws IOException {
 		TrustManager trustManager = new TrustManager();
-		trustManager.setRecovationCheckerOptions(revocationCheckerOptions);
+		trustManager.setRevocationCheckerOptions(revocationCheckerOptions);
 		Path trustsPath = Files.createTempDirectory("trustsPath");
 		ZipUtils.unzip(new ByteArrayInputStream(zipTrustsPath), trustsPath);
 		trustManager.addTrust(trustsPath);

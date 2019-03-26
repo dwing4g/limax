@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import javax.net.ssl.SSLContext;
@@ -151,5 +152,10 @@ public final class NetModel {
 			throw new IllegalStateException("NetModel closed");
 		return context instanceof PollServerContext ? new PollServerTask((AbstractServerContext) context, processor)
 				: new AsynchronousServerTask((AbstractServerContext) context, processor);
+	}
+
+	public static Consumer<Long> installAlarmTask(Runnable r) {
+		Alarm alarm = new Alarm(r);
+		return milliseconds -> alarm.reset(milliseconds);
 	}
 }

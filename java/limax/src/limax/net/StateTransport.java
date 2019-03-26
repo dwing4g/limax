@@ -7,5 +7,5 @@ public interface StateTransport extends Transport {
 
 	void setState(State state);
 
-	void resetAlarm(long millisecond);
+	void resetAlarm(long milliseconds);
 }

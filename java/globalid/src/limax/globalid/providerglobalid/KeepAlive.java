@@ -12,7 +12,7 @@ import limax.net.StateTransport;
 public class KeepAlive extends limax.net.Protocol {
 	@Override
 	public void process() {
-		((StateTransport)getTransport()).resetAlarm(millisecond);
+		((StateTransport)getTransport()).resetAlarm(milliseconds);
 	}
 
 	// {{{ XMLGEN_DEFINE_BEGIN
@@ -23,24 +23,24 @@ public class KeepAlive extends limax.net.Protocol {
 		return TYPE;
 	}
 
-    public long millisecond; 
+    public long milliseconds; 
 
 	public KeepAlive() {
 	}
 
-	public KeepAlive(long _millisecond_) {
-		this.millisecond = _millisecond_;
+	public KeepAlive(long _milliseconds_) {
+		this.milliseconds = _milliseconds_;
 	}
 
 	@Override
 	public limax.codec.OctetsStream marshal(limax.codec.OctetsStream _os_) {
-		_os_.marshal(this.millisecond);
+		_os_.marshal(this.milliseconds);
 		return _os_;
 	}
 
 	@Override
 	public limax.codec.OctetsStream unmarshal(limax.codec.OctetsStream _os_) throws limax.codec.MarshalException {
-		this.millisecond = _os_.unmarshal_long();
+		this.milliseconds = _os_.unmarshal_long();
 		return _os_;
 	}
 
@@ -48,7 +48,7 @@ public class KeepAlive extends limax.net.Protocol {
 	public String toString() {
 		StringBuilder _sb_ = new StringBuilder(super.toString());
 		_sb_.append("=(");
-		_sb_.append(this.millisecond).append(",");
+		_sb_.append(this.milliseconds).append(",");
 		_sb_.append(")");
 		return _sb_.toString();
 	}

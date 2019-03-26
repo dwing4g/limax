@@ -1,8 +1,5 @@
 package limax.auany.paygws;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -14,15 +11,15 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.w3c.dom.Element;
 
-import com.sun.net.httpserver.Headers;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-
 import limax.auany.PayGateway;
 import limax.auany.PayOrder;
 import limax.defines.ErrorCodes;
 import limax.defines.ErrorSource;
 import limax.endpoint.AuanyService.Result;
+import limax.http.DataSupplier;
+import limax.http.Headers;
+import limax.http.HttpExchange;
+import limax.http.HttpHandler;
 import limax.net.Engine;
 import limax.util.ElementHelper;
 import limax.util.Trace;
@@ -49,27 +46,23 @@ public final class Simulation implements PayGateway, HttpHandler {
 	public void unInitialize() {
 	}
 
-	private void response(HttpExchange exchange, boolean succeed) throws IOException {
+	private DataSupplier response(HttpExchange exchange, boolean succeed) {
 		Headers responseHeaders = exchange.getResponseHeaders();
 		responseHeaders.set("Content-Type", "text/plain; charset=utf-8");
-		exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
-		try (OutputStream os = exchange.getResponseBody()) {
-			os.write(succeed ? OK : FAIL);
-		}
+		return DataSupplier.from(succeed ? OK : FAIL);
 	}
 
 	@Override
-	public void handle(HttpExchange exchange) throws IOException {
+	public DataSupplier handle(HttpExchange exchange) {
 		URI uri = exchange.getRequestURI();
 		if (!uri.getPath().toString().equals(httpContext)) {
-			response(exchange, false);
-			return;
+			return response(exchange, false);
 		}
 		try {
 			PayOrder.ok(Long.parseLong(URLDecoder.decode(uri.getQuery(), "UTF-8"), Character.MAX_RADIX), gateway);
-			response(exchange, true);
+			return response(exchange, true);
 		} catch (Exception e) {
-			response(exchange, false);
+			return response(exchange, false);
 		}
 	}
 

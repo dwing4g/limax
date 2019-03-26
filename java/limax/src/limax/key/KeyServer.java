@@ -18,10 +18,7 @@ import java.util.stream.Stream;
 
 import org.w3c.dom.Element;
 
-import com.sun.net.httpserver.HttpsConfigurator;
-import com.sun.net.httpserver.HttpsParameters;
-import com.sun.net.httpserver.HttpsServer;
-
+import limax.http.HttpServer;
 import limax.p2p.Neighbors;
 import limax.pkix.SSLContextAllocator;
 import limax.util.ConcurrentEnvironment;
@@ -45,7 +42,7 @@ class KeyServer {
 	private final P2pHandler p2pHandler;
 	private final KeyHandler keyHandler;
 	private final long publishPeriod;
-	private HttpsServer server;
+	private HttpServer server;
 
 	KeyServer(Path configPath, Element root) throws Exception {
 		ElementHelper eh = new ElementHelper((Element) root.getElementsByTagName("Trace").item(0));
@@ -73,7 +70,7 @@ class KeyServer {
 			}
 		});
 		this.sslContextAllocator.getTrustManager()
-				.setRecovationCheckerOptions(eh.getString("revocationCheckerOptions"));
+				.setRevocationCheckerOptions(eh.getString("revocationCheckerOptions"));
 		String trustsPath = eh.getString("trustsPath", null);
 		if (trustsPath != null)
 			this.sslContextAllocator.getTrustManager().addTrust(Paths.get(trustsPath));
@@ -128,18 +125,12 @@ class KeyServer {
 			first = true;
 		} else {
 			first = false;
-			server.stop(SHUTDOWN_DELAY_SECOND);
+			server.stop();
+			Thread.sleep(SHUTDOWN_DELAY_SECOND);
 		}
-		server = HttpsServer.create(new InetSocketAddress(443), 0);
-		server.setHttpsConfigurator(new HttpsConfigurator(sslContextAllocator.alloc()) {
-			@Override
-			public void configure(HttpsParameters params) {
-				params.setWantClientAuth(true);
-			}
-		});
+		server = HttpServer.create(new InetSocketAddress(443), sslContextAllocator.alloc(), false, true);
 		server.createContext("/", keyHandler);
 		p2pHandler.createContext(server);
-		server.setExecutor(executor);
 		server.start();
 		if (first) {
 			masterKeyContainer.setRandomServers(p2pHandler.refresh());

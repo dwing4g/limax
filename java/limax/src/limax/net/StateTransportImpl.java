@@ -263,11 +263,11 @@ final class StateTransportImpl extends AbstractTransport
 	}
 
 	@Override
-	public void resetAlarm(long millisecond) {
+	public void resetAlarm(long milliseconds) {
 		lock.lock();
 		try {
 			if (nettask != null)
-				nettask.resetAlarm(millisecond);
+				nettask.resetAlarm(milliseconds);
 		} finally {
 			lock.unlock();
 		}

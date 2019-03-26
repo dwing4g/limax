@@ -51,15 +51,15 @@ public class __ProtocolProcessManager {
 				(uid, notAfter) -> Account.bind(credential, authcode, uid, notAfter, sessionid, onresult));
 	}
 
-	public static void onTemporaryFromCredential(String cred, String authcode, String authcode2, long millisecond,
+	public static void onTemporaryFromCredential(String cred, String authcode, String authcode2, long milliseconds,
 			byte usage, String subid, Result onresult) {
-		Account.temporary(cred, authcode, authcode2, millisecond, usage, subid, onresult);
+		Account.temporary(cred, authcode, authcode2, milliseconds, usage, subid, onresult);
 	}
 
 	public static void onTemporaryFromLogin(String username, String token, String platflag, int appid, String authcode,
-			long millisecond, byte usage, String subid, Result onresult) {
+			long milliseconds, byte usage, String subid, Result onresult) {
 		PlatManager.check(username, token, platflag, authcode, onresult,
-				(uid, notAfter) -> Account.temporary(uid, appid, authcode, millisecond, usage, subid, onresult));
+				(uid, notAfter) -> Account.temporary(uid, appid, authcode, milliseconds, usage, subid, onresult));
 	}
 
 	public static void onDerive(long sessionid, String credential, String authcode, Result onresult) {

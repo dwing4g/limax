@@ -103,7 +103,7 @@ function AuanyService(ctx) {
 		r = auany_open(ctx);
 	r["temporary"] = function() {
 		function temporary(host, port, appid, username, token, platflag,
-				authcode, millisecond, usage, subid, timeout, onresult, wss) {
+				authcode, milliseconds, usage, subid, timeout, onresult, wss) {
 			CredentialContext(host, port, appid, timeout, {
 				cmd : "temporaryFromLogin",
 				sn : 0,
@@ -112,7 +112,7 @@ function AuanyService(ctx) {
 				platflag : platflag,
 				appid : appid,
 				authcode : authcode,
-				millisecond : millisecond,
+				milliseconds : milliseconds,
 				usage : usage,
 				subid : subid
 			}, onresult, wss);

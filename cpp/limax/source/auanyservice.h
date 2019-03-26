@@ -41,8 +41,8 @@ namespace limax {
 		public:
 			void derive(const std::string& authcode, const limax::AuanyService::Result& r);
 			void bind(const std::string& authcode, LoginConfigPtr loginConfig, const limax::AuanyService::Result& r);
-			void temporary(const std::string& credential, const std::string& authcode, const std::string& authcode2, long millisecond, int8_t usage, const std::string& subid, const limax::AuanyService::Result& r);
-			void temporary(LoginConfigPtr loginConfig, int appid, const std::string& authcode, long millisecond, int8_t usage, const std::string& subid, const limax::AuanyService::Result& r);
+			void temporary(const std::string& credential, const std::string& authcode, const std::string& authcode2, long milliseconds, int8_t usage, const std::string& subid, const limax::AuanyService::Result& r);
+			void temporary(LoginConfigPtr loginConfig, int appid, const std::string& authcode, long milliseconds, int8_t usage, const std::string& subid, const limax::AuanyService::Result& r);
 			void transfer(LoginConfigPtr loginConfig, const std::string& authcode, const std::string& temp, const std::string& authtemp, const limax::AuanyService::Result& r);
 		private:
 			void execute(const Action& a, const limax::AuanyService::Result& r);

@@ -10,7 +10,7 @@ class Top extends JmxTool {
 	private final static String[][] _options_ = {
 			{ "-sc", "nsClass", "namespace for class. order is meaning. e.g. \"net.;zdb.\"", "" },
 			{ "-sl", "nsLock", "namespace for lock. order is meaning. e.g. \"net.;zdb.\"", "" },
-			{ "-r", "period", "period(millisecond) of top.", "1500" }, { "-n", "limit", "print lines number.", "10" },
+			{ "-r", "period", "period(milliseconds) of top.", "1500" }, { "-n", "limit", "print lines number.", "10" },
 			{ "-o", null, "print [Others].", null }, };
 
 	@Override

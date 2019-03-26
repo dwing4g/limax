@@ -215,7 +215,7 @@ public enum Trace {
 	 * @param minute
 	 *            rotate minute of the hour, -1 means not rotate
 	 * @param period
-	 *            rotate period in millisecond, -1 means not rotate
+	 *            rotate period in milliseconds, -1 means not rotate
 	 */
 	public static void openNew(File dir, boolean console, int hourOfDay, int minute, long period) {
 		if (dir != null)

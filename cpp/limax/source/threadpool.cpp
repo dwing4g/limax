@@ -12,8 +12,8 @@ namespace limax {
 	})
 	{}
 
-	JoinableRunnable::operator Runnable() 
-	{ 
+	JoinableRunnable::operator Runnable()
+	{
 		return r;
 	}
 
@@ -38,7 +38,7 @@ namespace limax {
 		std::mutex mutex;
 		std::condition_variable_any cond;
 		Config(Runnable _r, int _precision, int _count)
-			: r(_r), precision(_precision), count(_count) 
+			: r(_r), precision(_precision), count(_count)
 		{}
 		void _action()
 		{
@@ -73,7 +73,7 @@ namespace limax {
 		r = [c](){c->action(); };
 	}
 	DelayedRunnable::operator Runnable()
-	{ 
+	{
 		return r;
 	}
 	void DelayedRunnable::cancel()
@@ -122,7 +122,7 @@ namespace limax {
 	{
 		std::thread thread;
 		~Worker()
-		{ 
+		{
 			thread.join();
 		}
 		Worker(ThreadPool *p, Runnable _r)
@@ -151,12 +151,12 @@ namespace limax {
 		})){}
 	};
 
-	ThreadPool::ThreadPool(int max_idle_in_millisecond)
-		: idle_timeout(max_idle_in_millisecond) 
+	ThreadPool::ThreadPool(int max_idle_in_milliseconds)
+		: idle_timeout(max_idle_in_milliseconds)
 	{}
 
 	ThreadPool::~ThreadPool()
-	{ 
+	{
 		shutdown();
 	}
 

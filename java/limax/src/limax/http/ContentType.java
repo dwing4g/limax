@@ -51,6 +51,7 @@ public class ContentType {
 		register("tif", Major.image, "tiff");
 		register("tiff", Major.image, "tiff");
 		register("png", Major.image, "png");
+		register("ico", Major.image, "x-icon", true, true);
 		register("acc", Major.audio, "acc");
 		register("ac3", Major.audio, "ac3");
 		register("mp3", Major.audio, "mp3");

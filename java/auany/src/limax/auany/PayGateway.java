@@ -4,9 +4,8 @@ import java.util.Map;
 
 import org.w3c.dom.Element;
 
-import com.sun.net.httpserver.HttpHandler;
-
 import limax.endpoint.AuanyService.Result;
+import limax.http.HttpHandler;
 
 public interface PayGateway {
 	void initialize(Element e, Map<String, HttpHandler> httphandlers) throws Exception;

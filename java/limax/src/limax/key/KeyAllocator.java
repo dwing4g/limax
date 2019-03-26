@@ -37,6 +37,7 @@ import limax.codec.asn1.ASN1String;
 import limax.codec.asn1.ASN1Tag;
 import limax.codec.asn1.DecodeBER;
 import limax.codec.asn1.TagClass;
+import limax.net.Engine;
 import limax.pkix.SSLContextAllocator;
 import limax.util.Pair;
 import limax.util.XMLUtils;
@@ -144,6 +145,7 @@ public class KeyAllocator {
 				connection.setReadTimeout(TIMEOUT);
 				connection.setHostnameVerifier(hostnameVerifier);
 				connection.setSSLSocketFactory(sslContextAllocator.alloc().getSocketFactory());
+				connection.setRequestProperty("Content-Type", "application/octet-stream");
 				connection.setDoOutput(true);
 				connection.connect();
 				try (OutputStream out = connection.getOutputStream()) {
@@ -265,6 +267,7 @@ public class KeyAllocator {
 		XMLUtils.prettySave(XMLUtils.getRootElement(new ByteArrayInputStream(data)).getOwnerDocument(), os);
 		if (!Arrays.equals(os.toByteArray(), data))
 			Files.write(path, os.toByteArray());
+		Engine.open(4, 16, 64);
 		new KeyServer(path.toAbsolutePath().getParent(), XMLUtils.getRootElement(new ByteArrayInputStream(data)))
 				.start();
 	}

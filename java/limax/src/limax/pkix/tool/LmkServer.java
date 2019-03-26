@@ -1,7 +1,5 @@
 package limax.pkix.tool;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -21,10 +19,6 @@ import java.util.function.Function;
 
 import javax.security.auth.x500.X500Principal;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpsExchange;
-
 import limax.codec.Octets;
 import limax.codec.asn1.ASN1OctetString;
 import limax.codec.asn1.ASN1PrimitiveObject;
@@ -32,6 +26,10 @@ import limax.codec.asn1.ASN1Sequence;
 import limax.codec.asn1.ASN1Tag;
 import limax.codec.asn1.DecodeBER;
 import limax.codec.asn1.TagClass;
+import limax.http.DataSupplier;
+import limax.http.HttpException;
+import limax.http.HttpExchange;
+import limax.http.HttpHandler;
 import limax.pkix.CAService;
 import limax.pkix.ExtKeyUsage;
 import limax.pkix.GeneralName;
@@ -58,14 +56,14 @@ class LmkServer {
 
 	private class Handler implements HttpHandler {
 		@Override
-		public void handle(HttpExchange exchange) throws IOException {
-			X509Certificate cert = (X509Certificate) ((HttpsExchange) exchange).getSSLSession()
-					.getPeerCertificates()[0];
-			LmkResponse lmkResponse = LmkResponse.buildResponse(cert, exchange.getRequestURI().getQuery(),
-					() -> lmkDomain != null ? lmkDomain : parseLmkDomain(cert), constraintNameLength, () -> Arrays
-							.stream(ca.getCACertificates()).anyMatch(cacert -> SecurityUtils.isSignedBy(cert, cacert)));
-			if (lmkResponse != null) {
-				try {
+		public DataSupplier handle(HttpExchange exchange) {
+			try {
+				X509Certificate cert = (X509Certificate) exchange.getSSLSession().getPeerCertificates()[0];
+				LmkResponse lmkResponse = LmkResponse.buildResponse(cert, exchange.getRequestURI().getQuery(),
+						() -> lmkDomain != null ? lmkDomain : parseLmkDomain(cert), constraintNameLength,
+						() -> Arrays.stream(ca.getCACertificates())
+								.anyMatch(cacert -> SecurityUtils.isSignedBy(cert, cacert)));
+				if (lmkResponse != null) {
 					KeyPair keyPair = Main.keyPairGenerator(ca, certificateAlgorithm);
 					X509Certificate[] chain = ca.sign(new X509EndEntityCertificateParameter() {
 						@Override
@@ -114,15 +112,11 @@ class LmkServer {
 					exchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
 					exchange.getResponseHeaders().set("Content-Disposition",
 							"attachment; filename=\"" + lmkResponse.toFileNameString());
-					exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.size());
-					try (OutputStream os = exchange.getResponseBody()) {
-						os.write(response.array(), 0, response.size());
-					}
-					return;
-				} catch (Exception e) {
+					return DataSupplier.from(response.getByteBuffer());
 				}
+			} catch (Exception e) {
 			}
-			exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, -1);
+			throw new HttpException(HttpURLConnection.HTTP_BAD_REQUEST, true);
 		}
 	}
 
@@ -148,7 +142,7 @@ class LmkServer {
 		ElementHelper eh = new ElementHelper(serverConfig.getRoot());
 		TrustManager trustManager = new TrustManager();
 		trustManager.addTrust(Paths.get(eh.getString("trustsPath")));
-		trustManager.setRecovationCheckerOptions(eh.getString("revocationCheckerOptions"));
+		trustManager.setRevocationCheckerOptions(eh.getString("revocationCheckerOptions"));
 		this.lmkServer = new AutoHttpsServer(ca, domain, eh.getInt("port", 443), eh.getString("certificateAlgorithm"),
 				eh.getInt("certificateLifetime"), trustManager, new X509CertSelector(), ocspServer, scheduler);
 		eh = new ElementHelper(serverConfig.getElement("LmkBundle"));

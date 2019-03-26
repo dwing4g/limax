@@ -5,9 +5,9 @@ public final class BoundCheck implements Codec {
 	private final long deadline;
 	private final Codec sink;
 
-	public BoundCheck(long bytes, long millisecond, Codec sink) {
+	public BoundCheck(long bytes, long milliseconds, Codec sink) {
 		this.bytes = bytes;
-		long s = millisecond + System.currentTimeMillis();
+		long s = milliseconds + System.currentTimeMillis();
 		this.deadline = s < 0 ? Long.MAX_VALUE : s;
 		this.sink = sink;
 	}

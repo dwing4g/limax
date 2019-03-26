@@ -26,9 +26,9 @@ class AsynchronousNetTask extends AbstractNetTask {
 	}
 
 	@Override
-	public void attachSSL(byte[] negotiationData) {
+	public void attachSSL(SSLEngineDecorator decorator, byte[] negotiationData) {
 		try {
-			super.attachSSL((InetSocketAddress) channel.getRemoteAddress(), negotiationData);
+			attachSSL((InetSocketAddress) channel.getRemoteAddress(), decorator, negotiationData);
 		} catch (IOException e) {
 			close(e);
 		}
@@ -88,7 +88,7 @@ class AsynchronousNetTask extends AbstractNetTask {
 		channel.connect(sa, null, new CompletionHandler<Void, Object>() {
 			@Override
 			public void completed(Void result, Object attachment) {
-				startup(channel);
+				schedule(() -> startup(channel));
 			}
 
 			@Override
@@ -126,7 +126,7 @@ class AsynchronousNetTask extends AbstractNetTask {
 				if (result == -1)
 					close(new EOFException("the channel has reached end-of-stream"));
 				else
-					recving(true);
+					schedule(() -> recving(true));
 			}
 
 			@Override

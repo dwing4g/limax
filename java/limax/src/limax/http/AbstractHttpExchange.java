@@ -15,8 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 import java.util.function.Consumer;
-
-import limax.net.Engine;
+import java.util.function.Function;
 
 abstract class AbstractHttpExchange implements HttpExchange {
 	private final static String pattern = "EEE, dd MMM yyyy HH:mm:ss zzz";
@@ -27,42 +26,53 @@ abstract class AbstractHttpExchange implements HttpExchange {
 		return df;
 	});
 
+	protected final ApplicationExecutor executor;
 	protected final HttpProcessor processor;
 	private final Headers headers = new Headers();
-	private final Headers otrailers = new Headers();
+	private final Headers trailers = new Headers();
+	private URI requestURI;
+	private URI contextURI;
 	protected FormData formData;
 	protected HttpHandler httpHandler;
 	private boolean requestFinished;
 	private SendLoop sendLoop;
+	private Exception abort;
 
-	AbstractHttpExchange(HttpProcessor processor) {
+	AbstractHttpExchange(ApplicationExecutor executor, HttpProcessor processor) {
+		this.executor = executor;
 		this.processor = processor;
 	}
 
 	protected abstract boolean sendResponseHeaders(Headers headers, Long length);
 
-	protected abstract Runnable[] flowControl(Consumer<Integer> windowConsumer);
+	protected abstract void flowControl(Function<Integer, Boolean> windowConsumer);
 
 	protected abstract void send(ByteBuffer data, boolean chunk);
 
 	protected abstract void send(ByteBuffer[] datas, boolean chunk);
 
-	protected abstract void sendFinal(ByteBuffer data);
-
 	protected abstract void sendFinal(ByteBuffer[] data);
 
 	protected abstract void sendFinal();
 
-	protected abstract void forceClose();
+	protected abstract void forceClose(Headers headers);
 
-	private abstract class SendLoop implements Consumer<Integer> {
-		private final Runnable[] actions;
+	protected abstract CustomSender createWebSocketSender(Runnable onSendReady);
+
+	protected abstract CustomSender createCustomSender(Runnable onSendReady);
+
+	DataSupplier createCustomDataSupplier(Consumer<CustomSender> consumer, Runnable onSendReady) {
+		executor.execute(() -> consumer.accept(createCustomSender(onSendReady)));
+		return new CustomDataSupplier();
+	}
+
+	private abstract class SendLoop implements Function<Integer, Boolean> {
 		private final DataSupplier dataSupplier;
 		protected ByteBuffer data;
 
 		SendLoop(DataSupplier dataSupplier) {
 			this.dataSupplier = dataSupplier;
-			this.actions = flowControl(this);
+			sendLoop = this;
 		}
 
 		ByteBuffer frag(int length) {
@@ -78,9 +88,10 @@ abstract class AbstractHttpExchange implements HttpExchange {
 		}
 
 		@Override
-		public void accept(Integer window) {
+		public Boolean apply(Integer window) {
 			if (sendLoop != null)
 				fill(window);
+			return sendLoop != null;
 		}
 
 		abstract void fill(int window);
@@ -94,15 +105,9 @@ abstract class AbstractHttpExchange implements HttpExchange {
 					dataSupplier.done(AbstractHttpExchange.this);
 				} catch (Throwable t) {
 				}
-				if (!cancel) {
-					actions[1].run();
+				if (!cancel)
 					cleanup();
-				}
 			}
-		}
-
-		void startup() {
-			actions[0].run();
 		}
 	}
 
@@ -186,10 +191,11 @@ abstract class AbstractHttpExchange implements HttpExchange {
 	}
 
 	private void response(Headers headers, DataSupplier dataSupplier) throws Exception {
+		formData = null;
 		if (headers.get(":status") == null)
 			headers.set(":status", 200);
 		headers.set("date", dateFormat.get().format(new Date()));
-		headers.set("server", "Limax/httpserver");
+		headers.set("server", "Limax/1.0");
 		Long length;
 		if (dataSupplier == null)
 			length = 0L;
@@ -198,9 +204,10 @@ abstract class AbstractHttpExchange implements HttpExchange {
 		else
 			length = null;
 		if (sendResponseHeaders(headers, length)) {
-			sendLoop = length != null ? new DeterministicSendLoop(dataSupplier)
-					: new UndeterministicSendLoop(dataSupplier);
-			sendLoop.startup();
+			if (length != null)
+				flowControl(new DeterministicSendLoop(dataSupplier));
+			else if (!(dataSupplier instanceof CustomDataSupplier))
+				flowControl(new UndeterministicSendLoop(dataSupplier));
 		}
 	}
 
@@ -208,14 +215,22 @@ abstract class AbstractHttpExchange implements HttpExchange {
 		return () -> {
 			try {
 				try {
-					this.requestFinished = requestFinished;
-					DataSupplier dataSupplier = httpHandler.handle(this);
 					if (requestFinished)
-						response(headers, dataSupplier);
+						if (abort == null) {
+							this.requestFinished = requestFinished;
+							response(headers, httpHandler.handle(this));
+						} else
+							throw abort;
+					else if (abort == null)
+						try {
+							httpHandler.handle(this);
+						} catch (Exception e) {
+							abort = e;
+						}
 				} catch (HttpException e) {
-					if (e.isForceClose())
-						forceClose();
 					headers.entrySet().clear();
+					if (e.isForceClose())
+						forceClose(headers);
 					response(headers, e.getHandler().handle(this));
 				}
 			} catch (Throwable e) {
@@ -224,45 +239,42 @@ abstract class AbstractHttpExchange implements HttpExchange {
 					e.printStackTrace(ps);
 				} catch (UnsupportedEncodingException e1) {
 				}
-				forceClose();
 				headers.entrySet().clear();
+				forceClose(headers);
 				headers.set(":status", HttpURLConnection.HTTP_INTERNAL_ERROR);
 				headers.set("Content-Type", "text/plain; charset=utf-8");
-				ByteBuffer data = ByteBuffer.wrap(baos.toByteArray());
-				sendResponseHeaders(headers, (long) data.remaining());
-				sendFinal(data);
+				try {
+					response(headers, DataSupplier.from(baos.toByteArray()));
+				} catch (Exception e1) {
+				}
 			}
 		};
 	}
 
 	protected void schedule(boolean requestFinished) {
 		if (requestFinished)
-			Engine.getApplicationExecutor().execute(this, createTask(requestFinished));
-		else
-			Engine.getApplicationExecutor().schedule(this, createTask(requestFinished));
+			executor.execute(createTask(requestFinished));
+		else if (abort == null)
+			executor.executeExclusively(createTask(requestFinished));
 	}
 
 	protected void cancel() {
-		Engine.getApplicationExecutor().execute(this, () -> {
+		if (formData != null)
+			formData.end(true);
+		executor.execute(() -> {
 			if (sendLoop != null)
 				sendLoop.done(true);
-			if (formData != null)
-				formData.end();
 		});
 	}
 
 	protected Handler getHandler(Headers headers) {
-		return processor.getHandler(headers.getFirst("host"), headers.getFirst(":path"));
-	}
-
-	protected FormData createFormData(Headers headers) {
-		boolean multipart;
-		try {
-			multipart = headers.getFirst("content-type").contains("boundary=");
-		} catch (Exception e) {
-			multipart = false;
-		}
-		return new FormData(multipart);
+		String dnsName = headers.getFirst(":authority");
+		if (dnsName == null)
+			dnsName = headers.getFirst("host");
+		requestURI = URI.create(headers.getFirst(":path"));
+		HttpContext httpContext = processor.getHttpContext(dnsName, requestURI.getPath());
+		contextURI = httpContext.uri();
+		return httpContext.handler();
 	}
 
 	@Override
@@ -282,7 +294,12 @@ abstract class AbstractHttpExchange implements HttpExchange {
 
 	@Override
 	public URI getRequestURI() {
-		return URI.create(getRequestHeaders().getFirst(":path"));
+		return requestURI;
+	}
+
+	@Override
+	public URI getContextURI() {
+		return contextURI;
 	}
 
 	@Override
@@ -302,6 +319,6 @@ abstract class AbstractHttpExchange implements HttpExchange {
 
 	@Override
 	public Headers getResponseTrailers() {
-		return otrailers;
+		return trailers;
 	}
 }

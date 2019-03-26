@@ -29,7 +29,7 @@ class Http11Parser {
 
 	private void parseRequestLine(String line) {
 		String[] words = line.split("\\s+", 3);
-		headers.set(":method", words[0].toLowerCase());
+		headers.set(":method", words[0].toUpperCase());
 		headers.set(":path", URI.create(words[1]).toASCIIString());
 		version = HttpVersion.parse(words[2]);
 	}

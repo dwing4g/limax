@@ -10,12 +10,11 @@ import java.util.Map;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-import com.sun.net.httpserver.HttpHandler;
-
 import limax.auany.paygws.AppStore.Request;
 import limax.defines.ErrorCodes;
 import limax.defines.ErrorSource;
 import limax.endpoint.AuanyService.Result;
+import limax.http.HttpHandler;
 import limax.util.ElementHelper;
 import limax.util.Helper;
 import limax.util.Trace;

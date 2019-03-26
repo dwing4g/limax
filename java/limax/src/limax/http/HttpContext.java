@@ -1,10 +1,12 @@
 package limax.http;
 
+import java.net.URI;
 import java.util.Iterator;
 import java.util.List;
 
 class HttpContext {
 	private final String prefix;
+	private final URI uri;
 	private final Handler handler;
 
 	private static String fix(String path) {
@@ -13,14 +15,15 @@ class HttpContext {
 		return (path.charAt(path.length() - 1) == '/' ? path : path + "/").toLowerCase();
 	}
 
-	private HttpContext(String prefix, Handler handler) {
-		this.prefix = prefix;
+	HttpContext(String path, Handler handler) {
+		this.prefix = fix(path);
+		this.uri = URI.create(prefix.substring(0, prefix.length() - 1));
 		this.handler = handler;
 	}
 
 	static void create(List<HttpContext> contexts, String path, Handler handler) {
 		synchronized (contexts) {
-			contexts.add(new HttpContext(fix(path), handler));
+			contexts.add(new HttpContext(path, handler));
 			contexts.sort((o1, o2) -> o2.prefix.length() - o1.prefix.length());
 		}
 	}
@@ -44,7 +47,7 @@ class HttpContext {
 		}
 	}
 
-	static Handler find(List<HttpContext> contexts, String path) {
+	static HttpContext find(List<HttpContext> contexts, String path) {
 		path = fix(path);
 		int len = path.length();
 		synchronized (contexts) {
@@ -54,9 +57,17 @@ class HttpContext {
 				if (prefix.length() > len)
 					continue;
 				if (path.startsWith(prefix))
-					return c.handler;
+					return c;
 			}
 		}
 		return null;
+	}
+
+	Handler handler() {
+		return handler;
+	}
+
+	URI uri() {
+		return uri;
 	}
 }

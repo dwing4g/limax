@@ -42,6 +42,7 @@ abstract class AbstractNetTask implements NetTask {
 	private volatile Runnable snotice;
 	private final AtomicReference<Throwable> closeReason = new AtomicReference<Throwable>();
 	private final NetProcessor processor;
+	private boolean active;
 
 	private final Alarm alarm = new Alarm(new Runnable() {
 		@Override
@@ -64,10 +65,15 @@ abstract class AbstractNetTask implements NetTask {
 		return sslExchange.isSSLSupported();
 	}
 
-	final void attachSSL(InetSocketAddress addr, byte[] negotiationData) {
+	@Override
+	public void attachSSL(byte[] negotiationData) {
+		attachSSL(null, negotiationData);
+	}
+
+	final void attachSSL(InetSocketAddress addr, SSLEngineDecorator decorator, byte[] negotiationData) {
 		synchronized (sslExchange) {
 			if (!sslExchange.on())
-				sslExchange.attach(this, addr.getHostName(), addr.getPort(), negotiationData);
+				sslExchange.attach(this, addr.getHostName(), addr.getPort(), decorator, negotiationData);
 		}
 	}
 
@@ -112,9 +118,20 @@ abstract class AbstractNetTask implements NetTask {
 	}
 
 	@Override
-	public void resetAlarm(long millisecond) {
-		if (millisecond >= 0)
-			alarm.reset(millisecond);
+	public void resetAlarm(long milliseconds) {
+		if (milliseconds >= 0)
+			alarm.reset(milliseconds);
+	}
+
+	@Override
+	public void execute(final Runnable r) {
+		schedule(new Runnable() {
+			@Override
+			public void run() {
+				if (active)
+					r.run();
+			}
+		});
 	}
 
 	@Override
@@ -244,7 +261,10 @@ abstract class AbstractNetTask implements NetTask {
 	}
 
 	void onClose() {
-		processor.shutdown(closeReason.get());
+		if (active) {
+			active = false;
+			processor.shutdown(closeReason.get());
+		}
 	}
 
 	final void onServiceShutdown() {
@@ -315,6 +335,7 @@ abstract class AbstractNetTask implements NetTask {
 	}
 
 	final void startup(SocketAddress local, SocketAddress peer) throws Exception {
+		active = true;
 		if (processor.startup(this, local, peer))
 			enable();
 	}

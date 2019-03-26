@@ -19,15 +19,12 @@ public class RFC6455 {
 	public final static byte opcodePong = 10;
 
 	public final static short closeNormal = 1000;
+	public final static short closeGoaway = 1001;
+	public final static short closeProtocol = 1002;
 	public final static short closeNotSupportFrame = 1003;
 	public final static short closeVolatilePolicy = 1006;
 	public final static short closeSizeExceed = 1009;
 	public final static short closeServerException = 1011;
-	public final static short closeAbnormal = 4000;
-	public final static short closeNetException = 4001;
-
-	private final static int CLOSE_IN = 1;
-	private final static int CLOSE_OUT = 2;
 
 	public static class RFC6455Exception extends Exception {
 		private static final long serialVersionUID = -6368119477527251729L;
@@ -57,7 +54,8 @@ public class RFC6455 {
 	private boolean fin;
 	private long length;
 	private byte mask[] = new byte[4];
-	private int close;
+	private volatile boolean shutdownOut;
+	private boolean shutdownIn;
 
 	public RFC6455(int maxMessageSize, boolean server) {
 		this.maxMessageSize = maxMessageSize;
@@ -142,9 +140,9 @@ public class RFC6455 {
 		}
 	}
 
-	public Queue<Pair<Byte, byte[]>> unwrap(byte[] in) throws RFC6455Exception {
-		for (byte c : in) {
-			process(c);
+	public Queue<Pair<Byte, byte[]>> unwrap(ByteBuffer in) throws RFC6455Exception {
+		while (in.hasRemaining()) {
+			process(in.get());
 			if (stage == -1) {
 				if (fin)
 					queue.offer(new Pair<>(opcode, data.getBytes()));
@@ -182,34 +180,30 @@ public class RFC6455 {
 	}
 
 	public void send(Runnable action) {
-		synchronized (mask) {
-			if ((close & CLOSE_OUT) == 0)
-				action.run();
-		}
+		if (!shutdownOut)
+			action.run();
 	}
 
 	public void sendClose(Runnable action) {
 		send(() -> {
-			close |= CLOSE_OUT;
+			shutdownOut = true;
 			action.run();
 		});
 	}
 
 	public void recvClose(byte[] data, BiConsumer<Short, String> consumer) {
-		synchronized (mask) {
-			if ((close & CLOSE_IN) == 0) {
-				close |= CLOSE_IN;
-				short code;
-				String reason;
-				if (data.length >= 2) {
-					code = (short) (((data[0] << 8) & 0xff) + (data[1] & 0xff));
-					reason = new String(data, 2, data.length - 2, StandardCharsets.UTF_8);
-				} else {
-					code = RFC6455.closeAbnormal;
-					reason = "abnormal close frame without code";
-				}
-				consumer.accept(code, reason);
-			}
+		if (shutdownIn)
+			return;
+		shutdownIn = true;
+		short code;
+		String reason;
+		if (data.length >= 2) {
+			code = (short) (((data[0] & 0xff) << 8) + (data[1] & 0xff));
+			reason = new String(data, 2, data.length - 2, StandardCharsets.UTF_8);
+		} else {
+			code = RFC6455.closeProtocol;
+			reason = "abnormal close frame without code";
 		}
+		consumer.accept(code, reason);
 	}
 }

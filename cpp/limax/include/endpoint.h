@@ -24,12 +24,12 @@ namespace limax {
 		static void bind(const std::string& httpHost, int httpPort, int appid, const std::string& authcode, LoginConfigPtr loginConfig, long timeout, Result onresult);
 		static void bind(const std::string& credential, const std::string& authcode, LoginConfigPtr loginConfig, long timeout, Result onresult, EndpointManager* manager);
 		static void bind(const std::string& credential, const std::string& authcode, LoginConfigPtr loginConfig, long timeout, Result onresult);
-		static void temporary(const std::string& httpHost, int httpPort, int appid, const std::string& credential, const std::string& authcode, const std::string& authcode2, long millisecond, int8_t usage, const std::string& subid, long timeout, Result onresult);
-		static void temporary(const std::string& credential, const std::string& authcode, const std::string& authcode2, long millisecond, int8_t usage, const std::string& subid, long timeout, Result onresult, EndpointManager* manager);
-		static void temporary(const std::string& credential, const std::string& authcode, const std::string& authcode2, long millisecond, int8_t usage, const std::string& subid, long timeout, Result onresult);
-		static void temporary(const std::string& httpHost, int httpPort, int appid, LoginConfigPtr loginConfig, const std::string& authcode, long millisecond, int8_t usage, const std::string& subid, long timeout, Result onresult);
-		static void temporary(LoginConfigPtr loginConfig, int appid, const std::string& authcode, long millisecond, int8_t usage, const std::string& subid, long timeout, Result onresult, EndpointManager* manager);
-		static void temporary(LoginConfigPtr loginConfig, int appid, const std::string& authcode, long millisecond, int8_t usage, const std::string& subid, long timeout, Result onresult);
+		static void temporary(const std::string& httpHost, int httpPort, int appid, const std::string& credential, const std::string& authcode, const std::string& authcode2, long milliseconds, int8_t usage, const std::string& subid, long timeout, Result onresult);
+		static void temporary(const std::string& credential, const std::string& authcode, const std::string& authcode2, long milliseconds, int8_t usage, const std::string& subid, long timeout, Result onresult, EndpointManager* manager);
+		static void temporary(const std::string& credential, const std::string& authcode, const std::string& authcode2, long milliseconds, int8_t usage, const std::string& subid, long timeout, Result onresult);
+		static void temporary(const std::string& httpHost, int httpPort, int appid, LoginConfigPtr loginConfig, const std::string& authcode, long milliseconds, int8_t usage, const std::string& subid, long timeout, Result onresult);
+		static void temporary(LoginConfigPtr loginConfig, int appid, const std::string& authcode, long milliseconds, int8_t usage, const std::string& subid, long timeout, Result onresult, EndpointManager* manager);
+		static void temporary(LoginConfigPtr loginConfig, int appid, const std::string& authcode, long milliseconds, int8_t usage, const std::string& subid, long timeout, Result onresult);
 		static void transfer(const std::string& httpHost, int httpPort, int appid, LoginConfigPtr loginConfig, const std::string& authcode, const std::string& temp, const std::string& authtemp, long timeout, Result onresult);
 		static void pay(int gateway, int payid, int product, int price, int count, const std::string& invoice, long timeout, Result onresult, EndpointManager *manager);
 		static void pay(int gateway, int payid, int product, int price, int count, const std::string& invoice, long timeout, Result onresult);

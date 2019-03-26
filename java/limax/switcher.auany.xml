@@ -71,7 +71,7 @@
 	</protocol>
 
 	<protocol name="KeepAlive" type="17" maxsize="8">
-		<variable name="millisecond" type="long" />
+		<variable name="milliseconds" type="long" />
 	</protocol>
 
 	<protocol name="ProviderDown" type="18" maxsize="8">

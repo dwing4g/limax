@@ -8,11 +8,18 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 @FunctionalInterface
 public interface DataSupplier {
+	interface Done {
+		void done(HttpExchange exchange) throws Exception;
+	}
+
 	ByteBuffer get() throws Exception;
 
 	default void done(HttpExchange exchange) throws Exception {
@@ -34,21 +41,25 @@ public interface DataSupplier {
 		return from(charset.encode(text));
 	}
 
+	static DataSupplier from(FileChannel fc, long begin, long end) throws IOException {
+		long pos = begin;
+		long size = end - begin;
+		if (size <= Integer.MAX_VALUE)
+			return from(fc.map(MapMode.READ_ONLY, pos, size));
+		int nblocks = (int) (size / 0x7F000000);
+		ByteBuffer[] datas = new ByteBuffer[nblocks + (size % 0x7F000000 != 0 ? 1 : 0)];
+		for (int i = 0; i < nblocks; i++) {
+			datas[i] = fc.map(MapMode.READ_ONLY, pos, 0x7F000000);
+			pos += 0x7F000000;
+		}
+		if ((size -= pos) > 0)
+			datas[nblocks] = fc.map(MapMode.READ_ONLY, pos, size);
+		return from(datas);
+	}
+
 	static DataSupplier from(Path path) throws IOException {
 		try (FileChannel fc = FileChannel.open(path, StandardOpenOption.READ)) {
-			long size = fc.size();
-			if (size <= Integer.MAX_VALUE)
-				return from(fc.map(MapMode.READ_ONLY, 0, size));
-			int nblocks = (int) (size / 0x7F000000);
-			ByteBuffer[] datas = new ByteBuffer[nblocks + (size % 0x7F000000 != 0 ? 1 : 0)];
-			long pos = 0;
-			for (int i = 0; i < nblocks; i++) {
-				datas[i] = fc.map(MapMode.READ_ONLY, pos, 0x7F000000);
-				pos += 0x7F000000;
-			}
-			if ((size -= pos) > 0)
-				datas[nblocks] = fc.map(MapMode.READ_ONLY, pos, size);
-			return DataSupplier.from(datas);
+			return from(fc, 0, fc.size());
 		}
 	}
 
@@ -57,16 +68,94 @@ public interface DataSupplier {
 	}
 
 	static DataSupplier from(InputStream in, int buffersize) {
-		return new InputStreamSupplier(in, buffersize);
+		return new InputStreamDataSupplier(in, buffersize);
 	}
 
 	static DataSupplier from(ReadableByteChannel ch, int buffersize) {
-		return new ChannelSupplier(ch, buffersize);
+		return new ChannelDataSupplier(ch, buffersize);
+	}
+
+	static DataSupplier from(DataSupplier supplier, Done done) {
+		return new DoneDecorateDataSupplier(supplier, done);
+	}
+
+	static DataSupplier from(HttpExchange exchange, Consumer<CustomSender> consumer, Runnable onSendReady) {
+		return ((AbstractHttpExchange) exchange).createCustomDataSupplier(consumer, onSendReady);
+	}
+
+	static DataSupplier from(HttpExchange exchange, BiConsumer<String, ServerSentEvents> consumer,
+			Runnable onSendReady) {
+		String lastEventId = exchange.getRequestHeaders().getFirst("last-event-id");
+		exchange.getResponseHeaders().set("Content-Type", "text/event-stream; charset=utf-8");
+		exchange.getResponseHeaders().set("Cache-Control", "no-store");
+		return DataSupplier.from(exchange, sender -> {
+			consumer.accept(lastEventId, new ServerSentEvents() {
+				@Override
+				public void emit(String data) {
+					emit(null, null, data);
+				}
+
+				@Override
+				public void emit(String event, String id, String data) {
+					StringBuilder sb = new StringBuilder();
+					if (event != null)
+						sb.append("event: ").append(event).append("\n");
+					if (id != null)
+						sb.append("id: ").append(id).append("\n");
+					sb.append("data: ").append(data).append("\n\n");
+					sender.send(StandardCharsets.UTF_8.encode(sb.toString()));
+				}
+
+				@Override
+				public void emit(long milliseconds) {
+					sender.send(StandardCharsets.UTF_8.encode("retry: " + milliseconds + "\n"));
+				}
+
+				@Override
+				public void done() {
+					sender.sendFinal(0);
+				}
+
+				@Override
+				public void cancel() {
+					sender.cancel();
+				}
+			});
+		}, onSendReady);
 	}
 }
 
 interface DeterministicDataSupplier extends DataSupplier {
 	long getLength();
+}
+
+class DoneDecorateDataSupplier implements DataSupplier {
+	private final DataSupplier supplier;
+	private final Done done;
+
+	DoneDecorateDataSupplier(DataSupplier supplier, Done done) {
+		if (supplier instanceof CustomDataSupplier || supplier instanceof DoneDecorateDataSupplier)
+			throw new UnsupportedOperationException();
+		this.supplier = supplier;
+		this.done = done;
+	}
+
+	@Override
+	public ByteBuffer get() throws Exception {
+		return supplier.get();
+	}
+
+	@Override
+	public void done(HttpExchange exchange) throws Exception {
+		done.done(exchange);
+	}
+}
+
+class CustomDataSupplier implements DataSupplier {
+	@Override
+	public ByteBuffer get() throws Exception {
+		throw new UnsupportedOperationException();
+	}
 }
 
 class SingleByteBufferDataSupplier implements DeterministicDataSupplier {
@@ -109,11 +198,11 @@ class MultipleByteBufferDataSupplier implements DeterministicDataSupplier {
 	}
 }
 
-class InputStreamSupplier implements DataSupplier {
+class InputStreamDataSupplier implements DataSupplier {
 	private final InputStream in;
 	private final int buffersize;
 
-	InputStreamSupplier(InputStream in, int buffersize) {
+	InputStreamDataSupplier(InputStream in, int buffersize) {
 		this.in = in;
 		this.buffersize = buffersize;
 	}
@@ -124,18 +213,13 @@ class InputStreamSupplier implements DataSupplier {
 		int n = in.read(data);
 		return n == -1 ? null : ByteBuffer.wrap(data, 0, n);
 	}
-
-	@Override
-	public void done(HttpExchange exchange) throws Exception {
-		in.close();
-	}
 }
 
-class ChannelSupplier implements DataSupplier {
+class ChannelDataSupplier implements DataSupplier {
 	private final ReadableByteChannel ch;
 	private final int buffersize;
 
-	ChannelSupplier(ReadableByteChannel ch, int buffersize) {
+	ChannelDataSupplier(ReadableByteChannel ch, int buffersize) {
 		this.ch = ch;
 		this.buffersize = buffersize;
 	}
@@ -147,10 +231,5 @@ class ChannelSupplier implements DataSupplier {
 			return null;
 		bb.flip();
 		return bb;
-	}
-
-	@Override
-	public void done(HttpExchange exchange) throws Exception {
-		ch.close();
 	}
 }

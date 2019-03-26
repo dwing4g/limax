@@ -6,29 +6,34 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.function.Consumer;
+import java.util.function.Function;
+
+import javax.net.ssl.SSLSession;
 
 import limax.codec.SHA1;
 import limax.http.HttpServer.Parameter;
-import limax.net.Engine;
 import limax.net.io.NetTask;
 
 class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 	private final static byte[] CRLF = new byte[] { 13, 10 };
 	private final Http11Parser parser;
+	private final NetTask nettask;
+	private final FlowControlFlusher flusher;
 	private final long requestTimeout;
-	private NetTask nettask;
+	private ByteBuffer remain;
 	private boolean forceClose;
 
 	Http11Exchange(HttpProcessor processor, NetTask nettask, long requestTimeout) {
-		super(processor);
-		parser = new Http11Parser(processor);
-		this.requestTimeout = requestTimeout;
+		super(new ApplicationExecutor(nettask), processor);
+		this.parser = new Http11Parser(processor);
 		this.nettask = nettask;
+		this.flusher = new FlowControlFlusher(nettask);
+		this.requestTimeout = requestTimeout;
 	}
 
 	@Override
 	protected void schedule(boolean done) {
-		if (nettask != null)
+		if (!forceClose)
 			super.schedule(done);
 	}
 
@@ -43,7 +48,11 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 	}
 
 	@Override
-	public long process(ByteBuffer in) {
+	public SSLSession getSSLSession() {
+		return nettask.getSSLSession();
+	}
+
+	private long _process(ByteBuffer in) {
 		while (in.hasRemaining()) {
 			if (parser.remain > 0) {
 				int len = in.remaining();
@@ -66,7 +75,7 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 				break;
 			if (httpHandler == null) {
 				if (parser.getVersion().equals(HttpVersion.HTTP2)) {
-					processor.upgrade(new Http2Processor(processor, nettask, in));
+					processor.replace(new Http2Processor(processor, nettask, in));
 					return (Long) processor.get(Parameter.HTTP2_SETTINGS_TIMEOUT);
 				}
 				Handler handler = getHandler(parser.getHeaders());
@@ -86,8 +95,8 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 							break;
 						}
 						if (http2) {
-							processor.upgrade(new Http2Processor(processor, nettask, iheaders));
 							sendResponseHeaders(oheaders, upgrade);
+							processor.replace(new Http2Processor(processor, nettask, iheaders));
 							return (Long) processor.get(Parameter.HTTP2_SETTINGS_TIMEOUT);
 						}
 					}
@@ -103,9 +112,11 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 						} catch (Exception e) {
 							origin = null;
 						}
-						processor.upgrade(new WebSocketExchangeImpl(nettask, handler, getLocalAddress(),
-								new WebSocketAddress(getPeerAddress(), getRequestURI(), origin),
-								(Integer) processor.get(Parameter.WEBSOCKET_MAX_INCOMING_MESSAGE_SIZE)));
+						processor.replace(new WebSocket11Exchange(executor, nettask, (WebSocketHandler) handler,
+								onSendReady -> createWebSocketSender(onSendReady), getLocalAddress(),
+								new WebSocketAddress(getPeerAddress(), getContextURI(), getRequestURI(), origin),
+								(Integer) processor.get(Parameter.WEBSOCKET_MAX_INCOMING_MESSAGE_SIZE),
+								(Long) processor.get(Parameter.WEBSOCKET_DEFAULT_FINAL_TIMEOUT)));
 						oheaders.set("sec-websocket-accept", Base64.getEncoder().encodeToString(
 								SHA1.digest((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").getBytes())));
 						sendResponseHeaders(oheaders, "websocket");
@@ -116,16 +127,38 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 					}
 					return 0;
 				}
-				formData = parser.remain == -1 ? new FormData(getRequestURI().getQuery())
-						: createFormData(parser.getHeaders());
+				formData = parser.remain == -1 ? new FormData(getRequestURI())
+						: new FormData(parser.getHeaders(), httpHandler.postLimit());
 			}
 			if (parser.remain == -1) {
-				formData.end();
+				remain = in;
+				formData.end(false);
 				schedule(true);
-				return DISABLE_INCOMING;
+				return -1;
 			}
 		}
 		return requestTimeout;
+	}
+
+	@Override
+	public void process(ByteBuffer in) {
+		long timeout = _process(in);
+		if (timeout >= 0) {
+			nettask.resetAlarm(timeout);
+		} else {
+			nettask.resetAlarm(0);
+			nettask.disable();
+		}
+	}
+
+	private void pipeline() {
+		Http11Exchange exchange = new Http11Exchange(processor, nettask, requestTimeout);
+		processor.replace(exchange);
+		long timeout = exchange._process(remain);
+		if (timeout >= 0) {
+			nettask.resetAlarm(timeout);
+			nettask.enable();
+		}
 	}
 
 	@Override
@@ -150,49 +183,51 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 			if (version == HttpVersion.HTTP10)
 				headers.set("connection", "keep-alive");
 		} else {
-			headers.set("connection", "close");
-			forceClose = true;
+			forceClose(headers);
 		}
 		boolean body = true;
-		if (getRequestMethod().equals("head")) {
+		if (getRequestMethod().equals("HEAD")) {
 			body = false;
 		} else if (length != null) {
 			headers.set("content-length", length);
 			if (length == 0L)
 				body = false;
 		} else if (version == HttpVersion.HTTP10) {
-			headers.set("connection", "close");
-			forceClose = true;
+			forceClose(headers);
 		} else {
 			headers.set("transfer-encoding", "chunked");
 		}
 		nettask.send(StandardCharsets.ISO_8859_1.encode(
 				headers.write(new StringBuilder(version.statusLine(Integer.parseInt(headers.getFirst(":status")))))
 						.append("\r\n").toString()));
-		if (!body)
+		if (!body) {
+			nettask.setSendBufferNotice((remaining, att) -> flusher.flush(), null);
 			_sendFinal();
+		}
 		return body;
 	}
 
 	@Override
-	protected Runnable[] flowControl(Consumer<Integer> windowConsumer) {
-		int initialWindow = (Integer) processor.get(Parameter.HTTP11_INITIAL_WINDOW_SIZE);
+	protected void flowControl(Function<Integer, Boolean> windowConsumer) {
 		long timeout = (Long) processor.get(Parameter.HTTP11_FLOWCONTROL_TIMEOUT);
-		nettask.setSendBufferNotice((remain, att) -> {
+		int initialWindow = (Integer) processor.get(Parameter.HTTP11_INITIAL_WINDOW_SIZE);
+		Runnable pump = () -> {
+			if (flusher.flush()) {
+				int window = (int) (initialWindow - nettask.getSendBufferSize());
+				if (window > 0)
+					windowConsumer.apply(window);
+			}
+		};
+		nettask.setSendBufferNotice((remaining, att) -> {
 			nettask.resetAlarm(timeout);
-			int window = (int) (initialWindow - remain);
-			if (window > 0)
-				Engine.getApplicationExecutor().schedule(this, () -> windowConsumer.accept(window));
+			executor.executeExclusively(pump);
 		}, null);
-		return new Runnable[] { () -> windowConsumer.accept(initialWindow), () -> {
-			nettask.resetAlarm(0);
-			nettask.setSendBufferNotice(null, null);
-		} };
+		pump.run();
 	}
 
 	@Override
 	protected void send(ByteBuffer data, boolean chunk) {
-		if (chunk)
+		if (chunk && !forceClose)
 			nettask.send(new ByteBuffer[] {
 					StandardCharsets.ISO_8859_1.encode(Integer.toHexString(data.remaining()) + "\r\n"), data,
 					ByteBuffer.wrap(CRLF) });
@@ -202,7 +237,7 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 
 	@Override
 	protected void send(ByteBuffer[] datas, boolean chunk) {
-		if (chunk) {
+		if (chunk && !forceClose) {
 			int remaining = 0;
 			for (ByteBuffer bb : datas)
 				remaining += bb.remaining();
@@ -216,12 +251,6 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 	}
 
 	@Override
-	protected void sendFinal(ByteBuffer data) {
-		nettask.send(data);
-		_sendFinal();
-	}
-
-	@Override
 	protected void sendFinal(ByteBuffer[] datas) {
 		nettask.send(datas);
 		_sendFinal();
@@ -229,21 +258,107 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 
 	@Override
 	protected void sendFinal() {
-		nettask.send(StandardCharsets.ISO_8859_1
-				.encode(getResponseTrailers().write(new StringBuilder("0\r\n")).append("\r\n").toString()));
+		if (!forceClose)
+			nettask.send(StandardCharsets.ISO_8859_1
+					.encode(getResponseTrailers().write(new StringBuilder("0\r\n")).append("\r\n").toString()));
 		_sendFinal();
 	}
 
 	private void _sendFinal() {
-		if (forceClose) {
-			nettask.sendFinal((Long) processor.get(Parameter.CLOSE_TIMEOUT));
-			nettask = null;
-		} else
-			processor.pipeline();
+		flusher.flush(() -> {
+			if (forceClose)
+				nettask.sendFinal((Long) processor.get(Parameter.HTTP11_CLOSE_TIMEOUT));
+			else
+				nettask.execute(() -> pipeline());
+		});
 	}
 
 	@Override
-	protected void forceClose() {
+	protected void forceClose(Headers headers) {
 		forceClose = true;
+		headers.set("connection", "close");
+	}
+
+	private static class FlowControlFlusher {
+		private final NetTask nettask;
+		private boolean active = true;
+		private Runnable flushing;
+
+		FlowControlFlusher(NetTask nettask) {
+			this.nettask = nettask;
+		}
+
+		boolean flush() {
+			if (!active && flushing != null)
+				flushing.run();
+			return active;
+		}
+
+		void flush(Runnable lastAction) {
+			active = false;
+			flushing = () -> {
+				if (nettask.getSendBufferSize() == 0) {
+					nettask.setSendBufferNotice(null, null);
+					lastAction.run();
+					flushing = null;
+				}
+			};
+			flushing.run();
+		}
+	}
+
+	private static class Http11CustomSender implements CustomSender {
+		private final FlowControlFlusher flusher;
+		private final Consumer<ByteBuffer> c0;
+		private final Consumer<Long> c1;
+
+		Http11CustomSender(ApplicationExecutor executor, FlowControlFlusher flusher, Consumer<ByteBuffer> c0,
+				Consumer<Long> c1, Runnable onSendReady) {
+			this.flusher = flusher;
+			flusher.nettask.setSendBufferNotice((remaining, att) -> {
+				executor.executeExclusively(() -> {
+					synchronized (flusher) {
+						if (flusher.flush() && flusher.nettask.getSendBufferSize() == 0)
+							onSendReady.run();
+					}
+				});
+			}, null);
+			this.c0 = c0;
+			this.c1 = c1;
+		}
+
+		@Override
+		public void send(ByteBuffer bb) {
+			synchronized (flusher) {
+				if (flusher.flush())
+					c0.accept(bb);
+			}
+		}
+
+		@Override
+		public void sendFinal(long timeout) {
+			synchronized (flusher) {
+				if (flusher.flush())
+					c1.accept(timeout);
+			}
+		}
+
+		@Override
+		public void cancel() {
+			flusher.nettask.sendFinal();
+		}
+	}
+
+	@Override
+	protected CustomSender createWebSocketSender(Runnable onSendReady) {
+		ApplicationExecutor executor = this.executor;
+		FlowControlFlusher flusher = this.flusher;
+		return new Http11CustomSender(executor, flusher, bb -> flusher.nettask.send(bb),
+				timeout -> flusher.flush(() -> flusher.nettask.sendFinal(timeout)), onSendReady);
+	}
+
+	@Override
+	protected CustomSender createCustomSender(Runnable onSendReady) {
+		return new Http11CustomSender(executor, flusher, bb -> send(bb, true), timeout -> sendFinal(), onSendReady);
 	}
 }

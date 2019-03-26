@@ -1,6 +1,5 @@
 package limax.pkix.tool;
 
-import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.util.Map;
@@ -8,8 +7,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
+import limax.http.DataSupplier;
+import limax.http.HttpExchange;
+import limax.http.HttpHandler;
 
 class CRLHttpHandler implements HttpHandler {
 	private volatile Map<String, StaticWebData> map;
@@ -22,11 +22,11 @@ class CRLHttpHandler implements HttpHandler {
 	}
 
 	@Override
-	public void handle(HttpExchange exchange) throws IOException {
+	public DataSupplier handle(HttpExchange exchange) throws Exception {
 		StaticWebData data = map.get(exchange.getRequestURI().getPath());
 		if (data != null)
-			data.transfer(exchange);
-		else
-			exchange.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, -1);
+			return data.handle(exchange);
+		exchange.getResponseHeaders().set(":status", HttpURLConnection.HTTP_NOT_FOUND);
+		return null;
 	}
 }

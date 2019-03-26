@@ -1,5 +1,5 @@
 package limax.net;
 
 public interface WebSocketTransport extends Transport {
-	void resetAlarm(long millisecond);
+	void resetAlarm(long milliseconds);
 }

@@ -23,8 +23,6 @@ import java.util.stream.Stream;
 
 import org.w3c.dom.Element;
 
-import com.sun.net.httpserver.HttpHandler;
-
 import limax.auany.FileBundle;
 import limax.auany.HttpClientManager;
 import limax.auany.PayDelivery;
@@ -36,6 +34,7 @@ import limax.codec.JSON;
 import limax.defines.ErrorCodes;
 import limax.defines.ErrorSource;
 import limax.endpoint.AuanyService.Result;
+import limax.http.HttpHandler;
 import limax.util.ConcurrentEnvironment;
 import limax.util.ElementHelper;
 import limax.util.Trace;

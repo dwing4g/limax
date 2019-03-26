@@ -31,11 +31,15 @@ public interface NetTask {
 
 	void setServiceShutdownNotice(Runnable notice);
 
-	void resetAlarm(long millisecond);
+	void resetAlarm(long milliseconds);
+
+	void execute(Runnable r);
 
 	boolean isSSLSupported();
 
 	void attachSSL(byte[] negotiationData);
+
+	void attachSSL(SSLEngineDecorator decorator, byte[] negotiationData);
 
 	void detachSSL();
 

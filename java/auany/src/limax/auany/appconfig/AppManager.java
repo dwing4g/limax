@@ -17,10 +17,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.w3c.dom.Element;
 
-import com.sun.net.httpserver.HttpHandler;
-
 import limax.auany.HttpHelper;
 import limax.auany.json.SwitcherInfo;
+import limax.http.HttpHandler;
 import limax.net.Engine;
 import limax.util.ElementHelper;
 import limax.util.MBeans;
@@ -155,7 +154,7 @@ public class AppManager {
 		if (!message.isEmpty())
 			throw new Exception(message);
 		httphandlers.put("/app",
-				HttpHelper.createGetHandler(cache = HttpHelper.makeJSONCache(HttpHelper.uri2AppKey("/app"),
+				HttpHelper.createHttpHandler(cache = HttpHelper.makeJSONCache(HttpHelper.uri2AppKey("/app"),
 						appkey -> current.appMap.get(appkey.getAppId()).createInfo(appkey.getType()))));
 		Path patchPath = Service.getConfigParentFile().toPath().resolve(eh.getString("appConfigPatch", "appnew.xml"));
 		long patchPeriod = eh.getLong("appConfigPatchCheckPeriod", 30000l);

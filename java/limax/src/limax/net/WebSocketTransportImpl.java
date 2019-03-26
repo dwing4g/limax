@@ -74,8 +74,8 @@ class WebSocketTransportImpl extends AbstractTransport
 	}
 
 	@Override
-	public void resetAlarm(long millisecond) {
-		nettask.resetAlarm(millisecond);
+	public void resetAlarm(long milliseconds) {
+		nettask.resetAlarm(milliseconds);
 	}
 
 	@Override

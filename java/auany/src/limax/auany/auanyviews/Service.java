@@ -52,9 +52,9 @@ public final class Service extends limax.auany.auanyviews._Service {
 		String info = "";
 		if (Trace.isInfoEnabled())
 			info = "temporaryFromCredential!" + param.credential + "," + param.authcode + "," + param.authcode2 + ","
-					+ param.millisecond + "," + param.usage + "," + param.subid;
+					+ param.milliseconds + "," + param.usage + "," + param.subid;
 		__ProtocolProcessManager.onTemporaryFromCredential(param.credential, param.authcode, param.authcode2,
-				param.millisecond, param.usage, param.subid, cbResult(sessionid, param.sn, info));
+				param.milliseconds, param.usage, param.subid, cbResult(sessionid, param.sn, info));
 	}
 
 	@Override
@@ -62,9 +62,9 @@ public final class Service extends limax.auany.auanyviews._Service {
 		String info = "";
 		if (Trace.isInfoEnabled())
 			info = "temporaryFromLogin!" + param.username + "," + param.token + "," + param.platflag + "," + param.appid
-					+ "," + param.authcode + param.millisecond + "," + param.usage + "," + param.subid;
+					+ "," + param.authcode + param.milliseconds + "," + param.usage + "," + param.subid;
 		__ProtocolProcessManager.onTemporaryFromLogin(param.username, param.token, param.platflag, param.appid,
-				param.authcode, param.millisecond, param.usage, param.subid, cbResult(sessionid, param.sn, info));
+				param.authcode, param.milliseconds, param.usage, param.subid, cbResult(sessionid, param.sn, info));
 	}
 
 	@Override
@@ -92,7 +92,7 @@ public final class Service extends limax.auany.auanyviews._Service {
 				case "temporaryFromLogin":
 					__ProtocolProcessManager.onTemporaryFromLogin(json.get("username").toString(),
 							json.get("token").toString(), json.get("platflag").toString(), json.get("appid").intValue(),
-							json.get("authcode").toString(), json.get("millisecond").longValue(),
+							json.get("authcode").toString(), json.get("milliseconds").longValue(),
 							(byte) json.get("usage").intValue(), json.get("subid").toString(), onresult);
 					return;
 				case "transfer":

@@ -21,12 +21,21 @@ import limax.util.Closeable;
 public class HttpServer extends Host {
 	public enum Parameter {
 		NETTASK_SENDBUF_SIZE(8192), NETTASK_RECVBUF_SIZE(8192), NETSERVER_BACKLOG(128), NETSERVER_WORKMODE(true),
-		HTTP2_HEADER_TABLE_SIZE(4096), HTTP2_MAX_HEADER_LIST_SIZE(-1), HTTP2_INITIAL_WINDOW_SIZE(65535),
-		HTTP2_RTT_MEASURE_PERIOD(30000L), HTTP2_RTT_SAMPLES(5), HTTP2_INCOMING_FRAME_TIMEOUT(45000L),
-		HTTP2_SETTINGS_TIMEOUT(5000L), WEBSOCKET_MAX_INCOMING_MESSAGE_SIZE(65536),
+		HTTP2_HEADER_TABLE_SIZE(4096), HTTP2_MAX_CONCURRENT_STREAMS(100), HTTP2_INITIAL_WINDOW_SIZE(65535),
+		HTTP2_MAX_FRAME_SIZE(16384), HTTP2_MAX_HEADER_LIST_SIZE(-1), HTTP2_WINDOW_UPDATE_ACCUMULATE_PERCENT(80),
+		HTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL(1), HTTP2_SETTINGS_TIMEOUT(5000L), HTTP2_CONNECTION_WINDOW_SIZE(655350),
+		HTTP2_RTT_MEASURE_PERIOD(30000L), HTTP2_RTT_SAMPLES(5), HTTP2_PING_TIMEOUT(10000L),
+		HTTP2_INCOMPLETE_FRAME_TIMEOUT(2000L), HTTP2_IDLE_TIMEOUT(20000L), HTTP2_ALLOW_FORCE_CLOSE(false),
+		WEBSOCKET_MAX_INCOMING_MESSAGE_SIZE(65536), WEBSOCKET_DEFAULT_FINAL_TIMEOUT(1000L),
 		HTTP11_PARSER_LINE_CHARACTERS_MAX(16384), HTTP11_PARSER_HEADER_LINES_MAX(32), HTTP11_FLOWCONTROL_TIMEOUT(5000L),
-		HTTP11_REQUEST_TIMEOUT(3000L), HTTP11_INITIAL_WINDOW_SIZE(65535), CLOSE_TIMEOUT(1000L),
-		HANDLER_404(new HttpHandler() {
+		HTTP11_REQUEST_TIMEOUT(3000L), HTTP11_INITIAL_WINDOW_SIZE(65535), HTTP11_CLOSE_TIMEOUT(1000L),
+		HANDLER_403(new HttpHandler() {
+			@Override
+			public DataSupplier handle(HttpExchange exchange) throws Exception {
+				exchange.getResponseHeaders().set(":status", HttpURLConnection.HTTP_FORBIDDEN);
+				return null;
+			}
+		}), HANDLER_404(new HttpHandler() {
 			@Override
 			public DataSupplier handle(HttpExchange exchange) throws Exception {
 				exchange.getResponseHeaders().set(":status", HttpURLConnection.HTTP_NOT_FOUND);
@@ -82,7 +91,9 @@ public class HttpServer extends Host {
 
 	public synchronized void start() throws IOException {
 		if (parameters.isEmpty())
-			throw new UnsupportedOperationException("httpserver not support restart");
+			throw new UnsupportedOperationException("httpserver restart unsupported");
+		if (this.serverContext != null)
+			throw new IllegalStateException("httpserver already started");
 		this.serverContext = NetModel.addServer(sa, (Integer) parameters.get(Parameter.NETSERVER_BACKLOG),
 				(Integer) parameters.get(Parameter.NETTASK_RECVBUF_SIZE),
 				(Integer) parameters.get(Parameter.NETTASK_SENDBUF_SIZE), sslContext, sslMode,
@@ -101,6 +112,8 @@ public class HttpServer extends Host {
 	}
 
 	public synchronized void stop() throws IOException {
+		if (parameters.isEmpty())
+			throw new IllegalStateException("httpserver already stopped");
 		serverContext.close();
 		for (Closeable c : closeables)
 			try {
@@ -124,9 +137,10 @@ public class HttpServer extends Host {
 	}
 
 	public HttpHandler createFileSystemHandler(Path htdocs, String textCharset, int mmapThreshold,
-			double compressThreshold, String[] indexes) throws IOException {
+			double compressThreshold, String[] indexes, boolean browseDir, String[] browseDirExceptions)
+			throws IOException {
 		FileSystemHandler handler = new FileSystemHandler(parameters, htdocs, textCharset, mmapThreshold,
-				compressThreshold, indexes);
+				compressThreshold, indexes, browseDir, browseDirExceptions);
 		register(handler);
 		return handler;
 	}

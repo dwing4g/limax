@@ -181,7 +181,7 @@ class RFC7541 {
 	private final static Map<String, Integer> staticEntries = new HashMap<>();
 
 	public enum StaticTable {
-		AUTHORITY(":authority"), METHOD_GET(":method: get"), METHOD_POST(":method: post"), PATH_ROOT(":path: /"),
+		AUTHORITY(":authority"), METHOD_GET(":method: GET"), METHOD_POST(":method: POST"), PATH_ROOT(":path: /"),
 		PATH_INDEX(":path: /index.html"), SCHEME_HTTP(":scheme: http"), SCHEME_HTTPS(":scheme: https"),
 		STATUS_200(":status: 200"), STATUS_204(":status: 204"), STATUS_206(":status: 206"), STATUS_304(":status: 304"),
 		STATUS_400(":status: 400"), STATUS_404(":status: 404"), STATUS_500(":status: 500"),
@@ -264,15 +264,25 @@ class RFC7541 {
 	}
 
 	public class Encoder {
-		private final Octets octets;
+		private final int maxFrameSize;
 		private final byte huffman;
+		private final List<Octets> payloads = new ArrayList<>();
 
-		Encoder(Octets octets, boolean huffman) {
-			this.octets = octets;
+		Encoder(int maxFrameSize, boolean huffman) {
+			this.maxFrameSize = maxFrameSize;
 			this.huffman = (byte) (huffman ? 0x80 : 0x00);
+			this.payloads.add(new Octets());
 		}
 
-		private void encode(String text) {
+		private void merge(Octets octets) {
+			Octets cur = payloads.get(payloads.size() - 1);
+			if (cur.size() + octets.size() <= maxFrameSize)
+				cur.append(octets);
+			else
+				payloads.add(octets);
+		}
+
+		private void encode(String text, Octets octets) {
 			byte[] binary = text.getBytes(StandardCharsets.ISO_8859_1);
 			if (huffman != 0)
 				binary = huffmanEncode(binary);
@@ -281,10 +291,12 @@ class RFC7541 {
 		}
 
 		public void add(String key, String val, UpdateMode mode) {
+			Octets octets = new Octets();
 			key = key.toLowerCase();
 			int index = find(key + ": " + val);
 			if (index > 0) {
 				packedInt7.encode(octets, 0x80, index);
+				merge(octets);
 				return;
 			}
 			index = find(key);
@@ -312,17 +324,20 @@ class RFC7541 {
 				case NEVER:
 					octets.push_byte((byte) 0x10);
 				}
-				encode(key);
+				encode(key, octets);
 			}
-			encode(val);
+			encode(val, octets);
+			merge(octets);
 		}
 
 		public void update(int size) {
+			Octets octets = new Octets();
 			packedInt5.encode(octets, 0x20, size);
+			merge(octets);
 		}
 
-		public byte[] toByteArray() {
-			return octets.getBytes();
+		public List<Octets> getPayloads() {
+			return payloads;
 		}
 	}
 
@@ -434,20 +449,12 @@ class RFC7541 {
 		this.capacity = capacity;
 	}
 
-	public Encoder createEncoder(Octets octets, boolean huffman) {
-		return new Encoder(octets, huffman);
+	public Encoder createEncoder(int maxFrameSize, boolean huffman) {
+		return new Encoder(maxFrameSize, huffman);
 	}
 
-	public Encoder createEncoder(boolean huffman) {
-		return new Encoder(new Octets(), huffman);
-	}
-
-	public Encoder createEncoder(Octets octets) {
-		return new Encoder(octets, true);
-	}
-
-	public Encoder createEncoder() {
-		return new Encoder(new Octets(), true);
+	public Encoder createEncoder(int maxFrameSize) {
+		return new Encoder(maxFrameSize, true);
 	}
 
 	@Override

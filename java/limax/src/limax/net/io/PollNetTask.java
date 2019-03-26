@@ -24,8 +24,8 @@ class PollNetTask extends AbstractNetTask implements Runnable {
 	}
 
 	@Override
-	public void attachSSL(byte[] negotiationData) {
-		super.attachSSL((InetSocketAddress) ((SocketChannel) key.channel()).socket().getRemoteSocketAddress(),
+	public void attachSSL(SSLEngineDecorator decorator, byte[] negotiationData) {
+		attachSSL((InetSocketAddress) ((SocketChannel) key.channel()).socket().getRemoteSocketAddress(), decorator,
 				negotiationData);
 	}
 

@@ -13,7 +13,7 @@ public class Host {
 		return dnsName.trim().toLowerCase();
 	}
 
-	Handler find(String path) {
+	HttpContext find(String path) {
 		return HttpContext.find(contexts, path);
 	}
 

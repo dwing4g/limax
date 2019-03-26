@@ -1,10 +1,6 @@
 package limax.pkix.tool;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.math.BigInteger;
-import java.net.HttpURLConnection;
 import java.security.Signature;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -14,13 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.sun.net.httpserver.Headers;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-
 import limax.codec.Octets;
-import limax.codec.SinkOctets;
-import limax.codec.StreamSource;
 import limax.codec.asn1.ASN1BitString;
 import limax.codec.asn1.ASN1ConstructedObject;
 import limax.codec.asn1.ASN1Enumerated;
@@ -35,9 +25,14 @@ import limax.codec.asn1.ASN1Sequence;
 import limax.codec.asn1.ASN1Tag;
 import limax.codec.asn1.DecodeBER;
 import limax.codec.asn1.TagClass;
+import limax.http.DataSupplier;
+import limax.http.Headers;
+import limax.http.HttpExchange;
+import limax.http.HttpHandler;
 import limax.util.SecurityUtils.PublicKeyAlgorithm;
 
 class OcspHttpHandler implements HttpHandler {
+	private static final long OCSP_REQ_MAX = Long.getLong("limax.pkix.tool.OcspHttpHandler.OCSP_REQ_MAX", 65536);
 	private static final ASN1Tag CtxTag0 = new ASN1Tag(TagClass.ContextSpecific, 0);
 	private static final ASN1Tag CtxTag1 = new ASN1Tag(TagClass.ContextSpecific, 1);
 	private static final ASN1Object V1 = new ASN1ConstructedObject(CtxTag0, new ASN1Integer(BigInteger.valueOf(0)));
@@ -58,17 +53,26 @@ class OcspHttpHandler implements HttpHandler {
 	}
 
 	@Override
-	public void handle(HttpExchange exchange) throws IOException {
+	public long postLimit() {
+		return OCSP_REQ_MAX;
+	}
+
+	@Override
+	public DataSupplier handle(HttpExchange exchange) {
+		if (!exchange.isRequestFinished())
+			return null;
 		byte[] response;
 		while (true) {
+			Octets key;
 			byte[] in;
-			try {
-				in = OcspHttpHandler.parseIncoming(exchange);
-			} catch (Exception e) {
-				response = OCSPResponseStatusMalformedRequest;
-				break;
+			if (exchange.getRequestMethod().equalsIgnoreCase("GET")) {
+				String path = exchange.getRequestURI().getPath();
+				in = Base64.getDecoder().decode(path.substring(path.lastIndexOf('/') + 1));
+				key = Octets.wrap(in);
+			} else {
+				key = exchange.getFormData().getRaw();
+				in = key.getBytes();
 			}
-			Octets key = Octets.wrap(in);
 			response = cache.get(key);
 			if (response == null) {
 				ASN1Sequence request;
@@ -118,22 +122,7 @@ class OcspHttpHandler implements HttpHandler {
 		headers.set("Content-Type", "application/ocsp-response");
 		headers.set("Content-Transfer-Encoding", "binary");
 		headers.set("Cache-Control", "no-store");
-		exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
-		try (OutputStream os = exchange.getResponseBody()) {
-			os.write(response);
-		}
-	}
-
-	private static byte[] parseIncoming(HttpExchange exchange) throws Exception {
-		if (exchange.getRequestMethod().equalsIgnoreCase("GET")) {
-			String path = exchange.getRequestURI().getPath();
-			return Base64.getDecoder().decode(path.substring(path.lastIndexOf('/') + 1));
-		}
-		Octets octets = new Octets();
-		try (InputStream in = exchange.getRequestBody()) {
-			new StreamSource(in, new SinkOctets(octets)).flush();
-		}
-		return octets.getBytes();
+		return DataSupplier.from(response);
 	}
 
 	private static List<OcspCertID> parseRequest(ASN1Sequence request) throws Exception {

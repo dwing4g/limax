@@ -1,16 +1,27 @@
 package limax.http;
 
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
+
+import javax.net.ssl.ExtendedSSLSession;
+import javax.net.ssl.SNIHostName;
+import javax.net.ssl.SNIServerName;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLSession;
 
 import limax.http.HttpServer.Parameter;
 import limax.net.io.NetProcessor;
 import limax.net.io.NetTask;
 
 class HttpProcessor implements NetProcessor {
+	private final static Method alpnMethod;
+	private final static BiFunction<SSLEngine, List<String>, String> h2Selector;
 	private final EnumMap<Parameter, Object> parameters;
 	private final Host defaultHost;
 	private final Map<String, Host> hosts;
@@ -18,8 +29,23 @@ class HttpProcessor implements NetProcessor {
 	private InetSocketAddress local;
 	private InetSocketAddress peer;
 	private ProtocolProcessor processor;
-	private long http11RequestTimeout;
-	private ByteBuffer remain;
+	private boolean sniHostNameUnchecked;
+	private String sniHostName;
+
+	static {
+		Method method = null;
+		try {
+			method = SSLEngine.class.getMethod("setHandshakeApplicationProtocolSelector", BiFunction.class);
+		} catch (Exception e) {
+		}
+		alpnMethod = method;
+		h2Selector = (engine, protocols) -> {
+			for (String protocol : protocols)
+				if (protocol.equals("h2"))
+					return protocol;
+			return "";
+		};
+	}
 
 	HttpProcessor(EnumMap<Parameter, Object> parameters, Host defaultHost, Map<String, Host> hosts) {
 		this.parameters = parameters;
@@ -27,24 +53,18 @@ class HttpProcessor implements NetProcessor {
 		this.hosts = hosts;
 	}
 
-	void upgrade(ProtocolProcessor processor) {
+	void replace(ProtocolProcessor processor) {
 		this.processor = processor;
 	}
 
-	void pipeline() {
-		(processor = new Http11Exchange(this, nettask, http11RequestTimeout)).process(remain);
-		if (!remain.hasRemaining()) {
-			nettask.resetAlarm(http11RequestTimeout);
-			nettask.enable();
-		}
-	}
-
-	Handler getHandler(String dnsName, String path) {
+	HttpContext getHttpContext(String dnsName, String path) {
+		if (sniHostName != null)
+			dnsName = sniHostName;
 		Host host = (dnsName != null ? hosts.getOrDefault(Host.normalizeDnsName(dnsName), defaultHost) : defaultHost);
-		Handler handler = host.find(path);
-		return handler != null ? handler
-				: path.equals("*") ? (HttpHandler) parameters.get(Parameter.HANDLER_ASTERISK)
-						: (HttpHandler) parameters.get(Parameter.HANDLER_404);
+		HttpContext httpContext = host.find(path);
+		return httpContext != null ? httpContext
+				: path.equals("*") ? new HttpContext("/", (HttpHandler) parameters.get(Parameter.HANDLER_ASTERISK))
+						: new HttpContext("/", (HttpHandler) parameters.get(Parameter.HANDLER_404));
 	}
 
 	InetSocketAddress getLocalAddress() {
@@ -61,13 +81,17 @@ class HttpProcessor implements NetProcessor {
 
 	@Override
 	public void process(byte[] in) throws Exception {
-		long timeout = processor.process(remain = ByteBuffer.wrap(in));
-		if (timeout >= 0)
-			nettask.resetAlarm(timeout);
-		else if (timeout == ProtocolProcessor.DISABLE_INCOMING) {
-			nettask.resetAlarm(0);
-			nettask.disable();
+		if (sniHostNameUnchecked) {
+			SSLSession session = nettask.getSSLSession();
+			if (session instanceof ExtendedSSLSession)
+				for (SNIServerName name : ((ExtendedSSLSession) session).getRequestedServerNames())
+					if (name instanceof SNIHostName) {
+						sniHostName = ((SNIHostName) name).getAsciiName();
+						break;
+					}
+			sniHostNameUnchecked = false;
 		}
+		processor.process(ByteBuffer.wrap(in));
 	}
 
 	@Override
@@ -80,9 +104,17 @@ class HttpProcessor implements NetProcessor {
 		this.nettask = nettask;
 		this.local = (InetSocketAddress) local;
 		this.peer = (InetSocketAddress) peer;
-		this.http11RequestTimeout = (Long) get(Parameter.HTTP11_REQUEST_TIMEOUT);
-		this.processor = new Http11Exchange(this, nettask, http11RequestTimeout);
-		nettask.resetAlarm(http11RequestTimeout);
+		if (this.sniHostNameUnchecked = nettask.isSSLSupported())
+			nettask.attachSSL(alpnMethod != null ? sslEngine -> {
+				try {
+					alpnMethod.invoke(sslEngine, h2Selector);
+				} catch (Exception e) {
+				}
+				return sslEngine;
+			} : null, null);
+		long requestTimeout = (Long) get(Parameter.HTTP11_REQUEST_TIMEOUT);
+		this.processor = new Http11Exchange(this, nettask, requestTimeout);
+		nettask.resetAlarm(requestTimeout);
 		return true;
 	}
 }

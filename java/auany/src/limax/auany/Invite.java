@@ -7,13 +7,12 @@ import java.util.Set;
 
 import org.w3c.dom.Element;
 
-import com.sun.net.httpserver.HttpHandler;
-
 import limax.auany.appconfig.AppManager;
 import limax.auany.json.InviteCode;
 import limax.defines.ErrorCodes;
 import limax.defines.ErrorSource;
 import limax.endpoint.AuanyService.Result;
+import limax.http.HttpHandler;
 import limax.util.ElementHelper;
 
 class Invite {
@@ -64,14 +63,10 @@ class Invite {
 	public static void init(Element e, Map<String, HttpHandler> httphandlers) {
 		ElementHelper eh = new ElementHelper(e);
 		LIFETIME = eh.getLong("lifetime", 60000l) * 1000000l;
-		httphandlers
-				.put("/invite",
-						HttpHelper
-								.createGetHandler(
-										HttpHelper.makeJSONCacheNone(HttpHelper.uri2AppKey("/invite"),
-												key -> new InviteCode(
-														AppManager.randomSwitcher(key.getType(), key.getAppId()),
-														alloc(key.getAppId())))));
+		httphandlers.put("/invite",
+				HttpHelper.createHttpHandler(HttpHelper.makeJSONCacheNone(HttpHelper.uri2AppKey("/invite"),
+						key -> new InviteCode(AppManager.randomSwitcher(key.getType(), key.getAppId()),
+								alloc(key.getAppId())))));
 	}
 
 	public static void check(String username, String token, Set<Integer> pvids, Result result) {

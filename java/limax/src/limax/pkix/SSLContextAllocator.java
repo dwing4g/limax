@@ -49,6 +49,7 @@ public class SSLContextAllocator {
 			X509CertSelector selector = new X509CertSelector();
 			selector.setIssuer(cert.getIssuerX500Principal());
 			conn.setSSLSocketFactory(keyInfo.createSSLContext(trustManager, false, selector).getSocketFactory());
+			conn.setRequestProperty("Content-Type", "application/octet-stream");
 			conn.setDoOutput(true);
 			conn.connect();
 			try (OutputStream out = conn.getOutputStream()) {

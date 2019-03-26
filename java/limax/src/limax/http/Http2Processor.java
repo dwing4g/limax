@@ -1,10 +1,11 @@
 package limax.http;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.Map;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ScheduledExecutorService;
+
+import javax.net.ssl.SSLSession;
 
 import limax.http.HttpServer.Parameter;
 import limax.http.RFC7540.Connection;
@@ -18,8 +19,8 @@ import limax.net.io.NetTask;
 class Http2Processor implements ProtocolProcessor {
 	private final static byte[] PREFACE = new byte[] { 80, 82, 73, 32, 42, 32, 72, 84, 84, 80, 47, 50, 46, 48, 13, 10,
 			13, 10, 83, 77, 13, 10, 13, 10 };
+	private final NetTask nettask;
 	private final Connection connection;
-	private final long HTTP2_INCOMING_FRAME_TIMEOUT;
 	private int stage;
 
 	private Exchange createExchange(HttpProcessor processor, NetTask nettask, Headers headers) {
@@ -45,58 +46,66 @@ class Http2Processor implements ProtocolProcessor {
 			}
 
 			@Override
-			public Future<?> schedulePeriodically(Runnable r, long period) {
-				return Engine.getProtocolScheduler().scheduleAtFixedRate(r, period, period, TimeUnit.MILLISECONDS);
+			public SSLSession getSSLSession() {
+				return nettask.getSSLSession();
 			}
 
 			@Override
-			public Future<?> schedule(Runnable r, long delay) {
-				return Engine.getProtocolScheduler().schedule(r, delay, TimeUnit.MILLISECONDS);
+			public ScheduledExecutorService getScheduler() {
+				return Engine.getProtocolScheduler();
+			}
+
+			@Override
+			public void execute(Runnable r) {
+				nettask.execute(r);
 			}
 		};
 	}
 
-	private Map<Settings, Integer> initSettings(HttpProcessor processor) {
-		Map<Settings, Integer> map = new HashMap<>();
+	private Map<Settings, Long> initSettings(HttpProcessor processor) {
+		EnumMap<Settings, Long> map = new EnumMap<>(Settings.class);
 		for (Settings s : Settings.values())
 			try {
-				map.put(s, (Integer) processor.get(Parameter.valueOf("HTTP2_" + s.name())));
+				Object obj = processor.get(Parameter.valueOf("HTTP2_" + s.name()));
+				long val;
+				if (obj instanceof Integer)
+					val = ((Integer) obj).longValue();
+				else if (obj instanceof Long)
+					val = (Long) obj;
+				else
+					val = s.def();
+				map.put(s, s.validate(val) ? val : s.def());
 			} catch (Exception e) {
 			}
 		return map;
 	}
 
 	Http2Processor(HttpProcessor processor, NetTask nettask, ByteBuffer preface) {
-		this.connection = new Connection(createExchange(processor, nettask, null), true,
-				(Long) processor.get(Parameter.HTTP2_RTT_MEASURE_PERIOD),
-				(Integer) processor.get(Parameter.HTTP2_RTT_SAMPLES));
-		this.connection.sendSettings(initSettings(processor), (Long) processor.get(Parameter.HTTP2_SETTINGS_TIMEOUT));
-		this.HTTP2_INCOMING_FRAME_TIMEOUT = (Long) processor.get(Parameter.HTTP2_INCOMING_FRAME_TIMEOUT);
+		this.nettask = nettask;
+		this.connection = new Connection(true, createExchange(processor, nettask, null), initSettings(processor));
 		this.stage = 18;
 		process(preface);
 	}
 
 	Http2Processor(HttpProcessor processor, NetTask nettask, Headers headers) {
+		this.nettask = nettask;
 		this.connection = new Connection(createExchange(processor, nettask, headers),
-				headers.getFirst("http2-settings"), (Long) processor.get(Parameter.HTTP2_RTT_MEASURE_PERIOD),
-				(Integer) processor.get(Parameter.HTTP2_RTT_SAMPLES));
-		this.connection.sendSettings(initSettings(processor), (Long) processor.get(Parameter.HTTP2_SETTINGS_TIMEOUT));
+				headers.getFirst("http2-settings"), initSettings(processor));
 		try {
-			connection.createPassiveStream(1);
+			connection.createPassiveStream(1, null);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
-		this.HTTP2_INCOMING_FRAME_TIMEOUT = (Long) processor.get(Parameter.HTTP2_INCOMING_FRAME_TIMEOUT);
 		this.stage = 0;
 	}
 
 	@Override
-	public long process(ByteBuffer in) {
+	public void process(ByteBuffer in) {
 		if (stage < 24)
 			while (in.hasRemaining() && stage < 24)
 				if (PREFACE[stage++] != in.get())
-					throw new RuntimeException("malformed http20 preface");
-		return connection.unwrap(in) ? HTTP2_INCOMING_FRAME_TIMEOUT : NO_RESET;
+					throw new RuntimeException("malformed http2 preface");
+		nettask.resetAlarm(connection.unwrap(in));
 	}
 
 	@Override

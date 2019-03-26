@@ -11,9 +11,8 @@ import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
 
-import com.sun.net.httpserver.HttpHandler;
-
 import limax.auany.switcherauany.Exchange;
+import limax.http.HttpHandler;
 import limax.net.Transport;
 import limax.pkix.SSLContextAllocator;
 import limax.switcher.LmkConfigData;

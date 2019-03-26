@@ -62,9 +62,15 @@ public class KeyInfo {
 
 	public SSLContext createSSLContext(TrustManager trustManager, boolean installRevocationChecker,
 			X509CertSelector selector) throws Exception {
-		TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("PKIX");
-		trustManagerFactory.init(new CertPathTrustManagerParameters(
-				trustManager.createPKIXBuilderParameters(selector, installRevocationChecker)));
+		javax.net.ssl.TrustManager[] trustManagers;
+		if (trustManager == null) {
+			trustManagers = null;
+		} else {
+			TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("PKIX");
+			trustManagerFactory.init(new CertPathTrustManagerParameters(
+					trustManager.createPKIXBuilderParameters(selector, installRevocationChecker)));
+			trustManagers = trustManagerFactory.getTrustManagers();
+		}
 		SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
 		sslContext.init(new KeyManager[] { new X509ExtendedKeyManager() {
 			@Override
@@ -115,7 +121,7 @@ public class KeyInfo {
 			public String[] getServerAliases(String keyType, Principal[] issuers) {
 				return new String[] { alias };
 			}
-		} }, trustManagerFactory.getTrustManagers(), null);
+		} }, trustManagers, null);
 		return sslContext;
 	}
 

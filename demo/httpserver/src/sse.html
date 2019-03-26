@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<body>
+	<div id='result'></div>
+	<script>
+		var r = document.getElementById('result');
+		if (typeof (EventSource) !== 'undefined') {
+			var s = new EventSource('/sse');
+			s.onmessage = function(event) {
+				r.innerHTML = event.data + ' lastEventId:' + event.lastEventId;
+			};
+			s.onerror = function(event) {
+				r.innerHTML = 'close';
+				s.close();
+			};
+		} else
+			r.innerHTML = 'server-sent events not supported';
+	</script>
+</body>
+</html>

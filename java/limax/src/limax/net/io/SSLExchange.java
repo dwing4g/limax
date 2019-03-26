@@ -27,9 +27,9 @@ class SSLExchange {
 		this.sslMode = sslMode;
 	}
 
-	void attach(AbstractNetTask task, String host, int port, byte[] negotiationData) {
+	void attach(AbstractNetTask task, String host, int port, SSLEngineDecorator decorator, byte[] negotiationData) {
 		if (sslContext != null && !sslON)
-			exchange = new Exchange(task, host, port, negotiationData);
+			exchange = new Exchange(task, host, port, decorator, negotiationData);
 	}
 
 	void detach() {
@@ -84,9 +84,11 @@ class SSLExchange {
 		private boolean renegotiate = false;
 		private boolean shuttingdown = false;
 
-		public Exchange(AbstractNetTask task, String host, int port, byte[] negotiationData) {
+		public Exchange(AbstractNetTask task, String host, int port, SSLEngineDecorator decorator,
+				byte[] negotiationData) {
 			this.task = task;
-			engine = sslContext.createSSLEngine(host, port);
+			SSLEngine e = sslContext.createSSLEngine(host, port);
+			engine = decorator == null ? e : decorator.decorate(e);
 			netDataIn = ByteBuffer.allocate(engine.getSession().getPacketBufferSize());
 			netDataOut = ByteBuffer.allocateDirect(engine.getSession().getPacketBufferSize() * 2);
 			appDataIn = ByteBuffer.allocate(engine.getSession().getApplicationBufferSize());

@@ -1,59 +1,33 @@
 package limax.auany;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Base64;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import com.sun.net.httpserver.Headers;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-
 import limax.auany.appconfig.AppKey;
 import limax.auany.appconfig.ServiceType;
-import limax.codec.CharSource;
 import limax.codec.CodecException;
 import limax.codec.JSON;
-import limax.codec.JSONEncoder;
+import limax.codec.JSONException;
 import limax.codec.JSONSerializable;
-import limax.codec.MD5;
-import limax.codec.SinkStream;
+import limax.codec.SHA1;
+import limax.http.DataSupplier;
+import limax.http.Headers;
+import limax.http.HttpException;
+import limax.http.HttpHandler;
 
 public final class HttpHelper {
 	private HttpHelper() {
 	}
 
-	private static void responseHeaders(HttpExchange exchange, Headers responseHeaders, int arg0, int arg1)
-			throws IOException {
-		responseHeaders.set("Connection", "close");
-		responseHeaders.set("Access-Control-Allow-Origin", "*");
-		exchange.sendResponseHeaders(arg0, arg1);
-	}
-
-	public static HttpHandler createGetHandler(Cache cache) {
-		return exchange -> {
-			Headers responseHeaders = exchange.getResponseHeaders();
-			try (OutputStream os = exchange.getResponseBody()) {
-				cache.run(exchange.getRequestURI(), exchange.getRequestHeaders(), responseHeaders,
-						() -> responseHeaders(exchange, responseHeaders, HttpURLConnection.HTTP_NOT_MODIFIED, -1),
-						(len, osconsumer) -> {
-							responseHeaders.putIfAbsent("Content-Type",
-									Arrays.asList("application/json; charset=utf-8"));
-							responseHeaders(exchange, responseHeaders, HttpURLConnection.HTTP_OK, len);
-							osconsumer.accept(os);
-						});
-			} catch (Exception e) {
-				responseHeaders(exchange, responseHeaders, HttpURLConnection.HTTP_BAD_REQUEST, -1);
-			}
-		};
+	public static HttpHandler createHttpHandler(Cache cache) {
+		return exchange -> cache.run(exchange.getRequestURI(), exchange.getRequestHeaders(),
+				exchange.getResponseHeaders());
 	}
 
 	public static Function<URI, AppKey> uri2AppKey(String context) {
@@ -80,11 +54,14 @@ public final class HttpHelper {
 
 	public static <K> Cache makeJSONCacheNone(Function<URI, K> uri2key, Function<K, JSONSerializable> jsonloader) {
 		Function<URI, JSONSerializable> loader = uri2key.andThen(jsonloader);
-		return (uri, requestHeaders, responseHeaders, match, output) -> {
-			JSONSerializable json = loader.apply(uri);
-			responseHeaders.add("Cache-control", "no-cache");
-			output.accept(0,
-					os -> JSONEncoder.encode(json, new CharSource(StandardCharsets.UTF_8, new SinkStream(os))));
+		return (uri, requestHeaders, responseHeaders) -> {
+			responseHeaders.set("Cache-control", "no-cache");
+			responseHeaders.set("Access-Control-Allow-Origin", "*");
+			try {
+				return DataSupplier.from(JSON.stringify(loader.apply(uri)), StandardCharsets.UTF_8);
+			} catch (JSONException e) {
+				throw new HttpException(HttpURLConnection.HTTP_BAD_REQUEST, true);
+			}
 		};
 	}
 
@@ -93,23 +70,7 @@ public final class HttpHelper {
 	}
 
 	public interface Cache {
-		@FunctionalInterface
-		interface NotModified {
-			void run() throws IOException;
-		}
-
-		@FunctionalInterface
-		interface OutputStreamConsumer {
-			void accept(OutputStream os) throws Exception;
-		}
-
-		@FunctionalInterface
-		interface Output {
-			void accept(int len, OutputStreamConsumer os) throws Exception;
-		}
-
-		void run(URI uri, Headers requestHeaders, Headers responseHeaders, NotModified match, Output output)
-				throws Exception;
+		DataSupplier run(URI uri, Headers requestHeaders, Headers responseHeaders);
 
 		default void remove(Object key) {
 		}
@@ -122,7 +83,7 @@ public final class HttpHelper {
 
 			DataItem(byte[] data) {
 				this.data = data;
-				this.etag = "\"" + Base64.getEncoder().encodeToString(MD5.digest(data)) + "\"";
+				this.etag = Base64.getUrlEncoder().encodeToString(SHA1.digest(data));
 			}
 		}
 
@@ -135,23 +96,19 @@ public final class HttpHelper {
 			this.loader = loader;
 		}
 
-		public void run(URI uri, Headers requestHeaders, Headers responseHeaders, NotModified match, Output output)
-				throws Exception {
+		public DataSupplier run(URI uri, Headers requestHeaders, Headers responseHeaders) {
 			K key = uri2key.apply(uri);
 			DataItem item = cache.get(key);
+			responseHeaders.set("Access-Control-Allow-Origin", "*");
 			if (item == null)
 				cache.put(key, item = new DataItem(loader.apply(key)));
-			else {
-				List<String> ifNoneMatch = requestHeaders.get("If-None-Match");
-				String etag = ifNoneMatch == null ? null : ifNoneMatch.get(0);
-				if (etag != null && etag.equals(item.etag)) {
-					match.run();
-					return;
-				}
+			else if (item.etag.equals(requestHeaders.getFirst("If-None-Match"))) {
+				responseHeaders.set(":status", HttpURLConnection.HTTP_NOT_MODIFIED);
+				return null;
 			}
-			responseHeaders.add("ETag", item.etag);
-			byte[] data = item.data;
-			output.accept(data.length, os -> os.write(data));
+			responseHeaders.set("ETag", item.etag);
+			responseHeaders.set("Connection", "close");
+			return DataSupplier.from(item.data);
 		}
 
 		public void remove(Object key) {

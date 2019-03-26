@@ -1,17 +1,15 @@
 package limax.pkix.tool;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.util.Base64;
-import java.util.List;
-
-import com.sun.net.httpserver.Headers;
-import com.sun.net.httpserver.HttpExchange;
 
 import limax.codec.SHA1;
+import limax.http.DataSupplier;
+import limax.http.Headers;
+import limax.http.HttpExchange;
+import limax.http.HttpHandler;
 
-class StaticWebData {
+class StaticWebData implements HttpHandler {
 	private final byte[] content;
 	private final String etag;
 	private final String contentType;
@@ -19,25 +17,20 @@ class StaticWebData {
 	StaticWebData(byte[] content, String contentType) {
 		this.content = content;
 		this.contentType = contentType;
-		this.etag = Base64.getEncoder().encodeToString(SHA1.digest(this.content));
+		this.etag = Base64.getUrlEncoder().encodeToString(SHA1.digest(this.content));
 	}
 
-	void transfer(HttpExchange exchange) throws IOException {
-		Headers headers = exchange.getRequestHeaders();
-		List<String> etags = headers.get("If-None-Match");
-		if (etags != null)
-			for (String e : etags)
-				if (etag.equals(e)) {
-					exchange.sendResponseHeaders(HttpURLConnection.HTTP_NOT_MODIFIED, -1);
-					return;
-				}
-		headers = exchange.getResponseHeaders();
-		headers.set("Content-Type", contentType);
-		headers.set("ETag", etag);
-		headers.set("Connection", "close");
-		exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, content.length);
-		try (OutputStream os = exchange.getResponseBody()) {
-			os.write(content);
+	@Override
+	public DataSupplier handle(HttpExchange exchange) throws Exception {
+		Headers reqheaders = exchange.getRequestHeaders();
+		Headers repheaders = exchange.getResponseHeaders();
+		if (etag.equals(reqheaders.getFirst("If-None-Match"))) {
+			repheaders.set(":status", HttpURLConnection.HTTP_NOT_MODIFIED);
+			return null;
 		}
+		repheaders.set("Content-Type", contentType);
+		repheaders.set("ETag", etag);
+		repheaders.set("Connection", "close");
+		return DataSupplier.from(content);
 	}
 }

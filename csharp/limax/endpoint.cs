@@ -241,13 +241,13 @@ namespace limax.endpoint
             {
                 execute(code => () => AuanyService.bind(code, authcode, loginConfig, timeout, result.get(), manager), r);
             }
-            public void temporary(string credential, string authcode, string authcode2, long millisecond, byte usage, string subid, Result r)
+            public void temporary(string credential, string authcode, string authcode2, long milliseconds, byte usage, string subid, Result r)
             {
-                execute(codec => () => AuanyService.temporary(credential, authcode, authcode2, millisecond, usage, subid, timeout, result.get(), manager), r);
+                execute(codec => () => AuanyService.temporary(credential, authcode, authcode2, milliseconds, usage, subid, timeout, result.get(), manager), r);
             }
-            public void temporary(LoginConfig loginConfig, string authcode, long millisecond, byte usage, string subid, Result r)
+            public void temporary(LoginConfig loginConfig, string authcode, long milliseconds, byte usage, string subid, Result r)
             {
-                execute(codec => () => AuanyService.temporary(loginConfig, appid, authcode, millisecond, usage, subid, timeout, result.get(), manager), r);
+                execute(codec => () => AuanyService.temporary(loginConfig, appid, authcode, milliseconds, usage, subid, timeout, result.get(), manager), r);
             }
             public void transfer(LoginConfig loginConfig, string authcode, string temp, string authtemp, Result r)
             {
@@ -282,29 +282,29 @@ namespace limax.endpoint
         {
             bind(credential, authcode, loginConfig, timeout, onresult, Endpoint.getDefaultEndpointManager());
         }
-        public static void temporary(string httpHost, int httpPort, int appid, string credential, string authcode, string authcode2, long millisecond, byte usage, string subid, long timeout, Result onresult)
+        public static void temporary(string httpHost, int httpPort, int appid, string credential, string authcode, string authcode2, long milliseconds, byte usage, string subid, long timeout, Result onresult)
         {
-            new CredentialContext(httpHost, httpPort, appid, timeout).temporary(credential, authcode, authcode2, millisecond, usage, subid, onresult);
+            new CredentialContext(httpHost, httpPort, appid, timeout).temporary(credential, authcode, authcode2, milliseconds, usage, subid, onresult);
         }
-        public static void temporary(string credential, string authcode, string authcode2, long millisecond, byte usage, string subid, long timeout, Result onresult, EndpointManager manager)
+        public static void temporary(string credential, string authcode, string authcode2, long milliseconds, byte usage, string subid, long timeout, Result onresult, EndpointManager manager)
         {
-            Service.getInstance(manager).TemporaryFromCredential(new AuanyService(onresult, timeout, ((EndpointManagerImpl)manager).dispatch).sn, credential, authcode, authcode2, millisecond, usage, subid);
+            Service.getInstance(manager).TemporaryFromCredential(new AuanyService(onresult, timeout, ((EndpointManagerImpl)manager).dispatch).sn, credential, authcode, authcode2, milliseconds, usage, subid);
         }
-        public static void temporary(string credential, string authcode, string authcode2, long millisecond, byte usage, string subid, long timeout, Result onresult)
+        public static void temporary(string credential, string authcode, string authcode2, long milliseconds, byte usage, string subid, long timeout, Result onresult)
         {
-            temporary(credential, authcode, authcode2, millisecond, usage, subid, timeout, onresult, Endpoint.getDefaultEndpointManager());
+            temporary(credential, authcode, authcode2, milliseconds, usage, subid, timeout, onresult, Endpoint.getDefaultEndpointManager());
         }
-        public static void temporary(string httpHost, int httpPort, int appid, LoginConfig loginConfig, string authcode, long millisecond, byte usage, string subid, long timeout, Result onresult)
+        public static void temporary(string httpHost, int httpPort, int appid, LoginConfig loginConfig, string authcode, long milliseconds, byte usage, string subid, long timeout, Result onresult)
         {
-            new CredentialContext(httpHost, httpPort, appid, timeout).temporary(loginConfig, authcode, millisecond, usage, subid, onresult);
+            new CredentialContext(httpHost, httpPort, appid, timeout).temporary(loginConfig, authcode, milliseconds, usage, subid, onresult);
         }
-        public static void temporary(LoginConfig loginConfig, int appid, string authcode, long millisecond, byte usage, string subid, long timeout, Result onresult, EndpointManager manager)
+        public static void temporary(LoginConfig loginConfig, int appid, string authcode, long milliseconds, byte usage, string subid, long timeout, Result onresult, EndpointManager manager)
         {
-            Service.getInstance(manager).TemporaryFromLogin(new AuanyService(onresult, timeout, ((EndpointManagerImpl)manager).dispatch).sn, loginConfig.getUsername(), loginConfig.getToken(toNonce(authcode)), loginConfig.getPlatflagRaw(), appid, authcode, millisecond, usage, subid);
+            Service.getInstance(manager).TemporaryFromLogin(new AuanyService(onresult, timeout, ((EndpointManagerImpl)manager).dispatch).sn, loginConfig.getUsername(), loginConfig.getToken(toNonce(authcode)), loginConfig.getPlatflagRaw(), appid, authcode, milliseconds, usage, subid);
         }
-        public static void temporary(LoginConfig loginConfig, int appid, string authcode, long millisecond, byte usage, string subid, long timeout, Result onresult)
+        public static void temporary(LoginConfig loginConfig, int appid, string authcode, long milliseconds, byte usage, string subid, long timeout, Result onresult)
         {
-            temporary(loginConfig, appid, authcode, millisecond, usage, subid, timeout, onresult, Endpoint.getDefaultEndpointManager());
+            temporary(loginConfig, appid, authcode, milliseconds, usage, subid, timeout, onresult, Endpoint.getDefaultEndpointManager());
         }
         public static void transfer(string httpHost, int httpPort, int appid, LoginConfig loginConfig, string authcode, string temp, string authtemp, long timeout, Result onresult)
         {

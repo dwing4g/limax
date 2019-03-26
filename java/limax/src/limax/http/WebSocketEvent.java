@@ -3,62 +3,43 @@ package limax.http;
 import limax.util.Pair;
 
 public class WebSocketEvent {
-	private final WebSocketExchange exchange;
-	private final String text;
-	private final byte[] binary;
-	private final Pair<Long, Long> pong;
-	private final Pair<Short, String> close;
+	public enum Type {
+		OPEN, CLOSE, TEXT, BINARY, PONG, SENDREADY
+	}
 
-	WebSocketEvent(WebSocketExchange exchange, String text, byte[] binary, Pair<Long, Long> pong,
-			Pair<Short, String> close) {
+	private final WebSocketExchange exchange;
+	private final Type type;
+	private final Object obj;
+
+	WebSocketEvent(WebSocketExchange exchange, Type type, Object obj) {
 		this.exchange = exchange;
-		this.text = text;
-		this.binary = binary;
-		this.pong = pong;
-		this.close = close;
+		this.type = type;
+		this.obj = obj;
 	}
 
 	public WebSocketExchange getWebSocketExchange() {
 		return exchange;
 	}
 
-	public boolean isText() {
-		return text != null;
-	}
-
-	public boolean isBinary() {
-		return binary != null;
-	}
-
-	public boolean isPong() {
-		return pong != null;
-	}
-
-	public boolean isClose() {
-		return close != null;
+	public Type type() {
+		return type;
 	}
 
 	public String getText() {
-		if (text == null)
-			throw new UnsupportedOperationException();
-		return text;
+		return (String) obj;
 	}
 
 	public byte[] getBinary() {
-		if (binary == null)
-			throw new UnsupportedOperationException();
-		return binary;
+		return (byte[]) obj;
 	}
 
+	@SuppressWarnings("unchecked")
 	public Pair<Long, Long> getPong() {
-		if (pong == null)
-			throw new UnsupportedOperationException();
-		return pong;
+		return (Pair<Long, Long>) obj;
 	}
 
+	@SuppressWarnings("unchecked")
 	public Pair<Short, String> getClose() {
-		if (close == null)
-			throw new UnsupportedOperationException();
-		return close;
+		return (Pair<Short, String>) obj;
 	}
 }

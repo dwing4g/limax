@@ -1,11 +1,8 @@
 package limax.pkix.tool;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
@@ -16,14 +13,10 @@ import java.util.function.Function;
 
 import javax.net.ssl.SSLSession;
 
-import com.sun.net.httpserver.Headers;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpsExchange;
-
-import limax.codec.Octets;
-import limax.codec.SinkOctets;
-import limax.codec.StreamSource;
+import limax.http.DataSupplier;
+import limax.http.Headers;
+import limax.http.HttpExchange;
+import limax.http.HttpHandler;
 import limax.pkix.CAService;
 import limax.pkix.X509CertificateRenewParameter;
 import limax.util.SecurityUtils;
@@ -38,22 +31,27 @@ class CertUpdateServer {
 
 	private class Handler implements HttpHandler {
 		@Override
-		public void handle(HttpExchange exchange) throws IOException {
-			SSLSession session = ((HttpsExchange) exchange).getSSLSession();
-			X509Certificate peer = (X509Certificate) session.getPeerCertificates()[0];
-			long notAfter = peer.getNotAfter().getTime();
-			long notBefore = peer.getNotBefore().getTime();
-			long now = System.currentTimeMillis();
-			Headers headers = exchange.getResponseHeaders();
-			if ((now - notBefore) * 100 > renewLifespanPercent * (notAfter - notBefore)) {
-				String response = "";
-				try (InputStream in = exchange.getRequestBody()) {
+		public long postLimit() {
+			return CertServer.CERTFILE_MAX_SIZE;
+		}
+
+		@Override
+		public DataSupplier handle(HttpExchange exchange) {
+			if (!exchange.isRequestFinished())
+				return null;
+			try {
+				SSLSession session = exchange.getSSLSession();
+				X509Certificate peer = (X509Certificate) session.getPeerCertificates()[0];
+				long notAfter = peer.getNotAfter().getTime();
+				long notBefore = peer.getNotBefore().getTime();
+				long now = System.currentTimeMillis();
+				Headers headers = exchange.getResponseHeaders();
+				if ((now - notBefore) * 100 > renewLifespanPercent * (notAfter - notBefore)) {
+					String response = "";
 					X509Certificate cert = (X509Certificate) CertificateFactory.getInstance("X.509")
 							.generateCertificate(new ByteArrayInputStream(peer.getEncoded()));
-					Octets data = new Octets();
-					new StreamSource(in, new SinkOctets(data)).flush();
 					PublicKey publicKey = SecurityUtils.PublicKeyAlgorithm
-							.loadPublicKey(new X509EncodedKeySpec(data.getBytes()));
+							.loadPublicKey(new X509EncodedKeySpec(exchange.getFormData().getRaw().getBytes()));
 					X509Certificate[] chain = ca.sign(new X509CertificateRenewParameter() {
 						@Override
 						public X509Certificate getCertificate() {
@@ -76,15 +74,11 @@ class CertUpdateServer {
 					if (Trace.isInfoEnabled())
 						Trace.info("CertUpdateServer renew [" + cert.getSubjectX500Principal() + "] expire at ["
 								+ new Date(notAfter - notBefore + now) + "]");
-				} catch (Exception e) {
+					return DataSupplier.from(response, StandardCharsets.ISO_8859_1);
 				}
-				exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length());
-				try (OutputStream os = exchange.getResponseBody()) {
-					os.write(response.getBytes());
-				}
-			} else {
-				exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, -1);
+			} catch (Exception e) {
 			}
+			return null;
 		}
 	}
 

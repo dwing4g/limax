@@ -24,15 +24,15 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpsExchange;
-import com.sun.net.httpserver.HttpsServer;
-
 import limax.codec.CodecException;
 import limax.codec.OctetsStream;
 import limax.codec.SinkOctets;
 import limax.codec.StreamSource;
+import limax.http.DataSupplier;
+import limax.http.HttpException;
+import limax.http.HttpExchange;
+import limax.http.HttpHandler;
+import limax.http.HttpServer;
 import limax.p2p.DHTAddress;
 import limax.p2p.Neighbors;
 import limax.p2p.NetworkID;
@@ -44,6 +44,7 @@ class P2pHandler implements HttpHandler {
 	private static final int CONCURRENCY_LEVEL = Integer.getInteger("limax.key.P2pHandler.CONCURRENCY_LEVEL", 64);
 	private static final int BASE_LIMIT = Integer.getInteger("limax.key.P2pHandler.BASE_LIMIT", 8);
 	private static final int ANTICIPANTION = Integer.getInteger("limax.key.P2pHandler.ANTICIPANTION", 8);
+	private static final long HTTPS_POST_LIMIT = Long.getLong("limax.key.P2pHandler.HTTPS_POST_MAX", 1048576);
 
 	private static final HostnameVerifier hostnameVerifier = (hostname, session) -> verifySSLSession(session);
 	private final SSLContextAllocator sslContextAllocator;
@@ -131,12 +132,6 @@ class P2pHandler implements HttpHandler {
 		return os;
 	}
 
-	private OctetsStream getInputOctetsStream(HttpExchange exchange) throws CodecException, IOException {
-		try (InputStream in = exchange.getRequestBody()) {
-			return getInputOctetsStream(in);
-		}
-	}
-
 	private OctetsStream getInputOctetsStream(HttpURLConnection connection) throws CodecException, IOException {
 		try (InputStream in = connection.getInputStream()) {
 			return getInputOctetsStream(in);
@@ -144,26 +139,28 @@ class P2pHandler implements HttpHandler {
 	}
 
 	@Override
-	public void handle(HttpExchange exchange) throws IOException {
-		if (!verifySSLSession(((HttpsExchange) exchange).getSSLSession())) {
-			exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, -1);
-			return;
-		}
-		try {
-			switch (exchange.getRequestURI().getQuery()) {
-			case "search":
-				search(exchange);
-				break;
-			case "upload":
-				upload(exchange);
-				break;
-			}
-		} catch (Exception e) {
-			throw new IOException(e);
-		}
+	public long postLimit() {
+		return HTTPS_POST_LIMIT;
 	}
 
-	void createContext(HttpsServer server) {
+	@Override
+	public DataSupplier handle(HttpExchange exchange) throws IOException {
+		if (!exchange.isRequestFinished())
+			return null;
+		if (verifySSLSession(exchange.getSSLSession()))
+			try {
+				switch (exchange.getRequestURI().getQuery()) {
+				case "search":
+					return search(exchange);
+				case "upload":
+					return upload(exchange);
+				}
+			} catch (Exception e) {
+			}
+		throw new HttpException(HttpURLConnection.HTTP_BAD_REQUEST, true);
+	}
+
+	void createContext(HttpServer server) {
 		server.createContext("/p2p", this);
 	}
 
@@ -175,14 +172,15 @@ class P2pHandler implements HttpHandler {
 		connection.setReadTimeout(KeyServer.NETWORK_TIMEOUT);
 		connection.setHostnameVerifier(hostnameVerifier);
 		connection.setSSLSocketFactory(factory);
+		connection.setRequestProperty("Content-Type", "application/octet-stream");
 		connection.setDoOutput(true);
 		connection.connect();
 		return connection;
 	}
 
-	private void upload(HttpExchange exchange) throws Exception {
-		masterKeyContainer.merge(new UploadRequest(getInputOctetsStream(exchange)).getKeyPairs());
-		exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, -1);
+	private DataSupplier upload(HttpExchange exchange) throws Exception {
+		masterKeyContainer.merge(new UploadRequest(OctetsStream.wrap(exchange.getFormData().getRaw())).getKeyPairs());
+		return null;
 	}
 
 	private void upload(Collection<Long> timestamps, InetSocketAddress inetSocketAddress) throws Exception {
@@ -199,21 +197,17 @@ class P2pHandler implements HttpHandler {
 		}
 	}
 
-	private void search(HttpExchange exchange) throws Exception {
-		SearchRequest req = new SearchRequest(getInputOctetsStream(exchange));
+	private DataSupplier search(HttpExchange exchange) throws Exception {
+		SearchRequest req = new SearchRequest(OctetsStream.wrap(exchange.getFormData().getRaw()));
 		Set<Long> timestamps = new HashSet<>(req.getTimestamps());
 		neighbors.addAll(new HashSet<>(Arrays.asList(
 				new NetworkID(req.getLocalDHTAddress(), new InetSocketAddress(req.getLocalInetAddress(), 443)),
 				new NetworkID(req.getLocalDHTAddress(),
-						new InetSocketAddress(exchange.getRemoteAddress().getAddress(), 443)))));
-		try (OutputStream out = exchange.getResponseBody()) {
-			OctetsStream os = new OctetsStream().marshal(new SearchResponse(neighbors.getLocalDHTAddress(),
-					neighbors.search(req.getSearchFor(), REPORT_SIZE), masterKeyContainer.diff(timestamps),
-					timestamps));
-			exchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
-			exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, os.size());
-			out.write(os.array(), 0, os.size());
-		}
+						new InetSocketAddress(exchange.getPeerAddress().getAddress(), 443)))));
+		OctetsStream os = new OctetsStream().marshal(new SearchResponse(neighbors.getLocalDHTAddress(),
+				neighbors.search(req.getSearchFor(), REPORT_SIZE), masterKeyContainer.diff(timestamps), timestamps));
+		exchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
+		return DataSupplier.from(os.getByteBuffer());
 	}
 
 	private Pair<Boolean, Collection<NetworkID>> search(DHTAddress searchFor, InetSocketAddress inetSocketAddress)

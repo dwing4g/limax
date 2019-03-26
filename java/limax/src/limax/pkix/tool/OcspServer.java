@@ -20,23 +20,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.security.auth.x500.X500Principal;
 
-import com.sun.net.httpserver.HttpServer;
-
 import limax.codec.asn1.ASN1BitString;
 import limax.codec.asn1.ASN1Sequence;
 import limax.codec.asn1.DecodeBER;
-import limax.util.ConcurrentEnvironment;
+import limax.http.HttpServer;
 import limax.util.Trace;
 
 class OcspServer {
-	private static final ThreadPoolExecutor executor = ConcurrentEnvironment.getInstance()
-			.newThreadPool("limax.pkix.tool.OcspServer", 0, true);
 	private final Map<OcspIssuerKey, X509Certificate> issuerKeys = new HashMap<>();
 	private final Map<X509Certificate, Map<BigInteger, Long>> revokeMap = new HashMap<>();
 	private final OcspResponseCache cache;
@@ -187,13 +182,12 @@ class OcspServer {
 
 	void start() throws Exception {
 		InetSocketAddress addr = new InetSocketAddress(port);
-		HttpServer server = HttpServer.create(addr, 0);
+		HttpServer server = HttpServer.create(addr);
 		server.createContext(ocspURI.getPath(), new OcspHttpHandler(certID -> query(certID), cache, ocspSignerConfig));
 		server.createContext(baseCRLDP.getPath(),
 				new CRLHttpHandler(ocspSignerConfig,
 						() -> revokeMap.entrySet().stream().collect(Collectors.toMap(e -> getCRLDP(e.getKey()),
 								e -> ocspSignerConfig.getCRLSigner().apply(e.getKey(), e.getValue())))));
-		server.setExecutor(executor);
 		server.start();
 		if (Trace.isInfoEnabled())
 			Trace.info("OcspServer start on " + addr);

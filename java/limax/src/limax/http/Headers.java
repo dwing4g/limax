@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import limax.util.StringUtils;
-
 public class Headers {
 	private final Map<String, List<String>> headers = new LinkedHashMap<>();
 
@@ -21,7 +19,7 @@ public class Headers {
 	public void set(String key, Object value) {
 		List<String> v = new ArrayList<>();
 		v.add(value.toString().trim());
-		headers.put(key, v);
+		headers.put(key.toLowerCase(), v);
 	}
 
 	public String getFirst(String key) {
@@ -37,11 +35,32 @@ public class Headers {
 		return headers.entrySet();
 	}
 
+	public List<String> remove(String key) {
+		return headers.remove(key);
+	}
+
+	private static String upper(String s) {
+		char[] c = s.toCharArray();
+		boolean upper = true;
+		for (int i = 0; i < c.length; i++) {
+			if (upper)
+				c[i] = Character.toUpperCase(c[i]);
+			upper = c[i] == '-';
+		}
+		return new String(c);
+	}
+
 	StringBuilder write(StringBuilder sb) {
 		headers.forEach((k, v) -> {
 			if (k.charAt(0) != ':')
-				v.forEach(v0 -> sb.append(StringUtils.upper1(k)).append(": ").append(v0).append("\r\n"));
+				v.forEach(v0 -> sb.append(upper(k)).append(": ").append(v0).append("\r\n"));
 		});
 		return sb;
+	}
+
+	Headers copy() {
+		Headers r = new Headers();
+		headers.forEach((k, v) -> r.headers.put(k, v));
+		return r;
 	}
 }

@@ -3,6 +3,8 @@ package limax.http;
 import java.net.InetSocketAddress;
 import java.net.URI;
 
+import javax.net.ssl.SSLSession;
+
 public interface HttpExchange {
 	InetSocketAddress getLocalAddress();
 
@@ -11,6 +13,8 @@ public interface HttpExchange {
 	boolean isRequestFinished();
 
 	URI getRequestURI();
+
+	URI getContextURI();
 
 	String getRequestMethod();
 
@@ -24,4 +28,8 @@ public interface HttpExchange {
 
 	Headers getResponseTrailers();
 
+	SSLSession getSSLSession();
+
+	default void promise(URI uri) {
+	}
 }

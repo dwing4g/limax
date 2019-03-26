@@ -53,14 +53,12 @@ public class HttpClientService {
 			conn.setConnectTimeout(timeout);
 			conn.setReadTimeout(timeout);
 			if (!post.isEmpty()) {
+				conn.setRequestProperty("Content-Type", "text/plain; charset=utf-8");
 				conn.setDoOutput(true);
-				conn.setAllowUserInteraction(false);
-				conn.setRequestMethod("POST");
 				try (OutputStream os = conn.getOutputStream()) {
 					os.write(post.getBytes(StandardCharsets.UTF_8));
 				}
-			} else
-				conn.setRequestMethod("GET");
+			}
 			int code = conn.getResponseCode();
 			conn.setReadTimeout((int) updateTimeout());
 			StringBuilder sb = new StringBuilder();

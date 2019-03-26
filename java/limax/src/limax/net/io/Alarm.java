@@ -13,18 +13,18 @@ final class Alarm {
 		this.task = task;
 	}
 
-	public synchronized void reset(final long millisecond) {
-		if (update = delay == millisecond)
+	public synchronized void reset(final long milliseconds) {
+		if (update = delay == milliseconds)
 			return;
-		delay = millisecond;
+		delay = milliseconds;
 		if (future != null)
 			future.cancel(false);
-		future = millisecond > 0 ? NetModel.delayPool.scheduleWithFixedDelay(new Runnable() {
+		future = milliseconds > 0 ? NetModel.delayPool.scheduleWithFixedDelay(new Runnable() {
 			@Override
 			public void run() {
 				boolean done = false;
 				synchronized (Alarm.this) {
-					if (millisecond == delay)
+					if (milliseconds == delay)
 						if (update) {
 							update = false;
 						} else {
@@ -37,6 +37,6 @@ final class Alarm {
 				if (done)
 					task.run();
 			}
-		}, millisecond, millisecond, TimeUnit.MILLISECONDS) : null;
+		}, milliseconds, milliseconds, TimeUnit.MILLISECONDS) : null;
 	}
 }

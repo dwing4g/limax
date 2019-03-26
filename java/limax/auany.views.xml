@@ -28,7 +28,7 @@
 			<variable name="credential" type="string" />
 			<variable name="authcode" type="string" />
 			<variable name="authcode2" type="string" />
-			<variable name="millisecond" type="long" />
+			<variable name="milliseconds" type="long" />
 			<variable name="usage" type="byte" />
 			<variable name="subid" type="string" />
 		</control>
@@ -39,7 +39,7 @@
 			<variable name="platflag" type="string" />
 			<variable name="appid" type="int" />
 			<variable name="authcode" type="string" />
-			<variable name="millisecond" type="long" />
+			<variable name="milliseconds" type="long" />
 			<variable name="usage" type="byte" />
 			<variable name="subid" type="string" />
 		</control>

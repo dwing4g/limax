@@ -2,13 +2,12 @@ package limax.pkix.tool;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyPair;
@@ -36,7 +35,6 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -46,11 +44,6 @@ import javax.security.auth.x500.X500Principal;
 
 import org.w3c.dom.Element;
 
-import com.sun.net.httpserver.Headers;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
-
 import limax.codec.JSON;
 import limax.codec.JSONException;
 import limax.codec.Octets;
@@ -59,12 +52,17 @@ import limax.codec.SHA1;
 import limax.codec.SinkOctets;
 import limax.codec.StreamSource;
 import limax.codec.asn1.ASN1ObjectIdentifier;
+import limax.http.DataSupplier;
+import limax.http.Headers;
+import limax.http.HttpException;
+import limax.http.HttpExchange;
+import limax.http.HttpHandler;
+import limax.http.HttpServer;
 import limax.pkix.CAService;
 import limax.pkix.ExtKeyUsage;
 import limax.pkix.GeneralName;
 import limax.pkix.KeyUsage;
 import limax.pkix.X509EndEntityCertificateParameter;
-import limax.util.ConcurrentEnvironment;
 import limax.util.ElementHelper;
 import limax.util.Helper;
 import limax.util.SecurityUtils;
@@ -72,8 +70,7 @@ import limax.util.Trace;
 import limax.util.XMLUtils;
 
 class CertServer {
-	private static final ThreadPoolExecutor executor = ConcurrentEnvironment.getInstance()
-			.newThreadPool("limax.pkix.tool.CertServer", 0, true);
+	static final long CERTFILE_MAX_SIZE = Long.getLong("limax.pkix.tool.CertServer.CERTFILE_SIZE_MAX", 65536);
 	private static final ThreadLocal<SimpleDateFormat> defaultDateFormat = ThreadLocal
 			.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd"));
 	private static final long CACHE_TIME_OUT = 30000;
@@ -130,7 +127,7 @@ class CertServer {
 
 	class Handler implements HttpHandler {
 		@Override
-		public void handle(HttpExchange exchange) throws IOException {
+		public DataSupplier handle(HttpExchange exchange) throws Exception {
 			String path = exchange.getRequestURI().getPath();
 			Headers headers = exchange.getResponseHeaders();
 			if (path.length() > 1) {
@@ -138,40 +135,24 @@ class CertServer {
 				if (c != null) {
 					headers.set("Content-Type", Files.probeContentType(Paths.get(c.key)));
 					headers.set("Cache-Control", "no-store");
-					exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, c.data.length);
-					try (OutputStream os = exchange.getResponseBody()) {
-						os.write(c.data);
-					}
-					return;
+					return DataSupplier.from(c.data);
 				}
 			}
 			headers.set("Location", "/CertServer.html");
-			exchange.sendResponseHeaders(HttpURLConnection.HTTP_MOVED_PERM, -1);
+			headers.set(":status", HttpURLConnection.HTTP_MOVED_PERM);
+			return null;
 		}
 	}
 
-	private static JSON requestJSON(HttpExchange exchange) throws IOException {
-		try {
-			return JSON.parse(exchange.getRequestURI().getQuery());
-		} catch (JSONException e) {
-			throw new IOException(e);
-		}
+	private static JSON requestJSON(HttpExchange exchange) throws JSONException {
+		return JSON.parse(exchange.getRequestURI().getQuery());
 	}
 
-	private static void responseJSON(HttpExchange exchange, Object obj) throws IOException {
-		byte[] data;
-		try {
-			data = JSON.stringify(obj).getBytes();
-		} catch (JSONException e) {
-			throw new IOException(e);
-		}
+	private static DataSupplier responseJSON(HttpExchange exchange, Object obj) throws JSONException {
 		Headers headers = exchange.getResponseHeaders();
 		headers.set("Content-Type", "application/json");
 		headers.set("Cache-Control", "no-store");
-		exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, data.length);
-		try (OutputStream os = exchange.getResponseBody()) {
-			os.write(data);
-		}
+		return DataSupplier.from(JSON.stringify(obj).getBytes());
 	}
 
 	private X500Principal getSubject(JSON json, Map<String, Object> transform) {
@@ -353,7 +334,7 @@ class CertServer {
 
 	private class HandlerSign implements HttpHandler {
 		@Override
-		public void handle(HttpExchange exchange) throws IOException {
+		public DataSupplier handle(HttpExchange exchange) throws JSONException {
 			JSON json = requestJSON(exchange);
 			if (json.isNull()) {
 				Map<String, Object> initial = new HashMap<>();
@@ -364,8 +345,7 @@ class CertServer {
 				initial.put("notAfter", defaultDateFormat.get().format(new Date(now + notAfterPeriod)));
 				initial.put("keyUsage", keyUsage);
 				initial.put("extKeyUsage", extKeyUsage);
-				responseJSON(exchange, initial);
-				return;
+				return responseJSON(exchange, initial);
 			}
 			Map<String, Object> transform = new HashMap<>();
 			X500Principal subject = getSubject(json, transform);
@@ -471,7 +451,7 @@ class CertServer {
 						Trace.error("CertServer sign certificate", e);
 				}
 			}
-			responseJSON(exchange, transform);
+			return responseJSON(exchange, transform);
 		}
 	}
 
@@ -489,7 +469,7 @@ class CertServer {
 		}
 
 		@Override
-		public void handle(HttpExchange exchange) throws IOException {
+		public DataSupplier handle(HttpExchange exchange) throws JSONException {
 			JSON json = requestJSON(exchange);
 			Map<String, Object> transform = new HashMap<>();
 			X509Certificate certificate = null;
@@ -516,7 +496,7 @@ class CertServer {
 				}
 				transform.put("result", r);
 			}
-			responseJSON(exchange, transform);
+			return responseJSON(exchange, transform);
 		}
 	}
 
@@ -584,24 +564,43 @@ class CertServer {
 
 	void start() throws Exception {
 		InetSocketAddress addr = new InetSocketAddress(InetAddress.getLoopbackAddress(), port);
-		HttpServer server = HttpServer.create(addr, 0);
+		HttpServer server = HttpServer.create(addr);
 		server.createContext("/", new Handler());
 		server.createContext("/sign", new HandlerSign());
 		server.createContext("/revoke", new HandlerMaintance("revoke", c -> ocspServer.revoke(c)));
 		server.createContext("/recall", new HandlerMaintance("recall", c -> ocspServer.recall(c)));
+		server.createContext("/parse", new HttpHandler() {
+			@Override
+			public long postLimit() {
+				return CERTFILE_MAX_SIZE;
+			}
+
+			@Override
+			public DataSupplier handle(HttpExchange exchange) throws Exception {
+				if (!exchange.isRequestFinished())
+					return null;
+				try {
+					Certificate[] chain = CertificateFactory.getInstance("X.509")
+							.generateCertificates(new ByteArrayInputStream(exchange.getFormData().getRaw().getBytes()))
+							.toArray(new Certificate[0]);
+					Certificate cert = chain.length == 1 ? chain[0] : SecurityUtils.sortCertificateChain(chain)[0];
+					return DataSupplier.from(SecurityUtils.encodePEM("CERTIFICATE", cert.getEncoded()),
+							StandardCharsets.UTF_8);
+				} catch (Exception e) {
+				}
+				throw new HttpException(HttpURLConnection.HTTP_BAD_REQUEST, true);
+			}
+		});
 		Octets data = new Octets();
 		try (InputStream in = CertServer.class.getResourceAsStream("CertServer.html")) {
 			new StreamSource(in, new SinkOctets(data)).flush();
 		}
-		StaticWebData html = new StaticWebData(data.getBytes(), "text/html; charset=utf-8");
-		server.createContext("/CertServer.html", exchange -> html.transfer(exchange));
+		server.createContext("/CertServer.html", new StaticWebData(data.getBytes(), "text/html; charset=utf-8"));
 		data.clear();
 		try (InputStream in = CertServer.class.getResourceAsStream("CertServer.js")) {
 			new StreamSource(in, new SinkOctets(data)).flush();
 		}
-		StaticWebData js = new StaticWebData(data.getBytes(), "text/javascript; charset=utf-8");
-		server.createContext("/CertServer.js", exchange -> js.transfer(exchange));
-		server.setExecutor(executor);
+		server.createContext("/CertServer.js", new StaticWebData(data.getBytes(), "text/javascript; charset=utf-8"));
 		server.start();
 		if (Trace.isInfoEnabled())
 			Trace.info("CertServer start on " + addr);

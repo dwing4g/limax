@@ -157,26 +157,26 @@ namespace limax {
 				return r;
 			}, r);
 		}
-		void CredentialContext::temporary(const std::string& credential, const std::string& authcode, const std::string& authcode2, long millisecond, int8_t usage, const std::string& subid, const limax::AuanyService::Result& r)
+		void CredentialContext::temporary(const std::string& credential, const std::string& authcode, const std::string& authcode2, long milliseconds, int8_t usage, const std::string& subid, const limax::AuanyService::Result& r)
 		{
 			auto data = shareddata;
 			execute([=](const std::string& code)
 			{
 				Runnable r = [=]()
 				{
-					limax::AuanyService::temporary(credential, authcode, authcode2, millisecond, usage, subid, timeout, result, data->manager);
+					limax::AuanyService::temporary(credential, authcode, authcode2, milliseconds, usage, subid, timeout, result, data->manager);
 				};
 				return r;
 			}, r);
 		}
-		void CredentialContext::temporary(LoginConfigPtr loginConfig, int appid, const std::string& authcode, long millisecond, int8_t usage, const std::string& subid, const limax::AuanyService::Result& r)
+		void CredentialContext::temporary(LoginConfigPtr loginConfig, int appid, const std::string& authcode, long milliseconds, int8_t usage, const std::string& subid, const limax::AuanyService::Result& r)
 		{
 			auto data = shareddata;
 			execute([=](const std::string& code)
 			{
 				Runnable r = [=]()
 				{
-					limax::AuanyService::temporary(loginConfig, appid, authcode, millisecond, usage, subid, timeout, result, data->manager);
+					limax::AuanyService::temporary(loginConfig, appid, authcode, milliseconds, usage, subid, timeout, result, data->manager);
 				};
 				return r;
 			}, r);
@@ -291,30 +291,30 @@ namespace limax {
 	{
 		bind(credential, authcode, loginConfig, timeout, onresult, Endpoint::getDefaultEndpointManager());
 	}
-	void AuanyService::temporary(const std::string& httpHost, int httpPort, int appid, const std::string& credential, const std::string& authcode, const std::string& authcode2, long millisecond, int8_t usage, const std::string& subid, long timeout, Result onresult)
+	void AuanyService::temporary(const std::string& httpHost, int httpPort, int appid, const std::string& credential, const std::string& authcode, const std::string& authcode2, long milliseconds, int8_t usage, const std::string& subid, long timeout, Result onresult)
 	{
-		helper::CredentialContext(httpHost, httpPort, appid, timeout).temporary(credential, authcode, authcode2, millisecond, usage, subid, onresult);
+		helper::CredentialContext(httpHost, httpPort, appid, timeout).temporary(credential, authcode, authcode2, milliseconds, usage, subid, onresult);
 	}
-	void AuanyService::temporary(const std::string& credential, const std::string& authcode, const std::string& authcode2, long millisecond, int8_t usage, const std::string& subid, long timeout, Result onresult, EndpointManager* manager)
+	void AuanyService::temporary(const std::string& credential, const std::string& authcode, const std::string& authcode2, long milliseconds, int8_t usage, const std::string& subid, long timeout, Result onresult, EndpointManager* manager)
 	{
-		endpoint::auanyviews::Service::getInstance(manager)->TemporaryFromCredential((new helper::AuanyService(onresult, timeout))->sn, credential, authcode, authcode2, millisecond, usage, subid);
+		endpoint::auanyviews::Service::getInstance(manager)->TemporaryFromCredential((new helper::AuanyService(onresult, timeout))->sn, credential, authcode, authcode2, milliseconds, usage, subid);
 	}
-	void AuanyService::temporary(const std::string& credential, const std::string& authcode, const std::string& authcode2, long millisecond, int8_t usage, const std::string& subid, long timeout, Result onresult)
+	void AuanyService::temporary(const std::string& credential, const std::string& authcode, const std::string& authcode2, long milliseconds, int8_t usage, const std::string& subid, long timeout, Result onresult)
 	{
-		temporary(credential, authcode, authcode2, millisecond, usage, subid, timeout, onresult, Endpoint::getDefaultEndpointManager());
+		temporary(credential, authcode, authcode2, milliseconds, usage, subid, timeout, onresult, Endpoint::getDefaultEndpointManager());
 	}
-	void AuanyService::temporary(const std::string& httpHost, int httpPort, int appid, LoginConfigPtr loginConfig, const std::string& authcode, long millisecond, int8_t usage, const std::string& subid, long timeout, Result onresult)
+	void AuanyService::temporary(const std::string& httpHost, int httpPort, int appid, LoginConfigPtr loginConfig, const std::string& authcode, long milliseconds, int8_t usage, const std::string& subid, long timeout, Result onresult)
 	{
-		helper::CredentialContext(httpHost, httpPort, appid, timeout).temporary(loginConfig, appid, authcode, millisecond, usage, subid, onresult);
+		helper::CredentialContext(httpHost, httpPort, appid, timeout).temporary(loginConfig, appid, authcode, milliseconds, usage, subid, onresult);
 	}
-	void AuanyService::temporary(LoginConfigPtr loginConfig, int appid, const std::string& authcode, long millisecond, int8_t usage, const std::string& subid, long timeout, Result onresult, EndpointManager* manager)
+	void AuanyService::temporary(LoginConfigPtr loginConfig, int appid, const std::string& authcode, long milliseconds, int8_t usage, const std::string& subid, long timeout, Result onresult, EndpointManager* manager)
 	{
 		std::shared_ptr<helper::LoginConfigImpl> lc = std::dynamic_pointer_cast<helper::LoginConfigImpl>(loginConfig);
-		endpoint::auanyviews::Service::getInstance(manager)->TemporaryFromLogin((new helper::AuanyService(onresult, timeout))->sn, lc->getUsername(), lc->getToken(limax::helper::toNonce(authcode)), lc->getPlatflagRaw(), appid, authcode, millisecond, usage, subid);
+		endpoint::auanyviews::Service::getInstance(manager)->TemporaryFromLogin((new helper::AuanyService(onresult, timeout))->sn, lc->getUsername(), lc->getToken(limax::helper::toNonce(authcode)), lc->getPlatflagRaw(), appid, authcode, milliseconds, usage, subid);
 	}
-	void AuanyService::temporary(LoginConfigPtr loginConfig, int appid, const std::string& authcode, long millisecond, int8_t usage, const std::string& subid, long timeout, Result onresult)
+	void AuanyService::temporary(LoginConfigPtr loginConfig, int appid, const std::string& authcode, long milliseconds, int8_t usage, const std::string& subid, long timeout, Result onresult)
 	{
-		temporary(loginConfig, appid, authcode, millisecond, usage, subid, timeout, onresult, Endpoint::getDefaultEndpointManager());
+		temporary(loginConfig, appid, authcode, milliseconds, usage, subid, timeout, onresult, Endpoint::getDefaultEndpointManager());
 	}
 	void AuanyService::transfer(const std::string& httpHost, int httpPort, int appid, LoginConfigPtr loginConfig, const std::string& authcode, const std::string& temp, const std::string& authtemp, long timeout, Result onresult)
 	{

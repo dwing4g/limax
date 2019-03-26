@@ -424,7 +424,7 @@ namespace limax.util
     {
         private readonly Timer timer;
         public Alarm(Action r) { timer = new Timer(_ => r()); }
-        public void reset(long millisecond) { timer.Change(millisecond > 0 ? millisecond : Timeout.Infinite, Timeout.Infinite); }
+        public void reset(long milliseconds) { timer.Change(milliseconds > 0 ? milliseconds : Timeout.Infinite, Timeout.Infinite); }
         public void Dispose() { timer.Dispose(); }
     }
     #endregion

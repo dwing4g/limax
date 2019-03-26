@@ -6,8 +6,7 @@ import java.util.Map;
 
 import org.w3c.dom.Element;
 
-import com.sun.net.httpserver.HttpHandler;
-
+import limax.http.HttpHandler;
 import limax.util.ElementHelper;
 
 public final class OperationEnvironment {

@@ -17,7 +17,6 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -29,23 +28,17 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.x500.X500Principal;
 
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpsConfigurator;
-import com.sun.net.httpserver.HttpsParameters;
-import com.sun.net.httpserver.HttpsServer;
-
+import limax.http.HttpHandler;
+import limax.http.HttpServer;
 import limax.pkix.CAService;
 import limax.pkix.ExtKeyUsage;
 import limax.pkix.GeneralName;
 import limax.pkix.KeyUsage;
 import limax.pkix.TrustManager;
 import limax.pkix.X509EndEntityCertificateParameter;
-import limax.util.ConcurrentEnvironment;
 import limax.util.Trace;
 
 class AutoHttpsServer {
-	private static final ThreadPoolExecutor executor = ConcurrentEnvironment.getInstance()
-			.newThreadPool("limax.pkix.tool.AutoHttpsServer", 0, true);
 	private static final int RESTART_DELAY_SECOND = 2;
 	private static final long RESTART_MILLISECOND_BEFORE_CERTIFICATE_EXPIRE = 10000L;
 	private static final char[] passphrase = "passphrase".toCharArray();
@@ -138,22 +131,19 @@ class AutoHttpsServer {
 		SSLContext ctx = SSLContext.getInstance("TLSv1.2");
 		ctx.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
 		InetSocketAddress addr = new InetSocketAddress(port);
-		HttpsServer server = HttpsServer.create(addr, 0);
-		server.setHttpsConfigurator(new HttpsConfigurator(ctx) {
-			@Override
-			public void configure(HttpsParameters params) {
-				params.setWantClientAuth(true);
-			}
-		});
+		HttpServer server = HttpServer.create(addr, ctx, false, true);
 		handlers.forEach((context, handler) -> server.createContext(context, handler));
-		server.setExecutor(executor);
 		server.start();
 		if (Trace.isInfoEnabled())
 			Trace.info("AutoHttpsServer start on " + addr);
 		scheduler.schedule(() -> {
 			if (Trace.isInfoEnabled())
 				Trace.info("AutoHttpsServer restarting on expire.");
-			server.stop(RESTART_DELAY_SECOND);
+			try {
+				server.stop();
+				Thread.sleep(RESTART_DELAY_SECOND);
+			} catch (Exception e) {
+			}
 			try {
 				start(handlers);
 			} catch (Exception e) {

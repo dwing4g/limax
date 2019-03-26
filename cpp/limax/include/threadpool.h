@@ -58,7 +58,7 @@ namespace limax {
 		std::deque<Runnable> q;
 	public:
 		~ThreadPool();
-		ThreadPool(int max_idle_in_millisecond);
+		ThreadPool(int max_idle_in_milliseconds);
 		ThreadPool(const ThreadPool&) = delete;
 		ThreadPool& operator = (const ThreadPool&) = delete;
 		void shutdown();

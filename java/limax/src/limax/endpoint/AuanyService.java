@@ -252,14 +252,14 @@ public final class AuanyService {
 		}
 
 		public void temporary(final String credential, final String authcode, final String authcode2,
-				final long millisecond, final byte usage, final String subid, Result r) {
+				final long milliseconds, final byte usage, final String subid, Result r) {
 			execute(new Action() {
 				@Override
 				public Callable<Void> apply(final String code) {
 					return new Callable<Void>() {
 						@Override
 						public Void call() throws Exception {
-							AuanyService.temporary(credential, authcode, authcode2, millisecond, usage, subid, timeout,
+							AuanyService.temporary(credential, authcode, authcode2, milliseconds, usage, subid, timeout,
 									result, manager);
 							return null;
 						}
@@ -268,7 +268,7 @@ public final class AuanyService {
 			}, r);
 		}
 
-		public void temporary(final LoginConfig loginConfig, final String authcode, final long millisecond,
+		public void temporary(final LoginConfig loginConfig, final String authcode, final long milliseconds,
 				final byte usage, final String subid, Result r) {
 			execute(new Action() {
 				@Override
@@ -276,7 +276,7 @@ public final class AuanyService {
 					return new Callable<Void>() {
 						@Override
 						public Void call() throws Exception {
-							AuanyService.temporary(loginConfig, appid, authcode, millisecond, usage, subid, timeout,
+							AuanyService.temporary(loginConfig, appid, authcode, milliseconds, usage, subid, timeout,
 									result, manager);
 							return null;
 						}
@@ -339,40 +339,40 @@ public final class AuanyService {
 	}
 
 	public static void temporary(String httpHost, int httpPort, int appid, String credential, String authcode,
-			String authcode2, long millisecond, byte usage, String subid, long timeout, Result onresult) {
+			String authcode2, long milliseconds, byte usage, String subid, long timeout, Result onresult) {
 		new CredentialContext(httpHost, httpPort, appid, timeout).temporary(credential, authcode, authcode2,
-				millisecond, usage, subid, onresult);
+				milliseconds, usage, subid, onresult);
 	}
 
-	public static void temporary(String credential, String authcode, String authcode2, long millisecond, byte usage,
+	public static void temporary(String credential, String authcode, String authcode2, long milliseconds, byte usage,
 			String subid, long timeout, Result onresult, EndpointManager manager) throws Exception {
 		Service.getInstance(manager).TemporaryFromCredential(
 				new AuanyService(onresult, timeout, createExecutor(manager)).sn, credential, authcode, authcode2,
-				millisecond, usage, subid);
+				milliseconds, usage, subid);
 	}
 
-	public static void temporary(String credential, String authcode, String authcode2, long millisecond, byte usage,
+	public static void temporary(String credential, String authcode, String authcode2, long milliseconds, byte usage,
 			String subid, long timeout, Result onresult) throws Exception {
-		temporary(credential, authcode, authcode2, millisecond, usage, subid, timeout, onresult,
+		temporary(credential, authcode, authcode2, milliseconds, usage, subid, timeout, onresult,
 				Endpoint.getDefaultEndpointManager());
 	}
 
 	public static void temporary(String httpHost, int httpPort, int appid, LoginConfig loginConfig, String authcode,
-			long millisecond, byte usage, String subid, long timeout, Result onresult) {
-		new CredentialContext(httpHost, httpPort, appid, timeout).temporary(loginConfig, authcode, millisecond, usage,
+			long milliseconds, byte usage, String subid, long timeout, Result onresult) {
+		new CredentialContext(httpHost, httpPort, appid, timeout).temporary(loginConfig, authcode, milliseconds, usage,
 				subid, onresult);
 	}
 
-	public static void temporary(LoginConfig loginConfig, int appid, String authcode, long millisecond, byte usage,
+	public static void temporary(LoginConfig loginConfig, int appid, String authcode, long milliseconds, byte usage,
 			String subid, long timeout, Result onresult, EndpointManager manager) throws Exception {
 		Service.getInstance(manager).TemporaryFromLogin(new AuanyService(onresult, timeout, createExecutor(manager)).sn,
 				loginConfig.getUsername(), loginConfig.getToken(toNonce(authcode)), loginConfig.getPlatflagRaw(), appid,
-				authcode, millisecond, usage, subid);
+				authcode, milliseconds, usage, subid);
 	}
 
-	public static void temporary(LoginConfig loginConfig, int appid, String authcode, long millisecond, byte usage,
+	public static void temporary(LoginConfig loginConfig, int appid, String authcode, long milliseconds, byte usage,
 			String subid, long timeout, Result onresult) throws Exception {
-		temporary(loginConfig, appid, authcode, millisecond, usage, subid, timeout, onresult);
+		temporary(loginConfig, appid, authcode, milliseconds, usage, subid, timeout, onresult);
 	}
 
 	public static void transfer(String httpHost, int httpPort, int appid, LoginConfig loginConfig, String authcode,

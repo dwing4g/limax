@@ -70,15 +70,15 @@ public final class Account {
 		private final byte usage;
 		private final String subid;
 
-		TemporaryCredential(SessionCredential r, long millisecond, byte usage, String subid) {
-			super(r, System.currentTimeMillis() + millisecond);
+		TemporaryCredential(SessionCredential r, long milliseconds, byte usage, String subid) {
+			super(r, System.currentTimeMillis() + milliseconds);
 			this.usage = usage;
 			this.subid = subid;
 		}
 
-		TemporaryCredential(String uid, int appid, long mainid, int serial, long millisecond, byte usage,
+		TemporaryCredential(String uid, int appid, long mainid, int serial, long milliseconds, byte usage,
 				String subid) {
-			super(uid, System.currentTimeMillis() + millisecond, appid, mainid, serial);
+			super(uid, System.currentTimeMillis() + milliseconds, appid, mainid, serial);
 			this.usage = usage;
 			this.subid = subid;
 		}
@@ -474,7 +474,7 @@ public final class Account {
 		login(uid, subid, appid, onresult, true);
 	}
 
-	public static void temporary(String cred, String authcode, String authcode2, long millisecond, byte usage,
+	public static void temporary(String cred, String authcode, String authcode2, long milliseconds, byte usage,
 			String subid, Result onresult) {
 		SessionCredential c;
 		try {
@@ -490,14 +490,14 @@ public final class Account {
 			}
 			try {
 				onresult.apply(ErrorSource.LIMAX, ErrorCodes.SUCCEED,
-						encode(new TemporaryCredential(c, millisecond, usage, subid), authcode2));
+						encode(new TemporaryCredential(c, milliseconds, usage, subid), authcode2));
 			} catch (Exception e) {
 				onresult.apply(ErrorSource.LIMAX, ErrorCodes.AUANY_SERVICE_INVALID_CREDENTIAL, "");
 			}
 		});
 	}
 
-	public static void temporary(String uid, int appid, String authcode, long millisecond, byte usage, String subid,
+	public static void temporary(String uid, int appid, String authcode, long milliseconds, byte usage, String subid,
 			Result onresult) {
 		login(uid, subid, appid, (errorSource, errorCode, sessionid, mainid, _uid, serial, lmkdata) -> {
 			if (errorSource != ErrorSource.LIMAX || errorCode != ErrorCodes.SUCCEED) {
@@ -506,7 +506,7 @@ public final class Account {
 			}
 			try {
 				onresult.apply(ErrorSource.LIMAX, ErrorCodes.SUCCEED, encode(
-						new TemporaryCredential(uid, appid, mainid, serial, millisecond, usage, subid), authcode));
+						new TemporaryCredential(uid, appid, mainid, serial, milliseconds, usage, subid), authcode));
 			} catch (Exception e) {
 				onresult.apply(ErrorSource.LIMAX, ErrorCodes.AUANY_SERVICE_INVALID_CREDENTIAL, "");
 			}

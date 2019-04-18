@@ -57,14 +57,10 @@ class HttpProcessor implements NetProcessor {
 		this.processor = processor;
 	}
 
-	HttpContext getHttpContext(String dnsName, String path) {
+	Host find(String dnsName) {
 		if (sniHostName != null)
 			dnsName = sniHostName;
-		Host host = (dnsName != null ? hosts.getOrDefault(Host.normalizeDnsName(dnsName), defaultHost) : defaultHost);
-		HttpContext httpContext = host.find(path);
-		return httpContext != null ? httpContext
-				: path.equals("*") ? new HttpContext("/", (HttpHandler) parameters.get(Parameter.HANDLER_ASTERISK))
-						: new HttpContext("/", (HttpHandler) parameters.get(Parameter.HANDLER_404));
+		return dnsName != null ? hosts.getOrDefault(Host.normalizeDnsName(dnsName), defaultHost) : defaultHost;
 	}
 
 	InetSocketAddress getLocalAddress() {

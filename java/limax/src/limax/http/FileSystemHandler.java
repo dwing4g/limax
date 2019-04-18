@@ -22,7 +22,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
-import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +36,6 @@ import limax.net.Engine;
 import limax.util.Closeable;
 
 class FileSystemHandler implements HttpHandler, Closeable {
-	private final EnumMap<Parameter, Object> parameters;
 	private final Path htdocs;
 	private final WatchService watchService;
 	private final Map<Path, FileHandler> cache = new ConcurrentHashMap<>();
@@ -229,9 +227,9 @@ class FileSystemHandler implements HttpHandler, Closeable {
 		return new FileHandler(sb.toString());
 	}
 
-	private HttpHandler getHandler(URI contextURI, URI requestURI) {
-		String _path = requestURI.toString();
-		Path path = htdocs.resolve(contextURI.relativize(requestURI).toString());
+	private HttpHandler getHandler(Host host, URI contextURI, URI requestURI) {
+		String _path = requestURI.getPath();
+		Path path = htdocs.resolve(contextURI.relativize(URI.create(_path)).toString());
 		FileHandler data = cache.get(path);
 		if (data == null) {
 			try {
@@ -252,7 +250,7 @@ class FileSystemHandler implements HttpHandler, Closeable {
 						if (browseDir) {
 							for (String exception : browseDirExceptions)
 								if (_path.equalsIgnoreCase(exception))
-									return (HttpHandler) parameters.get(Parameter.HANDLER_403);
+									return (HttpHandler) host.get(Parameter.HANDLER_403);
 							data = handleDirectory(path, _path);
 						} else {
 							for (String exception : browseDirExceptions)
@@ -261,7 +259,7 @@ class FileSystemHandler implements HttpHandler, Closeable {
 									break;
 								}
 							if (data == null)
-								return (HttpHandler) parameters.get(Parameter.HANDLER_403);
+								return (HttpHandler) host.get(Parameter.HANDLER_403);
 						}
 					} else {
 						data = new FileHandler(path);
@@ -277,7 +275,7 @@ class FileSystemHandler implements HttpHandler, Closeable {
 					}
 				});
 			} catch (Exception e) {
-				return (HttpHandler) parameters.get(Parameter.HANDLER_404);
+				return (HttpHandler) host.get(Parameter.HANDLER_404);
 			}
 		}
 		return data;
@@ -288,10 +286,8 @@ class FileSystemHandler implements HttpHandler, Closeable {
 		return l >= 0 && s.charAt(l) == '/' ? s.substring(0, l) : s;
 	}
 
-	FileSystemHandler(EnumMap<Parameter, Object> parameters, Path htdocs, String textCharset, int mmapThreshold,
-			double compressThreshold, String[] indexes, boolean browseDir, String[] browseDirExceptions)
-			throws IOException {
-		this.parameters = parameters;
+	FileSystemHandler(Path htdocs, String textCharset, int mmapThreshold, double compressThreshold, String[] indexes,
+			boolean browseDir, String[] browseDirExceptions) throws IOException {
 		this.htdocs = htdocs;
 		this.textCharset = textCharset;
 		this.mmapThreshold = mmapThreshold;
@@ -328,7 +324,7 @@ class FileSystemHandler implements HttpHandler, Closeable {
 
 	@Override
 	public DataSupplier handle(HttpExchange exchange) throws Exception {
-		return getHandler(exchange.getContextURI(), exchange.getRequestURI()).handle(exchange);
+		return getHandler(exchange.getHost(), exchange.getContextURI(), exchange.getRequestURI()).handle(exchange);
 	}
 
 	@Override

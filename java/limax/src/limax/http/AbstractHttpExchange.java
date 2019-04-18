@@ -30,8 +30,9 @@ abstract class AbstractHttpExchange implements HttpExchange {
 	protected final HttpProcessor processor;
 	private final Headers headers = new Headers();
 	private final Headers trailers = new Headers();
-	private URI requestURI;
+	private Host host;
 	private URI contextURI;
+	private URI requestURI;
 	protected FormData formData;
 	protected HttpHandler httpHandler;
 	private boolean requestFinished;
@@ -267,14 +268,15 @@ abstract class AbstractHttpExchange implements HttpExchange {
 		});
 	}
 
-	protected Handler getHandler(Headers headers) {
+	protected Handler find(Headers headers) {
 		String dnsName = headers.getFirst(":authority");
 		if (dnsName == null)
 			dnsName = headers.getFirst("host");
-		requestURI = URI.create(headers.getFirst(":path"));
-		HttpContext httpContext = processor.getHttpContext(dnsName, requestURI.getPath());
-		contextURI = httpContext.uri();
-		return httpContext.handler();
+		host = processor.find(dnsName);
+		requestURI = URI.create(headers.getFirst(":path")).normalize();
+		HttpContext ctx = host.find(requestURI.getPath());
+		contextURI = ctx.uri();
+		return ctx.handler();
 	}
 
 	@Override
@@ -293,13 +295,18 @@ abstract class AbstractHttpExchange implements HttpExchange {
 	}
 
 	@Override
-	public URI getRequestURI() {
-		return requestURI;
+	public Host getHost() {
+		return host;
 	}
 
 	@Override
 	public URI getContextURI() {
 		return contextURI;
+	}
+
+	@Override
+	public URI getRequestURI() {
+		return requestURI;
 	}
 
 	@Override

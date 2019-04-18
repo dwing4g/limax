@@ -21,6 +21,8 @@ public interface NetTask {
 
 	void sendFinal();
 
+	void cancel(Throwable closeReason);
+
 	void disable();
 
 	void enable();

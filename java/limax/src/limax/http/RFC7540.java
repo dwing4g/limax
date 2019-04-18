@@ -236,7 +236,7 @@ class RFC7540 {
 		private final AtomicInteger windowUpdateAccumulate = new AtomicInteger();
 		private final AtomicLong windowSize;
 		private Processor processor;
-		private Consumer<Integer> windowConsumer;
+		private Runnable pump;
 		private List<Entry> headers = new ArrayList<>();
 		private Long headersSize = 0L;
 		private List<Entry> error;
@@ -372,12 +372,16 @@ class RFC7540 {
 		void recvWindowUpdate(int inc) {
 			if (windowSize.addAndGet(inc) > Integer.MAX_VALUE)
 				error(ErrorCode.FLOW_CONTROL_ERROR);
-			else if (windowConsumer != null)
-				windowConsumer.accept(inc);
+			else if (pump != null)
+				pump.run();
 		}
 
-		public void flowControl(Consumer<Integer> windowConsumer) {
-			(this.windowConsumer = windowConsumer).accept((int) windowSize.get());
+		public void setPump(Runnable pump) {
+			this.pump = pump;
+		}
+
+		public int getWindowSize() {
+			return (int) windowSize.get();
 		}
 
 		private ByteBuffer createFrame(FrameType type, int flags, Octets payload) {
@@ -954,8 +958,10 @@ class RFC7540 {
 
 		public synchronized void ping(Consumer<Long> consumer) {
 			long now = System.currentTimeMillis();
-			ping.put(now, new Pair<>(consumer, getScheduler().scheduleWithFixedDelay(() -> exchange.sendFinal(0),
-					pingTimeout, pingTimeout, TimeUnit.MILLISECONDS)));
+			ping.put(now,
+					new Pair<>(consumer, getScheduler().scheduleWithFixedDelay(
+							() -> exchange.cancel(new Exception("RFC7540.ping timeTimeout[" + pingTimeout + "]")),
+							pingTimeout, pingTimeout, TimeUnit.MILLISECONDS)));
 			queue(ByteBuffer.allocate(17).put(FH_PING).putLong(now));
 		}
 
@@ -1290,6 +1296,8 @@ class RFC7540 {
 		void send(ByteBuffer bb);
 
 		void sendFinal(long timeout);
+
+		void cancel(Throwable closeReason);
 
 		SSLSession getSSLSession();
 

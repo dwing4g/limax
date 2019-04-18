@@ -42,7 +42,7 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 
 	private void process(Headers headers) {
 		if (this.headers == null) {
-			Handler handler = getHandler(this.headers = headers);
+			Handler handler = find(this.headers = headers);
 			if (handler instanceof HttpHandler)
 				httpHandler = (HttpHandler) handler;
 			else {
@@ -158,7 +158,9 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 	@Override
 	protected void flowControl(Function<Integer, Boolean> windowConsumer) {
 		Consumer<Integer> partitionConsumer = partitioner().apply(windowConsumer);
-		stream.flowControl(window -> executor.execute(() -> partitionConsumer.accept(window)));
+		Runnable pump = () -> executor.executeExclusively(() -> partitionConsumer.accept(stream.getWindowSize()));
+		stream.setPump(pump);
+		pump.run();
 	}
 
 	@Override
@@ -259,12 +261,11 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 						if (fin == 0) {
 							stream.sendData(datas, false);
 							onSendReady.run();
-							return true;
 						} else {
 							Http2Exchange.sendFinal(stream, datas, trailersSupplier.get());
 							fin = 2;
-							return false;
 						}
+						return false;
 					}
 					if ((remaining = data.remaining()) > window) {
 						list.add(frag(data, window));
@@ -273,14 +274,15 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 					}
 				}
 			});
+			stream.setPump(() -> flush());
 		}
 
 		private void flush() {
-			stream.flowControl(window -> executor.execute(() -> {
+			executor.executeExclusively(() -> {
 				synchronized (vbuf) {
-					consumer.accept(window);
+					consumer.accept(stream.getWindowSize());
 				}
-			}));
+			});
 		}
 
 		@Override

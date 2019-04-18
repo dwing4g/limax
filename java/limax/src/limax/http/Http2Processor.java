@@ -46,6 +46,11 @@ class Http2Processor implements ProtocolProcessor {
 			}
 
 			@Override
+			public void cancel(Throwable closeReason) {
+				nettask.cancel(closeReason);
+			}
+
+			@Override
 			public SSLSession getSSLSession() {
 				return nettask.getSSLSession();
 			}

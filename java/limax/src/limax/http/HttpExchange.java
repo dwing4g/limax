@@ -12,9 +12,11 @@ public interface HttpExchange {
 
 	boolean isRequestFinished();
 
-	URI getRequestURI();
+	Host getHost();
 
 	URI getContextURI();
+
+	URI getRequestURI();
 
 	String getRequestMethod();
 

@@ -118,6 +118,11 @@ abstract class AbstractNetTask implements NetTask {
 	}
 
 	@Override
+	public void cancel(Throwable closeReason) {
+		close(closeReason);
+	}
+
+	@Override
 	public void resetAlarm(long milliseconds) {
 		if (milliseconds >= 0)
 			alarm.reset(milliseconds);

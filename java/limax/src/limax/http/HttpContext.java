@@ -15,8 +15,12 @@ class HttpContext {
 		return (path.charAt(path.length() - 1) == '/' ? path : path + "/").toLowerCase();
 	}
 
+	private static String normalize(String path) {
+		return fix(URI.create(path).normalize().toString());
+	}
+
 	HttpContext(String path, Handler handler) {
-		this.prefix = fix(path);
+		this.prefix = normalize(path);
 		this.uri = URI.create(prefix.substring(0, prefix.length() - 1));
 		this.handler = handler;
 	}
@@ -29,18 +33,18 @@ class HttpContext {
 	}
 
 	static void remove(List<HttpContext> contexts, String path) {
-		path = fix(path);
-		int len = path.length();
+		path = normalize(path);
+		int pathLen = path.length();
 		synchronized (contexts) {
 			for (Iterator<HttpContext> it = contexts.iterator(); it.hasNext();) {
 				String prefix = it.next().prefix;
 				int prefixLen = prefix.length();
-				if (prefixLen > len)
+				if (prefixLen > pathLen)
 					continue;
-				if (prefixLen == len) {
-					if (prefix.equals(path))
-						it.remove();
-					continue;
+				if (prefixLen == pathLen) {
+					if (!prefix.equals(path))
+						continue;
+					it.remove();
 				}
 				break;
 			}
@@ -49,15 +53,15 @@ class HttpContext {
 
 	static HttpContext find(List<HttpContext> contexts, String path) {
 		path = fix(path);
-		int len = path.length();
+		int pathLen = path.length();
 		synchronized (contexts) {
 			for (Iterator<HttpContext> it = contexts.iterator(); it.hasNext();) {
-				HttpContext c = it.next();
-				String prefix = c.prefix;
-				if (prefix.length() > len)
+				HttpContext ctx = it.next();
+				String prefix = ctx.prefix;
+				if (prefix.length() > pathLen)
 					continue;
 				if (path.startsWith(prefix))
-					return c;
+					return ctx;
 			}
 		}
 		return null;

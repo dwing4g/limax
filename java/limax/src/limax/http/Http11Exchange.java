@@ -78,7 +78,7 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 					processor.replace(new Http2Processor(processor, nettask, in));
 					return (Long) processor.get(Parameter.HTTP2_SETTINGS_TIMEOUT);
 				}
-				Handler handler = getHandler(parser.getHeaders());
+				Handler handler = find(parser.getHeaders());
 				Headers iheaders = parser.getHeaders();
 				Headers oheaders = getResponseHeaders();
 				String upgrade = iheaders.getFirst("upgrade");
@@ -307,12 +307,12 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 		}
 	}
 
-	private static class Http11CustomSender implements CustomSender {
+	private static class Http11Sender implements CustomSender {
 		private final FlowControlFlusher flusher;
 		private final Consumer<ByteBuffer> c0;
 		private final Consumer<Long> c1;
 
-		Http11CustomSender(ApplicationExecutor executor, FlowControlFlusher flusher, Consumer<ByteBuffer> c0,
+		Http11Sender(ApplicationExecutor executor, FlowControlFlusher flusher, Consumer<ByteBuffer> c0,
 				Consumer<Long> c1, Runnable onSendReady) {
 			this.flusher = flusher;
 			flusher.nettask.setSendBufferNotice((remaining, att) -> {
@@ -345,7 +345,7 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 
 		@Override
 		public void cancel() {
-			flusher.nettask.sendFinal();
+			flusher.nettask.cancel(new Exception("Http11Sender.cancel"));
 		}
 	}
 
@@ -353,12 +353,12 @@ class Http11Exchange extends AbstractHttpExchange implements ProtocolProcessor {
 	protected CustomSender createWebSocketSender(Runnable onSendReady) {
 		ApplicationExecutor executor = this.executor;
 		FlowControlFlusher flusher = this.flusher;
-		return new Http11CustomSender(executor, flusher, bb -> flusher.nettask.send(bb),
+		return new Http11Sender(executor, flusher, bb -> flusher.nettask.send(bb),
 				timeout -> flusher.flush(() -> flusher.nettask.sendFinal(timeout)), onSendReady);
 	}
 
 	@Override
 	protected CustomSender createCustomSender(Runnable onSendReady) {
-		return new Http11CustomSender(executor, flusher, bb -> send(bb, true), timeout -> sendFinal(), onSendReady);
+		return new Http11Sender(executor, flusher, bb -> send(bb, true), timeout -> sendFinal(), onSendReady);
 	}
 }

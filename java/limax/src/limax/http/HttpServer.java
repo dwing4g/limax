@@ -54,7 +54,7 @@ public class HttpServer extends Host {
 			this.def = def;
 		}
 
-		public Object defaultValue() {
+		public Object def() {
 			return def;
 		}
 	}
@@ -69,6 +69,7 @@ public class HttpServer extends Host {
 
 	private HttpServer(InetSocketAddress sa, SSLContext sslContext, boolean needClientAuth, boolean wantClientAuth)
 			throws IOException {
+		super("__DEFAULT__");
 		this.sa = sa;
 		this.sslContext = sslContext;
 		int sslMode = 0;
@@ -78,15 +79,19 @@ public class HttpServer extends Host {
 			sslMode |= NetModel.SSL_WANT_CLIENT_AUTH;
 		this.sslMode = sslMode;
 		for (Parameter parameter : Parameter.values())
-			parameters.put(parameter, parameter.defaultValue());
+			parameters.put(parameter, parameter.def());
 	}
 
+	@Override
 	public Object get(Parameter key) {
-		return parameters.get(key);
+		Object value = super.get(key);
+		return value != null ? value : parameters.get(key);
 	}
 
-	public void set(Parameter key, Object value) {
-		parameters.put(key, key.defaultValue().getClass().cast(value));
+	@Override
+	public Object set(Parameter key, Object value) {
+		Object previous = super.set(key, value);
+		return previous != null ? previous : parameters.put(key, key.def().getClass().cast(value));
 	}
 
 	public synchronized void start() throws IOException {
@@ -125,7 +130,7 @@ public class HttpServer extends Host {
 	}
 
 	public Host createHost(String dnsName) {
-		return hosts.computeIfAbsent(normalizeDnsName(dnsName), k -> new Host());
+		return hosts.computeIfAbsent(normalizeDnsName(dnsName), name -> new Host(name));
 	}
 
 	public void removeHost(String dnsName) {
@@ -139,8 +144,8 @@ public class HttpServer extends Host {
 	public HttpHandler createFileSystemHandler(Path htdocs, String textCharset, int mmapThreshold,
 			double compressThreshold, String[] indexes, boolean browseDir, String[] browseDirExceptions)
 			throws IOException {
-		FileSystemHandler handler = new FileSystemHandler(parameters, htdocs, textCharset, mmapThreshold,
-				compressThreshold, indexes, browseDir, browseDirExceptions);
+		FileSystemHandler handler = new FileSystemHandler(htdocs, textCharset, mmapThreshold, compressThreshold,
+				indexes, browseDir, browseDirExceptions);
 		register(handler);
 		return handler;
 	}

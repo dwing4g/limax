@@ -266,10 +266,7 @@ abstract class AbstractNetTask implements NetTask {
 	}
 
 	void onClose() {
-		if (active) {
-			active = false;
-			processor.shutdown(closeReason.get());
-		}
+		processor.shutdown(closeReason.get());
 	}
 
 	final void onServiceShutdown() {
@@ -334,6 +331,7 @@ abstract class AbstractNetTask implements NetTask {
 		schedule(new Runnable() {
 			@Override
 			public void run() {
+				active = false;
 				onClose();
 			}
 		});

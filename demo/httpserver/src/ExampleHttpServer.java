@@ -51,7 +51,7 @@ public class ExampleHttpServer {
 		httpServer.createContext("/", httpServer.createFileSystemHandler(htdocs, "utf-8", 65536, 0.8, indexes,
 				browseDir, browseDirExceptions));
 		httpServer.createContext("/upload.html", exchange -> {
-			exchange.getRequestHeaders().set("Content-Type", "text/html; charset=utf-8");
+			exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
 			return DataSupplier.from(uploadHtml, StandardCharsets.UTF_8);
 		});
 		httpServer.createContext("/upload", new HttpHandler() {
@@ -79,7 +79,7 @@ public class ExampleHttpServer {
 		});
 
 		httpServer.createContext("/websocket.html", exchange -> {
-			exchange.getRequestHeaders().set("Content-Type", "text/html; charset=utf-8");
+			exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
 			return DataSupplier.from(wsHtml);
 		});
 		httpServer.createContext("/websocket", e -> {
@@ -114,7 +114,7 @@ public class ExampleHttpServer {
 			}
 		});
 		httpServer.createContext("/sse.html", exchange -> {
-			exchange.getRequestHeaders().set("Content-Type", "text/html; charset=utf-8");
+			exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
 			return DataSupplier.from(ExampleHttpServer.class.getResourceAsStream("sse.html"), 4096);
 		});
 		httpServer.createContext("/sse", new HttpHandler() {
@@ -136,11 +136,17 @@ public class ExampleHttpServer {
 			}
 		});
 		httpServer.createContext("/exception", new HttpHandler() {
-
 			@Override
 			public DataSupplier handle(HttpExchange exchange) throws Exception {
 				throw new Exception("exception test");
 			}
+		});
+		httpServer.createContext("/async", exchange -> {
+			new Thread(() -> {
+				exchange.getResponseHeaders().set("Content-Type", "text/plain");
+				exchange.async(DataSupplier.from("async", StandardCharsets.ISO_8859_1));
+			}).start();
+			return DataSupplier.async();
 		});
 		httpServer.start();
 	}

@@ -123,6 +123,10 @@ public interface DataSupplier {
 			});
 		}, onSendReady);
 	}
+
+	static DataSupplier async() {
+		return new AsyncDataSupplier();
+	}
 }
 
 interface DeterministicDataSupplier extends DataSupplier {
@@ -152,6 +156,13 @@ class DoneDecorateDataSupplier implements DataSupplier {
 }
 
 class CustomDataSupplier implements DataSupplier {
+	@Override
+	public ByteBuffer get() throws Exception {
+		throw new UnsupportedOperationException();
+	}
+}
+
+class AsyncDataSupplier implements DataSupplier {
 	@Override
 	public ByteBuffer get() throws Exception {
 		throw new UnsupportedOperationException();

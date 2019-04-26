@@ -32,6 +32,8 @@ public interface HttpExchange {
 
 	SSLSession getSSLSession();
 
+	void async(DataSupplier dataSupplier);
+
 	default void promise(URI uri) {
 	}
 }

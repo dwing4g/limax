@@ -192,6 +192,8 @@ abstract class AbstractHttpExchange implements HttpExchange {
 	}
 
 	private void response(Headers headers, DataSupplier dataSupplier) throws Exception {
+		if (dataSupplier instanceof AsyncDataSupplier || formData == null)
+			return;
 		formData = null;
 		if (headers.get(":status") == null)
 			headers.set(":status", 200);
@@ -209,6 +211,33 @@ abstract class AbstractHttpExchange implements HttpExchange {
 				flowControl(new DeterministicSendLoop(dataSupplier));
 			else if (!(dataSupplier instanceof CustomDataSupplier))
 				flowControl(new UndeterministicSendLoop(dataSupplier));
+		}
+	}
+
+	@Override
+	public void async(DataSupplier dataSupplier) {
+		executor.execute(() -> {
+			try {
+				response(headers, dataSupplier);
+			} catch (Throwable t) {
+				response500(t);
+			}
+		});
+	}
+
+	private void response500(Throwable t) {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		try (PrintStream ps = new PrintStream(baos, false, "utf-8")) {
+			t.printStackTrace(ps);
+		} catch (UnsupportedEncodingException e1) {
+		}
+		headers.entrySet().clear();
+		forceClose(headers);
+		headers.set(":status", HttpURLConnection.HTTP_INTERNAL_ERROR);
+		headers.set("Content-Type", "text/plain; charset=utf-8");
+		try {
+			response(headers, DataSupplier.from(baos.toByteArray()));
+		} catch (Exception e) {
 		}
 	}
 
@@ -234,20 +263,8 @@ abstract class AbstractHttpExchange implements HttpExchange {
 						forceClose(headers);
 					response(headers, e.getHandler().handle(this));
 				}
-			} catch (Throwable e) {
-				ByteArrayOutputStream baos = new ByteArrayOutputStream();
-				try (PrintStream ps = new PrintStream(baos, false, "utf-8")) {
-					e.printStackTrace(ps);
-				} catch (UnsupportedEncodingException e1) {
-				}
-				headers.entrySet().clear();
-				forceClose(headers);
-				headers.set(":status", HttpURLConnection.HTTP_INTERNAL_ERROR);
-				headers.set("Content-Type", "text/plain; charset=utf-8");
-				try {
-					response(headers, DataSupplier.from(baos.toByteArray()));
-				} catch (Exception e1) {
-				}
+			} catch (Throwable t) {
+				response500(t);
 			}
 		};
 	}

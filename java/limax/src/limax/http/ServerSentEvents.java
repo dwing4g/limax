@@ -8,6 +8,4 @@ public interface ServerSentEvents {
 	void emit(long milliseconds);
 
 	void done();
-
-	void cancel();
 }

@@ -9,8 +9,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.function.Consumer;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.net.ssl.SSLContext;
@@ -154,8 +155,44 @@ public final class NetModel {
 				: new AsynchronousServerTask((AbstractServerContext) context, processor);
 	}
 
-	public static Consumer<Long> installAlarmTask(Runnable r) {
-		Alarm alarm = new Alarm(r);
-		return milliseconds -> alarm.reset(milliseconds);
+	private static class AlarmImpl implements Alarm {
+		private final Runnable task;
+		private Future<?> future;
+		private long delay;
+		private boolean update;
+
+		public AlarmImpl(Runnable task) {
+			this.task = task;
+		}
+
+		@Override
+		public synchronized void reset(long milliseconds) {
+			if (update = delay == milliseconds)
+				return;
+			delay = milliseconds;
+			if (future != null)
+				future.cancel(false);
+			future = milliseconds > 0 ? NetModel.delayPool.scheduleWithFixedDelay(() -> {
+				boolean done = false;
+				synchronized (AlarmImpl.this) {
+					if (milliseconds == delay)
+						if (update) {
+							update = false;
+						} else {
+							future.cancel(false);
+							future = null;
+							delay = 0;
+							done = true;
+						}
+				}
+				if (done)
+					task.run();
+			}, milliseconds, milliseconds, TimeUnit.MILLISECONDS) : null;
+		}
+
+	}
+
+	static Alarm createAlarm(Runnable action) {
+		return new AlarmImpl(action);
 	}
 }

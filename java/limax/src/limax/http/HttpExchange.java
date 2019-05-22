@@ -10,8 +10,6 @@ public interface HttpExchange {
 
 	InetSocketAddress getPeerAddress();
 
-	boolean isRequestFinished();
-
 	Host getHost();
 
 	URI getContextURI();
@@ -32,7 +30,9 @@ public interface HttpExchange {
 
 	SSLSession getSSLSession();
 
-	void async(DataSupplier dataSupplier);
+	void async(HttpHandler handler);
+
+	void cancel(Throwable closeReason);
 
 	default void promise(URI uri) {
 	}

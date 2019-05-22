@@ -57,7 +57,7 @@ class ClientManagerImpl extends AbstractManager implements ClientManager {
 			StateTransportImpl transport = new StateTransportImpl(this);
 			NetTask nettask = NetModel.createClientTask(config.getInputBufferSize(), config.getOutputBufferSize(), null,
 					transport, config.isAsynchronous());
-			transport.resetAlarm(config.getConnectTimeout());
+			nettask.resetAlarm(config.getConnectTimeout());
 			state = State.CONNECTING;
 			NetModel.addClient(config.getPeerAddress(), nettask);
 		} catch (Throwable t) {

@@ -1,9 +1,9 @@
-import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Random;
 import java.util.concurrent.Future;
@@ -18,7 +18,6 @@ import limax.codec.SinkOctets;
 import limax.codec.StreamSource;
 import limax.http.DataSupplier;
 import limax.http.FormData;
-import limax.http.HttpException;
 import limax.http.HttpExchange;
 import limax.http.HttpHandler;
 import limax.http.HttpServer;
@@ -30,6 +29,7 @@ import limax.util.Pair;
 
 public class ExampleHttpServer {
 	private final static String uploadHtml = "<html><body><form action=\"upload\" method=\"post\" enctype=\"multipart/form-data\" accept-charset=\"utf-8\"><textarea name=\"text\"></textarea><textarea name=\"text\"></textarea><input type=\"file\" name=\"upload\"><input type=\"submit\" value=\"OK\"></form></body></html>\r\n";
+	private final static String uploadHtml2 = "<html><body><form action=\"upload2\" method=\"post\" enctype=\"multipart/form-data\" accept-charset=\"utf-8\">maxSize<input name=\"text\" onchange=\"javascript:this.parentElement.action='upload2/'+this.value\"></input><input type=\"file\" name=\"upload\"><input type=\"submit\" value=\"OK\"></form></body></html>\r\n";
 	private final static URI uriP12 = URI.create("pkcs12:/work/localhost.p12");
 	private final static Path htdocs = Paths.get("/work/httpserver/htdocs");
 	private final static String[] indexes = new String[] { "index.htm", "index.html" };
@@ -54,21 +54,41 @@ public class ExampleHttpServer {
 			exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
 			return DataSupplier.from(uploadHtml, StandardCharsets.UTF_8);
 		});
+		httpServer.createContext("/upload2.html", exchange -> {
+			exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+			return DataSupplier.from(uploadHtml2, StandardCharsets.UTF_8);
+		});
 		httpServer.createContext("/upload", new HttpHandler() {
 			@Override
-			public long postLimit() {
-				return Long.MAX_VALUE;
+			public void censor(HttpExchange exchange) {
+				exchange.getFormData().useTempFile(LIMIT).postLimit(UPLOAD_MAX);
 			}
 
 			@Override
 			public DataSupplier handle(HttpExchange exchange) throws Exception {
 				FormData formData = exchange.getFormData();
-				if (!exchange.isRequestFinished()) {
-					formData.useTempFile(LIMIT);
-					if (formData.getBytesCount() > UPLOAD_MAX)
-						throw new HttpException(HttpURLConnection.HTTP_ENTITY_TOO_LARGE, true);
-					return null;
-				}
+				exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
+				StringBuilder sb = new StringBuilder();
+				exchange.getRequestHeaders().entrySet()
+						.forEach(e -> e.getValue().forEach(v -> sb.append(e.getKey() + ": " + v + "\r\n")));
+				sb.append(formData.getData().toString());
+				return DataSupplier.from(sb.toString(), StandardCharsets.UTF_8);
+			}
+		});
+		httpServer.createContext("/upload2", new HttpHandler() {
+			@Override
+			public void censor(HttpExchange exchange) {
+				FormData formData = exchange.getFormData();
+				formData.getData().computeIfAbsent("_tmp_", k -> {
+					formData.useTempFile(LIMIT).postLimit(Long.parseLong(exchange.getContextURI()
+							.relativize(URI.create(exchange.getRequestURI().toString())).toString()));
+					return Collections.singletonList(true);
+				});
+			}
+
+			@Override
+			public DataSupplier handle(HttpExchange exchange) throws Exception {
+				FormData formData = exchange.getFormData();
 				exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
 				StringBuilder sb = new StringBuilder();
 				exchange.getRequestHeaders().entrySet()
@@ -132,7 +152,7 @@ public class ExampleHttpServer {
 						} else
 							sse.emit(null, Integer.toHexString(rand.nextInt()), new Date().toString());
 					}, 0, 1, TimeUnit.SECONDS));
-				}, () -> System.out.println("sendready"));
+				}, () -> System.out.println("sendready"), () -> System.out.println("close"));
 			}
 		});
 		httpServer.createContext("/exception", new HttpHandler() {
@@ -142,10 +162,11 @@ public class ExampleHttpServer {
 			}
 		});
 		httpServer.createContext("/async", exchange -> {
-			new Thread(() -> {
-				exchange.getResponseHeaders().set("Content-Type", "text/plain");
-				exchange.async(DataSupplier.from("async", StandardCharsets.ISO_8859_1));
-			}).start();
+			new Thread(() -> 
+				exchange.async(_e -> {
+					exchange.getResponseHeaders().set("Content-Type", "text/plain");
+					return DataSupplier.from("async", StandardCharsets.ISO_8859_1);
+				})).start();
 			return DataSupplier.async();
 		});
 		httpServer.start();

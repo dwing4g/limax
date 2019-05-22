@@ -14,6 +14,8 @@ import java.nio.file.StandardOpenOption;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import limax.http.AbstractHttpExchange.CustomDataSupplier;
+
 @FunctionalInterface
 public interface DataSupplier {
 	interface Done {
@@ -79,16 +81,16 @@ public interface DataSupplier {
 		return new DoneDecorateDataSupplier(supplier, done);
 	}
 
-	static DataSupplier from(HttpExchange exchange, Consumer<CustomSender> consumer, Runnable onSendReady) {
-		return ((AbstractHttpExchange) exchange).createCustomDataSupplier(consumer, onSendReady);
+	static DataSupplier from(Consumer<CustomSender> consumer, Runnable onSendReady, Runnable onClose) {
+		return new CustomDataSupplier(consumer, onSendReady, onClose);
 	}
 
-	static DataSupplier from(HttpExchange exchange, BiConsumer<String, ServerSentEvents> consumer,
-			Runnable onSendReady) {
+	static DataSupplier from(HttpExchange exchange, BiConsumer<String, ServerSentEvents> consumer, Runnable onSendReady,
+			Runnable onClose) {
 		String lastEventId = exchange.getRequestHeaders().getFirst("last-event-id");
 		exchange.getResponseHeaders().set("Content-Type", "text/event-stream; charset=utf-8");
 		exchange.getResponseHeaders().set("Cache-Control", "no-store");
-		return DataSupplier.from(exchange, sender -> {
+		return DataSupplier.from(sender -> {
 			consumer.accept(lastEventId, new ServerSentEvents() {
 				@Override
 				public void emit(String data) {
@@ -115,13 +117,8 @@ public interface DataSupplier {
 				public void done() {
 					sender.sendFinal(0);
 				}
-
-				@Override
-				public void cancel() {
-					sender.cancel();
-				}
 			});
-		}, onSendReady);
+		}, onSendReady, onClose);
 	}
 
 	static DataSupplier async() {
@@ -152,13 +149,6 @@ class DoneDecorateDataSupplier implements DataSupplier {
 	@Override
 	public void done(HttpExchange exchange) throws Exception {
 		done.done(exchange);
-	}
-}
-
-class CustomDataSupplier implements DataSupplier {
-	@Override
-	public ByteBuffer get() throws Exception {
-		throw new UnsupportedOperationException();
 	}
 }
 

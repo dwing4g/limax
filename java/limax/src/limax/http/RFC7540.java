@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -19,9 +20,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
-import javax.net.ssl.SSLSession;
 
 import limax.codec.Octets;
 import limax.http.RFC7541.Entry;
@@ -142,7 +143,7 @@ class RFC7540 {
 		return (sid & 1) == 1;
 	}
 
-	public static class Stream {
+	public static class Stream implements Function<Integer, Integer> {
 		private final static int IDLE = 0;
 		private final static int RESERVED_LOCAL = 1;
 		private final static int RESERVED_REMOTE = 2;
@@ -226,17 +227,19 @@ class RFC7540 {
 			state = nextState;
 			if (!s0 && s1 && !connection.countUp(this))
 				error(ErrorCode.REFUSED_STREAM);
-			if (s0 && !s1)
+			if (s0 && !s1) {
+				pump = null;
 				connection.countDown(this);
+			}
 		}
 
 		private final Connection connection;
 		private final int sid;
 		private final int windowUpdateAccumulateThreshold;
 		private final AtomicInteger windowUpdateAccumulate = new AtomicInteger();
-		private final AtomicLong windowSize;
+		private int streamWindow;
 		private Processor processor;
-		private Runnable pump;
+		private volatile Consumer<Integer> pump;
 		private List<Entry> headers = new ArrayList<>();
 		private Long headersSize = 0L;
 		private List<Entry> error;
@@ -246,7 +249,7 @@ class RFC7540 {
 			this.sid = sid;
 			this.windowUpdateAccumulateThreshold = (int) ((long) connection.SETTINGS_INITIAL_WINDOW_SIZE_LOCAL
 					* connection.windowUpdateAccumulatePercent / 100);
-			this.windowSize = new AtomicLong(connection.SETTINGS_INITIAL_WINDOW_SIZE_PEER);
+			this.streamWindow = connection.SETTINGS_INITIAL_WINDOW_SIZE_PEER;
 		}
 
 		void startup(Processor processor) {
@@ -263,7 +266,7 @@ class RFC7540 {
 
 		private void decodeHeaderData(ByteBuffer data) throws IncomingException {
 			try {
-				connection.irfc7541.decode(data, e -> {
+				connection.irfc7541.decode(data.slice(), e -> {
 					if (headersSize == null)
 						return;
 					headersSize += e.size();
@@ -335,7 +338,7 @@ class RFC7540 {
 			}
 		}
 
-		void recvData(ByteBuffer data, boolean es) throws IncomingException {
+		void recvData(ByteBuffer data, boolean es) throws Exception {
 			int nextState = recvTransitions(END_STREAM);
 			processor.process(data);
 			if (es) {
@@ -366,22 +369,39 @@ class RFC7540 {
 		}
 
 		void changeInitialWindow(int delta) {
-			windowSize.addAndGet(delta);
+			streamWindow += delta;
 		}
 
 		void recvWindowUpdate(int inc) {
-			if (windowSize.addAndGet(inc) > Integer.MAX_VALUE)
+			if (streamWindow < 0)
+				streamWindow += inc;
+			else if ((streamWindow += inc) < 0)
 				error(ErrorCode.FLOW_CONTROL_ERROR);
-			else if (pump != null)
-				pump.run();
+			connection.flush(true);
 		}
 
-		public void setPump(Runnable pump) {
-			this.pump = pump;
+		public void setPump(Consumer<Integer> pump) {
+			if (sendTransitions(END_STREAM) != -1) {
+				this.pump = pump;
+				connection.flush(true);
+			}
 		}
 
-		public int getWindowSize() {
-			return (int) windowSize.get();
+		public void flush(Supplier<Boolean> action) {
+			connection.flush(action);
+		}
+
+		@Override
+		public Integer apply(Integer window) {
+			Consumer<Integer> pump = this.pump;
+			if (pump == null)
+				return 0;
+			int min = Math.min(window, streamWindow);
+			if (min <= 0)
+				return Integer.MIN_VALUE;
+			int pre = streamWindow;
+			pump.accept(min);
+			return pre - streamWindow;
 		}
 
 		private ByteBuffer createFrame(FrameType type, int flags, Octets payload) {
@@ -410,15 +430,14 @@ class RFC7540 {
 			int count = payloads.size();
 			int flags = es ? Flag.END_STREAM.value() : 0;
 			if (count == 1) {
-				connection.queue(sid,
-						createFrame(FrameType.HEADERS, flags | Flag.END_HEADERS.value(), payloads.get(0)));
+				connection.queue(createFrame(FrameType.HEADERS, flags | Flag.END_HEADERS.value(), payloads.get(0)));
 			} else {
 				ByteBuffer[] bbs = new ByteBuffer[count--];
 				bbs[0] = createFrame(FrameType.HEADERS, flags, payloads.get(0));
 				for (int i = 1; i < count; i++)
 					bbs[i] = createFrame(FrameType.CONTINUATION, 0, payloads.get(i));
 				bbs[count] = createFrame(FrameType.CONTINUATION, Flag.END_HEADERS.value(), payloads.get(count));
-				connection.queue(sid, 0, bbs);
+				connection.queue(bbs);
 			}
 			transit(nextState);
 			return ErrorCode.NO_ERROR;
@@ -448,13 +467,13 @@ class RFC7540 {
 			bb.putInt(sid);
 			bb.putInt(promise.sid);
 			bb.put(payload.array(), 0, payload.size());
-			connection.queue(bb);
+			connection.queueFlip(bb);
 			if (count > 0) {
 				ByteBuffer[] bbs = new ByteBuffer[count];
 				for (int i = 1; i < count; i++)
 					bbs[i - 1] = createFrame(FrameType.CONTINUATION, 0, payloads.get(i));
 				bbs[count - 1] = createFrame(FrameType.CONTINUATION, Flag.END_HEADERS.value(), payloads.get(count - 1));
-				connection.queue(sid, 0, bbs);
+				connection.queue(bbs);
 			}
 			promise.state = RESERVED_LOCAL;
 			return promise;
@@ -465,7 +484,8 @@ class RFC7540 {
 		public void sendReset(ErrorCode errorCode) {
 			int nextState = sendTransitions(RST_STREAM);
 			if (nextState != -1) {
-				connection.queue(ByteBuffer.allocate(13).put(FH_RST_STREAM).putInt(sid).putInt(errorCode.registry()));
+				connection
+						.queueFlip(ByteBuffer.allocate(13).put(FH_RST_STREAM).putInt(sid).putInt(errorCode.registry()));
 				transit(nextState);
 			}
 		}
@@ -473,7 +493,7 @@ class RFC7540 {
 		public void sendData(ByteBuffer data, boolean es) {
 			int nextState = sendTransitions(END_STREAM);
 			if (nextState != -1) {
-				windowSize.addAndGet(-connection.sendData(sid, data, es));
+				streamWindow -= connection.sendData(sid, data, es);
 				if (es)
 					transit(nextState);
 			}
@@ -482,7 +502,7 @@ class RFC7540 {
 		public void sendData(ByteBuffer[] datas, boolean es) {
 			int nextState = sendTransitions(END_STREAM);
 			if (nextState != -1) {
-				windowSize.addAndGet(-connection.sendData(sid, datas, es));
+				streamWindow -= connection.sendData(sid, datas, es);
 				if (es)
 					transit(nextState);
 			}
@@ -493,7 +513,7 @@ class RFC7540 {
 		}
 	}
 
-	public static class Connection {
+	public static class Connection implements Consumer<Integer> {
 		private int length;
 		private FrameType type;
 		private byte flag;
@@ -510,7 +530,7 @@ class RFC7540 {
 			}
 		}
 
-		public synchronized long unwrap(ByteBuffer in) {
+		public synchronized long unwrap(ByteBuffer in) throws Exception {
 			long timeout = incompleteFrameTimeout;
 			while (true) {
 				for (; stage < 9 && in.hasRemaining(); stage++) {
@@ -603,7 +623,7 @@ class RFC7540 {
 							if (length != 5)
 								findStream(sid).error(ErrorCode.FRAME_SIZE_ERROR);
 							else
-								prioritization.priority(sid, data);
+								execute(prioritization.prepare(sid, data));
 							break;
 						}
 						case RST_STREAM: {
@@ -666,9 +686,11 @@ class RFC7540 {
 								findStream(sid).error(ErrorCode.PROTOCOL_ERROR);
 							} else {
 								if (sid == 0)
-									recvWindowUpdate(inc);
-								else
-									findStream(sid).recvWindowUpdate(inc);
+									execute(() -> recvWindowUpdate(inc));
+								else {
+									Stream stream = findStream(sid);
+									execute(() -> stream.recvWindowUpdate(inc));
+								}
 							}
 							break;
 						}
@@ -701,14 +723,15 @@ class RFC7540 {
 			if (sid <= lastStreamIdentifier || (isServer() && isServerStreamIdentifier(sid))
 					|| (!isServer() && isClientStreamIdentifier(sid)))
 				throw new IncomingException(ErrorCode.PROTOCOL_ERROR);
-			if (priorityData == null)
-				prioritization.priority(sid, false, 0, Prioritization.DEFAULT_WEIGHT);
-			else
-				prioritization.priority(sid, priorityData);
 			lastStreamIdentifier = sid;
 			Stream stream = new Stream(this, sid);
 			map.put(sid, stream);
 			stream.startup(exchange.createProcessor(stream));
+			Runnable prepare = prioritization.prepare(sid, priorityData);
+			execute(() -> {
+				prepare.run();
+				prioritization.setup(sid, stream);
+			});
 			return stream;
 		}
 
@@ -738,7 +761,7 @@ class RFC7540 {
 				bb.putShort(k.registry());
 				bb.putInt(v.intValue());
 			});
-			queue(bb);
+			queueFlip(bb);
 		}
 
 		private Map<Settings, Long> outstandingSettings;
@@ -752,7 +775,7 @@ class RFC7540 {
 				outstandingSettings = new EnumMap<>(settings);
 				settingsTimestamp = System.currentTimeMillis();
 			}
-			futureSettings = getScheduler().schedule(() -> error(ErrorCode.SETTINGS_TIMEOUT), SETTINGS_TIMEOUT,
+			futureSettings = exchange.getScheduler().schedule(() -> error(ErrorCode.SETTINGS_TIMEOUT), SETTINGS_TIMEOUT,
 					TimeUnit.MILLISECONDS);
 			sendSetting(settings, (byte) 0);
 		}
@@ -813,7 +836,8 @@ class RFC7540 {
 					if (!settings.validate(value))
 						throw new IncomingException(ErrorCode.FLOW_CONTROL_ERROR);
 					int delta = value - SETTINGS_INITIAL_WINDOW_SIZE_PEER;
-					map.values().stream().filter(s -> !s.isClosed()).forEach(s -> s.changeInitialWindow(delta));
+					List<Stream> exists = map.values().stream().filter(s -> !s.isClosed()).collect(Collectors.toList());
+					execute(() -> exists.forEach(s -> s.changeInitialWindow(delta)));
 					SETTINGS_INITIAL_WINDOW_SIZE_PEER = value;
 					break;
 				case MAX_FRAME_SIZE:
@@ -876,14 +900,14 @@ class RFC7540 {
 					}
 				}
 			}
-			prioritization.remove(sids);
+			execute(() -> prioritization.remove(sids));
 		}
 
 		private final static byte[] FH_GOAWAY = new byte[] { 0, 0, 8, FrameType.GOAWAY.registry(), 0, 0, 0, 0, 0 };
 
 		private void sendGoaway(ErrorCode errorCode, int lsid) {
 			futureRTT.cancel(false);
-			queue(ByteBuffer.allocate(17).put(FH_GOAWAY).putInt(lsid).putInt(errorCode.registry()));
+			queueFlip(ByteBuffer.allocate(17).put(FH_GOAWAY).putInt(lsid).putInt(errorCode.registry()));
 			if (errorCode != ErrorCode.NO_ERROR)
 				exchange.sendFinal(meanRTT());
 		}
@@ -909,7 +933,7 @@ class RFC7540 {
 						}
 					}
 				};
-				future[0] = getScheduler().schedule(once, meanRTT(), TimeUnit.MILLISECONDS);
+				future[0] = exchange.getScheduler().schedule(once, meanRTT(), TimeUnit.MILLISECONDS);
 				ping(rtt -> once.run());
 			} else
 				sendGoaway(ErrorCode.NO_ERROR);
@@ -917,7 +941,7 @@ class RFC7540 {
 
 		public synchronized void shutdown(Throwable closeReason) {
 			futureRTT.cancel(false);
-			map.values().forEach(s -> s.shutdown(closeReason));
+			map.values().stream().filter(s -> !s.isClosed()).forEach(s -> s.shutdown(closeReason));
 		}
 
 		private final int rttSamples;
@@ -953,16 +977,16 @@ class RFC7540 {
 					pair.getKey().accept(rtt);
 				}
 			} else
-				queue(ByteBuffer.allocate(17).put(FH_PING_ACK).put(data));
+				queueFlip(ByteBuffer.allocate(17).put(FH_PING_ACK).put(data));
 		}
 
 		public synchronized void ping(Consumer<Long> consumer) {
 			long now = System.currentTimeMillis();
 			ping.put(now,
-					new Pair<>(consumer, getScheduler().scheduleWithFixedDelay(
+					new Pair<>(consumer, exchange.getScheduler().scheduleWithFixedDelay(
 							() -> exchange.cancel(new Exception("RFC7540.ping timeTimeout[" + pingTimeout + "]")),
 							pingTimeout, pingTimeout, TimeUnit.MILLISECONDS)));
-			queue(ByteBuffer.allocate(17).put(FH_PING).putLong(now));
+			queueFlip(ByteBuffer.allocate(17).put(FH_PING).putLong(now));
 		}
 
 		boolean isServer() {
@@ -984,7 +1008,7 @@ class RFC7540 {
 		public Connection(boolean isServer, Exchange exchange, Map<Settings, Long> initSettings) {
 			this.sidgen = isServer ? 2 : 1;
 			this.exchange = exchange;
-			this.prioritization = new Prioritization(windowSize);
+			this.prioritization = new Prioritization();
 			this.irfc7541 = new RFC7541((int) Settings.HEADER_TABLE_SIZE.def());
 			this.orfc7541 = new RFC7541((int) Settings.HEADER_TABLE_SIZE.def());
 			this.rttSamples = initSettings.get(Settings.RTT_SAMPLES).intValue();
@@ -992,7 +1016,7 @@ class RFC7540 {
 			this.idelTimeout = initSettings.get(Settings.IDLE_TIMEOUT);
 			this.incompleteFrameTimeout = initSettings.get(Settings.INCOMPLETE_FRAME_TIMEOUT);
 			long rttMeasurePeriod = initSettings.get(Settings.RTT_MEASURE_PERIOD);
-			this.futureRTT = getScheduler().scheduleAtFixedRate(() -> {
+			this.futureRTT = exchange.getScheduler().scheduleAtFixedRate(() -> {
 				ping(rtt -> {
 				});
 				cleanup();
@@ -1019,16 +1043,8 @@ class RFC7540 {
 			}
 		}
 
-		public SSLSession getSSLSession() {
-			return exchange.getSSLSession();
-		}
-
-		public void execute(Runnable r) {
+		private void execute(Runnable r) {
 			exchange.execute(r);
-		}
-
-		ScheduledExecutorService getScheduler() {
-			return exchange.getScheduler();
 		}
 
 		synchronized Stream createActiveStream() {
@@ -1036,19 +1052,24 @@ class RFC7540 {
 				return null;
 			if (SETTINGS_MAX_CONCURRENT_STREAMS < concurrent.get())
 				return null;
-			prioritization.priority(sidgen, false, 0, Prioritization.DEFAULT_WEIGHT);
-			Stream stream = new Stream(this, sidgen);
-			map.put(sidgen, stream);
+			int sid = sidgen;
 			sidgen += 2;
+			Stream stream = new Stream(this, sid);
+			map.put(sid, stream);
+			execute(() -> {
+				prioritization.priority(sid, false, 0, Prioritization.DEFAULT_WEIGHT);
+				prioritization.setup(sid, stream);
+			});
 			return stream;
 		}
 
 		private int windowUpdateAccumulate;
-		private final AtomicLong windowSize = new AtomicLong(SETTINGS_INITIAL_WINDOW_SIZE_PEER);
+		private int connectionWindow = SETTINGS_INITIAL_WINDOW_SIZE_PEER;
+		private int activeWindow = 0;
 		private final static byte[] FH_WINDOW_UPDATE = new byte[] { 0, 0, 4, FrameType.WINDOW_UPDATE.registry(), 0 };
 
 		void sendWindowUpdate(int sid, int inc) {
-			queue(ByteBuffer.allocate(13).put(FH_WINDOW_UPDATE).putInt(sid).putInt(inc));
+			queueFlip(ByteBuffer.allocate(13).put(FH_WINDOW_UPDATE).putInt(sid).putInt(inc));
 		}
 
 		void sendWindowUpdate(int inc) {
@@ -1059,12 +1080,10 @@ class RFC7540 {
 			}
 		}
 
-		private void recvWindowUpdate(int inc) throws IncomingException {
-			long size = windowSize.addAndGet(inc);
-			if (size > Integer.MAX_VALUE)
-				throw new IncomingException(ErrorCode.FLOW_CONTROL_ERROR);
-			if (size > 0)
-				getScheduler().execute(() -> prioritization.flush());
+		private void recvWindowUpdate(int inc) {
+			if ((connectionWindow += inc) < 0)
+				error(ErrorCode.FLOW_CONTROL_ERROR);
+			flush(true);
 		}
 
 		private ByteBuffer dataFrameHead(int sid, int length, boolean es) {
@@ -1083,9 +1102,9 @@ class RFC7540 {
 			int length = data.remaining();
 			ByteBuffer bb = dataFrameHead(sid, length, es);
 			if (length > 0)
-				queue(sid, length, new ByteBuffer[] { bb, data });
+				queue(new ByteBuffer[] { bb, data });
 			else
-				queue(sid, bb);
+				queue(bb);
 			return length;
 		}
 
@@ -1098,23 +1117,23 @@ class RFC7540 {
 				ByteBuffer[] bbs = new ByteBuffer[datas.length + 1];
 				bbs[0] = bb;
 				System.arraycopy(datas, 0, bbs, 1, datas.length);
-				queue(sid, length, bbs);
+				queue(bbs);
 			} else
-				queue(sid, bb);
+				queue(bb);
 			return length;
 		}
 
-		void queue(ByteBuffer frame) {
+		void queueFlip(ByteBuffer frame) {
 			frame.flip();
+			queue(frame);
+		}
+
+		void queue(ByteBuffer frame) {
 			exchange.send(frame);
 		}
 
-		void queue(int sid, ByteBuffer frame) {
-			prioritization.queue(sid, () -> exchange.send(frame), 0);
-		}
-
-		void queue(int sid, int length, ByteBuffer[] frame) {
-			prioritization.queue(sid, () -> exchange.send(frame), length);
+		void queue(ByteBuffer[] frame) {
+			exchange.send(frame);
 		}
 
 		boolean countUp(Stream stream) {
@@ -1127,81 +1146,74 @@ class RFC7540 {
 		void countDown(Stream stream) {
 			concurrent.decrementAndGet();
 		}
+
+		@Override
+		public void accept(Integer window) {
+			activeWindow = window;
+			flush(false);
+		}
+
+		void flush(boolean source) {
+			int min = Math.min(activeWindow, connectionWindow);
+			if (min > 0) {
+				int r = prioritization.apply(min);
+				int sent = r & Integer.MAX_VALUE;
+				if (sent > 0) {
+					connectionWindow -= sent;
+					activeWindow -= sent;
+				} else if (!source && r == 0) {
+					exchange.clearAlarm();
+				}
+			}
+		}
+
+		void flush(Supplier<Boolean> action) {
+			execute(() -> {
+				if (action.get())
+					flush(true);
+			});
+		}
 	}
 
-	static class Prioritization {
+	static class Prioritization implements Function<Integer, Integer> {
 		private final static int DEFAULT_WEIGHT = 16;
-		private final AtomicLong windowSize;
+		private final static Function<Integer, Integer> DEFAULT_CONSUMER = window -> 0;
 		private final Map<Integer, Node> map = new HashMap<>();
 		private final Node ROOT = new Node();
 
-		Prioritization(AtomicLong windowSize) {
-			this.windowSize = windowSize;
+		Prioritization() {
 			ROOT.weight = DEFAULT_WEIGHT;
 			map.put(0, ROOT);
 		}
 
-		private static class Node implements Comparable<Node> {
+		private class Node implements Function<Integer, Integer> {
 			private Node parent;
 			private final List<Node> children = new ArrayList<>();
-			private final Queue<Pair<Runnable, Integer>> queue = new ArrayDeque<>();
-			private double weight;
-			private double running_weight;
+			private int weight;
+			private long total;
+			private Function<Integer, Integer> consumer = DEFAULT_CONSUMER;
 
 			@Override
-			public int compareTo(Node o) {
-				return (int) (o.running_weight - running_weight);
-			}
-
-			void adjust() {
-				if (running_weight <= 0)
-					running_weight += weight - 1;
-				else
-					running_weight--;
-				List<Node> pc = parent.children;
-				for (int i = 0, j = pc.size(); i < j; i++)
-					if (pc.get(i) == this) {
-						while (++i < j && running_weight < pc.get(i).running_weight)
-							Collections.swap(pc, i - 1, i);
-						return;
-					}
-			}
-
-			Node choose() {
-				if (!queue.isEmpty())
-					return this;
-				for (Node n : children) {
-					Node r = n.choose();
-					if (r != null)
-						return r;
+			public Integer apply(Integer window) {
+				int r = consumer.apply(window);
+				int busy = r & Integer.MIN_VALUE;
+				int sent = r & Integer.MAX_VALUE;
+				if (sent > 0)
+					for (Node n = this; n != ROOT; n = n.parent)
+						n.total += sent;
+				if (window > sent && !children.isEmpty()) {
+					children.sort(Comparator.comparingLong(n -> n.total / n.weight));
+					for (Node n : children)
+						if ((sent += n.apply(window - sent)) == window)
+							break;
 				}
-				return null;
+				return sent | busy;
 			}
 		}
 
-		void queue(int sid, Runnable r, int length) {
-			synchronized (this) {
-				map.get(sid).queue.offer(new Pair<>(r, length));
-			}
-			flush();
-		}
-
-		void flush() {
-			for (Runnable r; true; r.run()) {
-				synchronized (this) {
-					Node n = ROOT.choose();
-					if (n == null)
-						return;
-					int l = n.queue.peek().getValue();
-					if (windowSize.addAndGet(-l) < 0) {
-						windowSize.addAndGet(l);
-						return;
-					}
-					r = n.queue.poll().getKey();
-					for (; n != ROOT; n = n.parent)
-						n.adjust();
-				}
-			}
+		@Override
+		public Integer apply(Integer window) {
+			return ROOT.apply(window);
 		}
 
 		private void remove(int sid) {
@@ -1213,23 +1225,27 @@ class RFC7540 {
 			curnode.parent.children.remove(curnode);
 			if (curnode.children.isEmpty())
 				return;
-			double amount = 0;
+			long amount = 0;
 			for (Node n : curnode.children)
 				amount += n.weight;
-			double scale = curnode.weight / amount;
 			for (Node n : curnode.children) {
-				n.weight = n.running_weight = n.weight = scale;
+				n.weight = (int) (curnode.weight * n.weight / amount);
+				if (n.weight == 0)
+					n.weight = 1;
 				(n.parent = curnode.parent).children.add(n);
 			}
-			Collections.sort(curnode.parent.children);
 		}
 
-		synchronized void remove(Collection<Integer> sids) {
+		void remove(Collection<Integer> sids) {
 			for (Integer sid : sids)
 				remove(sid);
 		}
 
-		synchronized void priority(int sid, boolean exclusive, int depsid, int weight) {
+		void setup(int sid, Function<Integer, Integer> consumer) {
+			map.get(sid).consumer = consumer;
+		}
+
+		void priority(int sid, boolean exclusive, int depsid, int weight) {
 			Node depnode = map.get(depsid);
 			if (depnode == null) {
 				depnode = ROOT;
@@ -1244,32 +1260,30 @@ class RFC7540 {
 						depnode.parent.children.remove(depnode);
 						depnode.parent = curnode.parent;
 						depnode.parent.children.add(depnode);
-						Collections.sort(depnode.parent.children);
 						break;
 					}
 				curnode.parent.children.remove(curnode);
 			}
 			curnode.parent = depnode;
-			curnode.weight = curnode.running_weight = weight;
+			curnode.weight = weight;
 			if (exclusive) {
 				for (Node n : depnode.children)
 					n.parent = curnode;
 				curnode.children.addAll(depnode.children);
-				Collections.sort(curnode.children);
 				depnode.children.clear();
 			}
 			depnode.children.add(curnode);
-			Collections.sort(depnode.children);
 		}
 
-		void priority(int sid, ByteBuffer data) {
-			int tmp = data.getInt();
-			int weight = (data.get() & 0xff) + 1;
-			int depsid = tmp & Integer.MAX_VALUE;
-			if (depsid != sid)
-				priority(sid, tmp < 0, depsid, weight);
-			else
-				priority(sid, false, 0, DEFAULT_WEIGHT);
+		Runnable prepare(int sid, ByteBuffer data) {
+			if (data != null) {
+				int tmp = data.getInt();
+				int weight = (data.get() & 0xff) + 1;
+				int depsid = tmp & Integer.MAX_VALUE;
+				if (depsid != sid)
+					return () -> priority(sid, tmp < 0, depsid, weight);
+			}
+			return () -> priority(sid, false, 0, DEFAULT_WEIGHT);
 		}
 	}
 
@@ -1279,7 +1293,7 @@ class RFC7540 {
 
 		void process(List<RFC7541.Entry> headers);
 
-		void process(ByteBuffer in);
+		void process(ByteBuffer in) throws Exception;
 
 		void end();
 
@@ -1299,10 +1313,10 @@ class RFC7540 {
 
 		void cancel(Throwable closeReason);
 
-		SSLSession getSSLSession();
-
 		ScheduledExecutorService getScheduler();
 
 		void execute(Runnable r);
+
+		void clearAlarm();
 	}
 }

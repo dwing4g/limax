@@ -12,8 +12,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import javax.net.ssl.SSLSession;
-
 import limax.http.HttpServer.Parameter;
 import limax.http.RFC7540.Connection;
 import limax.http.RFC7540.ErrorCode;
@@ -28,10 +26,9 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 	private final Stream stream;
 	private Headers headers;
 	private Headers trailers;
-	private boolean forceClose;
 
 	Http2Exchange(HttpProcessor processor, Connection connection, Stream stream, Headers headers) {
-		super(new ApplicationExecutor(stream), processor);
+		super(processor);
 		this.connection = connection;
 		this.stream = stream;
 		if (headers != null) {
@@ -40,27 +37,26 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 		}
 	}
 
+	@Override
+	public Headers getRequestHeaders() {
+		return headers;
+	}
+
+	@Override
+	public Headers getRequestTrailers() {
+		return trailers;
+	}
+
 	private void process(Headers headers) {
 		if (this.headers == null) {
 			Handler handler = find(this.headers = headers);
 			if (handler instanceof HttpHandler)
 				httpHandler = (HttpHandler) handler;
-			else {
-				URI origin;
-				try {
-					origin = URI.create(headers.getFirst("origin"));
-				} catch (Exception e) {
-					origin = null;
-				}
-				stream.startup(
-						new RFC8441(executor, connection, stream, (WebSocketHandler) handler,
-								onSendReady -> createWebSocketSender(onSendReady), processor.getLocalAddress(),
-								new WebSocketAddress(processor.getPeerAddress(), getContextURI(), getRequestURI(),
-										origin),
-								(Integer) processor.get(Parameter.WEBSOCKET_MAX_INCOMING_MESSAGE_SIZE),
-								(Long) processor.get(Parameter.WEBSOCKET_DEFAULT_FINAL_TIMEOUT)));
-				stream.sendHeaders(Collections.singletonList(new Entry(":status", "200")), false);
-			}
+			else
+				processor.execute(() -> {
+					stream.startup(new RFC8441((WebSocketHandler) handler, this, stream));
+					stream.sendHeaders(Collections.singletonList(new Entry(":status", "200")), false);
+				});
 		}
 		if (this.trailers == null)
 			this.trailers = headers;
@@ -74,14 +70,14 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 	}
 
 	@Override
-	public void process(ByteBuffer in) {
+	public void process(ByteBuffer in) throws Exception {
 		if (formData == null)
-			formData = new FormData(headers, httpHandler.postLimit());
+			formData = new FormData(headers);
 		int remaining = in.remaining();
 		for (int i = 0; i < remaining; i++)
 			formData.process(in.get());
 		stream.windowUpdate(remaining);
-		schedule(false);
+		httpHandler.censor(this);
 	}
 
 	@Override
@@ -89,7 +85,12 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 		if (formData == null)
 			formData = new FormData(getRequestURI());
 		formData.end(false);
-		schedule(true);
+		async(httpHandler);
+	}
+
+	@Override
+	public void cancel(Throwable closeReason) {
+		processor.nettask().cancel(closeReason);
 	}
 
 	@Override
@@ -100,21 +101,6 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 	@Override
 	public void reset(ErrorCode errorCode) {
 		cancel();
-	}
-
-	@Override
-	public Headers getRequestHeaders() {
-		return headers;
-	}
-
-	@Override
-	public Headers getRequestTrailers() {
-		return trailers;
-	}
-
-	@Override
-	public SSLSession getSSLSession() {
-		return connection.getSSLSession();
 	}
 
 	@Override
@@ -141,7 +127,7 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 	}
 
 	@Override
-	protected boolean sendResponseHeaders(Headers headers, Long length) {
+	boolean sendResponseHeaders(Headers headers, Long length) {
 		boolean body = true;
 		if (getRequestMethod().equals("head")) {
 			body = false;
@@ -156,39 +142,37 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 	}
 
 	@Override
-	protected void flowControl(Function<Integer, Boolean> windowConsumer) {
+	void flowControl(Function<Integer, Boolean> windowConsumer) {
 		Consumer<Integer> partitionConsumer = partitioner().apply(windowConsumer);
-		Runnable pump = () -> executor.executeExclusively(() -> partitionConsumer.accept(stream.getWindowSize()));
-		stream.setPump(pump);
-		pump.run();
+		stream.setPump(window -> partitionConsumer.accept(window));
 	}
 
 	@Override
-	protected void send(ByteBuffer data, boolean chunk) {
+	void send(ByteBuffer data, boolean chunk) {
 		stream.sendData(data, false);
 	}
 
 	@Override
-	protected void send(ByteBuffer[] datas, boolean chunk) {
+	void send(ByteBuffer[] datas, boolean chunk) {
 		stream.sendData(datas, false);
 	}
 
 	@Override
-	protected void sendFinal(ByteBuffer[] datas) {
+	void sendFinal(ByteBuffer[] datas) {
 		sendFinal(stream, datas, getResponseTrailers());
 		if (forceClose)
 			connection.goway();
 	}
 
 	@Override
-	protected void sendFinal() {
+	void sendFinal() {
 		sendFinal(stream, getResponseTrailers());
 		if (forceClose)
 			connection.goway();
 	}
 
 	@Override
-	protected void forceClose(Headers headers) {
+	void forceClose(Headers headers) {
 		forceClose = (Boolean) processor.get(Parameter.HTTP2_ALLOW_FORCE_CLOSE);
 	}
 
@@ -219,25 +203,23 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 			stream.sendData(EMPTY, true);
 	}
 
-	private static ByteBuffer frag(ByteBuffer data, int length) {
-		ByteBuffer frag = data.duplicate();
-		int position = data.position() + length;
-		data.position(position);
-		frag.limit(position);
-		return frag;
-	}
-
 	private static class Http2Sender implements CustomSender {
-		private final ApplicationExecutor executor;
 		private final Stream stream;
 		private final Consumer<Integer> consumer;
 		private final Queue<ByteBuffer> vbuf = new ArrayDeque<>();
 		private int fin = 0;
 
-		Http2Sender(ApplicationExecutor executor, Stream stream, Runnable onSendReady,
+		private static ByteBuffer frag(ByteBuffer data, int length) {
+			ByteBuffer frag = data.duplicate();
+			int position = data.position() + length;
+			data.position(position);
+			frag.limit(position);
+			return frag;
+		}
+
+		Http2Sender(Stream stream, Runnable onSendReady, Runnable onClose,
 				Function<Function<Integer, Boolean>, Consumer<Integer>> partitioner,
 				Supplier<Headers> trailersSupplier) {
-			this.executor = executor;
 			this.stream = stream;
 			this.consumer = partitioner.apply(window -> {
 				ByteBuffer data = vbuf.peek();
@@ -245,6 +227,8 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 					if (fin == 1) {
 						Http2Exchange.sendFinal(stream, trailersSupplier.get());
 						fin = 2;
+						if (onClose != null)
+							onClose.run();
 					}
 					return false;
 				}
@@ -264,6 +248,8 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 						} else {
 							Http2Exchange.sendFinal(stream, datas, trailersSupplier.get());
 							fin = 2;
+							if (onClose != null)
+								onClose.run();
 						}
 						return false;
 					}
@@ -274,61 +260,39 @@ class Http2Exchange extends AbstractHttpExchange implements Processor {
 					}
 				}
 			});
-			stream.setPump(() -> flush());
-		}
-
-		private void flush() {
-			executor.executeExclusively(() -> {
-				synchronized (vbuf) {
-					consumer.accept(stream.getWindowSize());
-				}
-			});
+			stream.setPump(window -> consumer.accept(window));
 		}
 
 		@Override
 		public void send(ByteBuffer bb) {
 			if (!bb.hasRemaining())
 				return;
-			synchronized (vbuf) {
+			stream.flush(() -> {
 				if (fin != 0)
-					return;
-				boolean flush = vbuf.isEmpty();
+					return false;
 				vbuf.add(bb);
-				if (!flush)
-					return;
-			}
-			flush();
+				return true;
+			});
 		}
 
 		@Override
 		public void sendFinal(long timeout) {
-			synchronized (vbuf) {
+			stream.flush(() -> {
 				if (fin != 0)
-					return;
+					return false;
 				fin = 1;
-				if (!vbuf.isEmpty())
-					return;
-			}
-			flush();
-		}
-
-		@Override
-		public void cancel() {
-			synchronized (vbuf) {
-				vbuf.clear();
-				fin = 2;
-				stream.sendReset(ErrorCode.CANCEL);
-			}
+				return true;
+			});
 		}
 	}
 
 	@Override
-	protected CustomSender createWebSocketSender(Runnable onSendReady) {
-		return new Http2Sender(executor, stream, onSendReady, partitioner(), () -> EMPTY_TRAILERS);
+	CustomSender createWebSocketSender(Runnable onSendReady) {
+		return new Http2Sender(stream, onSendReady, null, partitioner(), () -> EMPTY_TRAILERS);
 	}
 
 	@Override
-	protected CustomSender createCustomSender(Runnable onSendReady) {
-		return new Http2Sender(executor, stream, onSendReady, partitioner(), () -> getResponseTrailers());
+	CustomSender createCustomSender(Runnable onSendReady, Runnable onClose) {
+		return new Http2Sender(stream, onSendReady, onClose, partitioner(), () -> getResponseTrailers());
 	}
 }

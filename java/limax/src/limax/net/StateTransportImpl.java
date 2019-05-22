@@ -39,16 +39,16 @@ final class StateTransportImpl extends AbstractTransport
 	}
 
 	@Override
-	public void process(byte[] data) {
+	public void process(byte[] data) throws Exception {
 		if (Trace.isDebugEnabled())
 			Trace.debug(manager + " " + this + " process size = " + data.length);
 		try {
 			input.update(data, 0, data.length);
 			input.flush();
-		} catch (Throwable e) {
+		} catch (Exception e) {
 			if (Trace.isInfoEnabled())
 				Trace.info(manager + " " + this + " process Exception : " + Helper.toHexString(data), e);
-			throw new RuntimeException(e);// force close
+			throw e;
 		}
 	}
 

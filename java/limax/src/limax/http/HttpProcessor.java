@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 
 import javax.net.ssl.ExtendedSSLSession;
@@ -16,6 +17,7 @@ import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLSession;
 
 import limax.http.HttpServer.Parameter;
+import limax.net.Engine;
 import limax.net.io.NetProcessor;
 import limax.net.io.NetTask;
 
@@ -75,6 +77,25 @@ class HttpProcessor implements NetProcessor {
 		return parameters.get(name);
 	}
 
+	void execute(Runnable r) {
+		Engine.getApplicationExecutor().execute(this, r);
+	}
+
+	void setSendBufferNotice(Runnable r) {
+		AtomicBoolean active = new AtomicBoolean();
+		nettask.setSendBufferNotice(r != null ? (remaining, att) -> {
+			if (active.compareAndSet(false, true))
+				execute(() -> {
+					active.set(false);
+					r.run();
+				});
+		} : null, null);
+	}
+
+	NetTask nettask() {
+		return nettask;
+	}
+
 	@Override
 	public void process(byte[] in) throws Exception {
 		if (sniHostNameUnchecked) {
@@ -109,7 +130,7 @@ class HttpProcessor implements NetProcessor {
 				return sslEngine;
 			} : null, null);
 		long requestTimeout = (Long) get(Parameter.HTTP11_REQUEST_TIMEOUT);
-		this.processor = new Http11Exchange(this, nettask, requestTimeout);
+		this.processor = new Http11Exchange(this, requestTimeout);
 		nettask.resetAlarm(requestTimeout);
 		return true;
 	}

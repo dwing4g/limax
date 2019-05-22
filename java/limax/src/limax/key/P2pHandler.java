@@ -139,21 +139,19 @@ class P2pHandler implements HttpHandler {
 	}
 
 	@Override
-	public long postLimit() {
-		return HTTPS_POST_LIMIT;
+	public void censor(HttpExchange exchange) {
+		exchange.getFormData().postLimit(HTTPS_POST_LIMIT);
 	}
 
 	@Override
-	public DataSupplier handle(HttpExchange exchange) throws IOException {
-		if (!exchange.isRequestFinished())
-			return null;
+	public DataSupplier handle(HttpExchange exchange) {
 		if (verifySSLSession(exchange.getSSLSession()))
 			try {
 				switch (exchange.getRequestURI().getQuery()) {
 				case "search":
 					return search(exchange);
 				case "upload":
-					return upload(exchange);
+					return _upload(exchange);
 				}
 			} catch (Exception e) {
 			}
@@ -178,7 +176,7 @@ class P2pHandler implements HttpHandler {
 		return connection;
 	}
 
-	private DataSupplier upload(HttpExchange exchange) throws Exception {
+	private DataSupplier _upload(HttpExchange exchange) throws Exception {
 		masterKeyContainer.merge(new UploadRequest(OctetsStream.wrap(exchange.getFormData().getRaw())).getKeyPairs());
 		return null;
 	}

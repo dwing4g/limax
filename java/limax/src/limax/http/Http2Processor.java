@@ -5,8 +5,6 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 
-import javax.net.ssl.SSLSession;
-
 import limax.http.HttpServer.Parameter;
 import limax.http.RFC7540.Connection;
 import limax.http.RFC7540.Exchange;
@@ -14,6 +12,7 @@ import limax.http.RFC7540.Processor;
 import limax.http.RFC7540.Settings;
 import limax.http.RFC7540.Stream;
 import limax.net.Engine;
+import limax.net.io.Alarm;
 import limax.net.io.NetTask;
 
 class Http2Processor implements ProtocolProcessor {
@@ -24,6 +23,15 @@ class Http2Processor implements ProtocolProcessor {
 	private int stage;
 
 	private Exchange createExchange(HttpProcessor processor, NetTask nettask, Headers headers) {
+		long timeout = (Long) processor.get(Parameter.CONGESTION_TIMEOUT);
+		int flowControlWindow = (Integer) processor.get(Parameter.FLOWCONTROL_WINDOW_SIZE);
+		Alarm alarm = nettask.createAlarm("h2 connection congestion timeout");
+		processor.setSendBufferNotice(() -> {
+			alarm.reset(timeout);
+			int window = (int) (flowControlWindow - nettask.getSendBufferSize());
+			if (window > 0)
+				connection.accept(window);
+		});
 		return new Exchange() {
 			@Override
 			public Processor createProcessor(Stream stream) {
@@ -51,18 +59,18 @@ class Http2Processor implements ProtocolProcessor {
 			}
 
 			@Override
-			public SSLSession getSSLSession() {
-				return nettask.getSSLSession();
-			}
-
-			@Override
 			public ScheduledExecutorService getScheduler() {
 				return Engine.getProtocolScheduler();
 			}
 
 			@Override
 			public void execute(Runnable r) {
-				nettask.execute(r);
+				processor.execute(r);
+			}
+
+			@Override
+			public void clearAlarm() {
+				alarm.reset(0);
 			}
 		};
 	}
@@ -85,7 +93,7 @@ class Http2Processor implements ProtocolProcessor {
 		return map;
 	}
 
-	Http2Processor(HttpProcessor processor, NetTask nettask, ByteBuffer preface) {
+	Http2Processor(HttpProcessor processor, NetTask nettask, ByteBuffer preface) throws Exception {
 		this.nettask = nettask;
 		this.connection = new Connection(true, createExchange(processor, nettask, null), initSettings(processor));
 		this.stage = 18;
@@ -105,7 +113,7 @@ class Http2Processor implements ProtocolProcessor {
 	}
 
 	@Override
-	public void process(ByteBuffer in) {
+	public void process(ByteBuffer in) throws Exception {
 		if (stage < 24)
 			while (in.hasRemaining() && stage < 24)
 				if (PREFACE[stage++] != in.get())

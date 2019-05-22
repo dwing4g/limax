@@ -4,7 +4,7 @@ package limax.http;
 public interface HttpHandler extends Handler {
 	DataSupplier handle(HttpExchange exchange) throws Exception;
 
-	default long postLimit() {
-		return 0L;
+	default void censor(HttpExchange exchange) throws Exception {
+		throw new UnsupportedOperationException();
 	}
 }

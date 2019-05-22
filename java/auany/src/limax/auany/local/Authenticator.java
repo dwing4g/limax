@@ -16,6 +16,7 @@ import limax.endpoint.AuanyService.Result;
 import limax.http.HttpHandler;
 import limax.util.ConcurrentEnvironment;
 import limax.util.ElementHelper;
+import limax.util.Trace;
 import limax.util.XMLUtils;
 import limax.xmlconfig.Service;
 
@@ -74,6 +75,8 @@ public class Authenticator implements PlatProcess {
 				}
 			}
 		} catch (Exception e) {
+			if (Trace.isErrorEnabled())
+				Trace.error("Authenticator init", e);
 			ConcurrentEnvironment.getInstance().shutdown(getClass().getName());
 			if (e instanceof IllegalArgumentException)
 				throw (IllegalArgumentException) e;

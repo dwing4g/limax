@@ -1,6 +1,5 @@
 package limax.key;
 
-import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.security.cert.X509Certificate;
@@ -21,14 +20,12 @@ class KeyHandler implements HttpHandler {
 	}
 
 	@Override
-	public long postLimit() {
-		return 4096;
+	public void censor(HttpExchange exchange) {
+		exchange.getFormData().postLimit(4096);
 	}
 
 	@Override
-	public DataSupplier handle(HttpExchange exchange) throws IOException {
-		if (!exchange.isRequestFinished())
-			return null;
+	public DataSupplier handle(HttpExchange exchange) {
 		try {
 			KeyIdent keyIdent = new KeyIdent(OctetsStream.wrap(exchange.getFormData().getRaw()));
 			X509Certificate peer = (X509Certificate) exchange.getSSLSession().getPeerCertificates()[0];

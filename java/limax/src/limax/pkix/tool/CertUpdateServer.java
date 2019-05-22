@@ -31,14 +31,12 @@ class CertUpdateServer {
 
 	private class Handler implements HttpHandler {
 		@Override
-		public long postLimit() {
-			return CertServer.CERTFILE_MAX_SIZE;
+		public void censor(HttpExchange exchange) {
+			exchange.getFormData().postLimit(CertServer.CERTFILE_MAX_SIZE);
 		}
 
 		@Override
 		public DataSupplier handle(HttpExchange exchange) {
-			if (!exchange.isRequestFinished())
-				return null;
 			try {
 				SSLSession session = exchange.getSSLSession();
 				X509Certificate peer = (X509Certificate) session.getPeerCertificates()[0];

@@ -1,21 +1,25 @@
 package limax.http;
 
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Queue;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
+import limax.http.HttpServer.Parameter;
 import limax.http.RFC6455.RFC6455Exception;
 import limax.http.WebSocketEvent.Type;
+import limax.net.Engine;
 import limax.util.Pair;
 
 abstract class AbstractWebSocketExchange implements WebSocketExchange, ProtocolProcessor {
+	final HttpProcessor processor;
 	private final Consumer<WebSocketEvent> dispatcher;
 	private final CustomSender sender;
-	private final InetSocketAddress local;
 	private final WebSocketAddress peer;
 	private final RFC6455 server;
 	private final long defaultFinalTimeout;
@@ -23,12 +27,21 @@ abstract class AbstractWebSocketExchange implements WebSocketExchange, ProtocolP
 	private int stage;
 	private byte lastOpcode;
 	private Object object;
+	private Future<?> future;
 
-	AbstractWebSocketExchange(ApplicationExecutor executor, WebSocketHandler handler,
-			Function<Runnable, CustomSender> senderCreator, InetSocketAddress local, WebSocketAddress peer,
-			int maxMessageSize, long defaultFinalTimeout) {
+	AbstractWebSocketExchange(WebSocketHandler handler, AbstractHttpExchange exchange) {
+		URI origin;
+		try {
+			origin = URI.create(exchange.getRequestHeaders().getFirst("origin"));
+		} catch (Exception e) {
+			origin = null;
+		}
+		this.processor = exchange.processor;
+		this.peer = new WebSocketAddress(exchange.getPeerAddress(), exchange.getContextURI(), exchange.getRequestURI(),
+				origin);
+		this.defaultFinalTimeout = (Long) processor.get(Parameter.WEBSOCKET_DEFAULT_FINAL_TIMEOUT);
 		this.dispatcher = event -> {
-			executor.execute(() -> {
+			processor.execute(() -> {
 				try {
 					boolean close = event.type().equals(Type.CLOSE);
 					switch (stage) {
@@ -55,11 +68,9 @@ abstract class AbstractWebSocketExchange implements WebSocketExchange, ProtocolP
 				}
 			});
 		};
-		this.sender = senderCreator.apply(() -> dispatcher.accept(new WebSocketEvent(this, Type.SENDREADY, null)));
-		this.local = local;
-		this.peer = peer;
-		this.server = new RFC6455(maxMessageSize, true);
-		this.defaultFinalTimeout = defaultFinalTimeout;
+		this.sender = exchange
+				.createWebSocketSender(() -> dispatcher.accept(new WebSocketEvent(this, Type.SENDREADY, null)));
+		this.server = new RFC6455((Integer) processor.get(Parameter.WEBSOCKET_MAX_INCOMING_MESSAGE_SIZE), true);
 	}
 
 	private void close(short code, String reason) {
@@ -76,7 +87,7 @@ abstract class AbstractWebSocketExchange implements WebSocketExchange, ProtocolP
 
 	@Override
 	public InetSocketAddress getLocalAddress() {
-		return local;
+		return processor.getLocalAddress();
 	}
 
 	@Override
@@ -174,5 +185,22 @@ abstract class AbstractWebSocketExchange implements WebSocketExchange, ProtocolP
 	public void shutdown(Throwable closeReason) {
 		server.recvClose(new RFC6455Exception(RFC6455.closeGoaway, closeReason.getMessage()).getCode(),
 				(code, reason) -> close(code, reason));
+	}
+
+	abstract void executeAlarmTask();
+
+	@Override
+	public void resetAlarm(long milliseconds) {
+		synchronized (serial) {
+			if (future != null)
+				future.cancel(false);
+			future = milliseconds > 0 ? Engine.getProtocolScheduler().scheduleWithFixedDelay(() -> {
+				synchronized (serial) {
+					future.cancel(false);
+					future = null;
+				}
+				executeAlarmTask();
+			}, milliseconds, milliseconds, TimeUnit.MILLISECONDS) : null;
+		}
 	}
 }

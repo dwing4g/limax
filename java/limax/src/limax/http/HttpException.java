@@ -5,10 +5,16 @@ public class HttpException extends RuntimeException {
 
 	private final HttpHandler handler;
 	private final boolean forceClose;
+	private final boolean abort;
 
-	public HttpException(HttpHandler handler, boolean forceClose) {
+	private HttpException(HttpHandler handler, boolean forceClose, boolean abort) {
 		this.handler = handler;
 		this.forceClose = forceClose;
+		this.abort = abort;
+	}
+
+	public HttpException(HttpHandler handler, boolean forceClose) {
+		this(handler, forceClose, false);
 	}
 
 	public HttpException(int statusCode, boolean forceClose) {
@@ -18,11 +24,19 @@ public class HttpException extends RuntimeException {
 		}, forceClose);
 	}
 
+	public HttpException() {
+		this(null, false, true);
+	}
+
 	HttpHandler getHandler() {
 		return handler;
 	}
 
 	boolean isForceClose() {
 		return forceClose;
+	}
+
+	boolean isAbort() {
+		return abort;
 	}
 }

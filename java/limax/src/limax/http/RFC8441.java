@@ -1,42 +1,36 @@
 package limax.http;
 
-import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 import javax.net.ssl.SSLSession;
 
 import limax.http.RFC6455.RFC6455Exception;
-import limax.http.RFC7540.Connection;
 import limax.http.RFC7540.ErrorCode;
 import limax.http.RFC7540.Processor;
 import limax.http.RFC7540.Stream;
 import limax.http.RFC7541.Entry;
-import limax.net.io.NetModel;
 
 class RFC8441 extends AbstractWebSocketExchange implements Processor {
-	private final Connection connection;
 	private final Stream stream;
-	private final Consumer<Long> alarm;
 	private List<ByteBuffer> delayed;
-	private volatile boolean cancelled;
+	private boolean cancelled;
 
-	RFC8441(ApplicationExecutor executor, Connection connection, Stream stream, WebSocketHandler handler,
-			Function<Runnable, CustomSender> senderCreator, InetSocketAddress local, WebSocketAddress peer,
-			int maxMessageSize, long defaultFinalTimeout) {
-		super(executor, handler, senderCreator, local, peer, maxMessageSize, defaultFinalTimeout);
-		this.connection = connection;
+	RFC8441(WebSocketHandler handler, AbstractHttpExchange exchange, Stream stream) {
+		super(handler, exchange);
 		this.stream = stream;
-		this.alarm = NetModel.installAlarmTask(() -> {
+	}
+
+	@Override
+	void executeAlarmTask() {
+		synchronized (stream) {
 			cancelled = true;
 			enable();
-			stream.sendReset(ErrorCode.CANCEL);
-			connection.execute(() -> shutdown(new SocketTimeoutException("the h2 websocket closed by alarm")));
-		});
+		}
+		stream.sendReset(ErrorCode.CANCEL);
+		processor.nettask().execute(() -> shutdown(new SocketTimeoutException("h2 websocket closed by alarm")));
 	}
 
 	@Override
@@ -68,11 +62,6 @@ class RFC8441 extends AbstractWebSocketExchange implements Processor {
 	}
 
 	@Override
-	public void resetAlarm(long milliseconds) {
-		alarm.accept(milliseconds);
-	}
-
-	@Override
 	public void enable() {
 		synchronized (stream) {
 			if (delayed != null) {
@@ -98,6 +87,6 @@ class RFC8441 extends AbstractWebSocketExchange implements Processor {
 
 	@Override
 	public SSLSession getSSLSession() {
-		return connection.getSSLSession();
+		return processor.nettask().getSSLSession();
 	}
 }

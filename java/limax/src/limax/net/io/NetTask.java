@@ -33,6 +33,8 @@ public interface NetTask {
 
 	void setServiceShutdownNotice(Runnable notice);
 
+	Alarm createAlarm(String description);
+
 	void resetAlarm(long milliseconds);
 
 	void execute(Runnable r);

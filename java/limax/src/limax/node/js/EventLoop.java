@@ -17,7 +17,7 @@ import limax.util.Pair;
 import limax.util.Trace;
 
 public final class EventLoop {
-	private static ExecutorService executor = ConcurrentEnvironment.getInstance().newThreadPool(
+	private final static ExecutorService executor = ConcurrentEnvironment.getInstance().newThreadPool(
 			EventLoop.class.getName(), Integer.getInteger("limax.node.js.EventLoop.corePoolSize", 64), true);
 	private final ScriptEngine engine;
 	private final Invocable invocable;

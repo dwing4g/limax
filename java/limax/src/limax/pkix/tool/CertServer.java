@@ -571,14 +571,12 @@ class CertServer {
 		server.createContext("/recall", new HandlerMaintance("recall", c -> ocspServer.recall(c)));
 		server.createContext("/parse", new HttpHandler() {
 			@Override
-			public long postLimit() {
-				return CERTFILE_MAX_SIZE;
+			public void censor(HttpExchange exchange) {
+				exchange.getFormData().postLimit(CERTFILE_MAX_SIZE);
 			}
 
 			@Override
 			public DataSupplier handle(HttpExchange exchange) throws Exception {
-				if (!exchange.isRequestFinished())
-					return null;
 				try {
 					Certificate[] chain = CertificateFactory.getInstance("X.509")
 							.generateCertificates(new ByteArrayInputStream(exchange.getFormData().getRaw().getBytes()))

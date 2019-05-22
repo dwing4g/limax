@@ -54,7 +54,7 @@ public final class GlobalIdListener implements ClientListener {
 		Transport t = instance.transport;
 		instance.transport = null;
 		if (t != null)
-			((StateTransport) t).resetAlarm(-1);
+			((StateTransport) t).resetAlarm(0);
 	}
 
 	private void _runOnValidation(Runnable r) {
@@ -79,7 +79,7 @@ public final class GlobalIdListener implements ClientListener {
 					new limax.provider.providerglobalid.KeepAlive(keepAliveTimeout).send(transport);
 				} catch (Exception e) {
 				}
-			} , 0, keepAliveTimeout / 2, TimeUnit.MILLISECONDS);
+			}, 0, keepAliveTimeout / 2, TimeUnit.MILLISECONDS);
 	}
 
 	@Override

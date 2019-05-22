@@ -53,14 +53,12 @@ class OcspHttpHandler implements HttpHandler {
 	}
 
 	@Override
-	public long postLimit() {
-		return OCSP_REQ_MAX;
+	public void censor(HttpExchange exchange) {
+		exchange.getFormData().postLimit(OCSP_REQ_MAX);
 	}
 
 	@Override
 	public DataSupplier handle(HttpExchange exchange) {
-		if (!exchange.isRequestFinished())
-			return null;
 		byte[] response;
 		while (true) {
 			Octets key;

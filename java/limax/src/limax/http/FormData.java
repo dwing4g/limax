@@ -35,10 +35,11 @@ public class FormData {
 	private final static Pattern filePattern = Pattern.compile("filename\\s*=\\s*\"([^\"]*)\"",
 			Pattern.CASE_INSENSITIVE);
 	private final static Pattern namePattern = Pattern.compile("name\\s*=\\s*\"([^\"]*)\"", Pattern.CASE_INSENSITIVE);
+	private final long createTime = System.currentTimeMillis();
 	private final Map<String, List<Object>> map = new HashMap<>();
+	private Octets raw = new Octets();
 	private boolean urlencoded;
 	private MultipartParser parser;
-	private Octets raw = new Octets();
 	private long postLimit;
 	private long amount = 0;
 
@@ -71,18 +72,13 @@ public class FormData {
 		}
 	}
 
-	FormData(Headers headers, long postLimit) {
-		if (postLimit <= 0)
-			throw new RuntimeException("POST not permitted");
-		try {
-			this.postLimit = postLimit;
-			String contentType = headers.getFirst("content-type").toLowerCase();
-			if (contentType.startsWith("application/x-www-form-urlencoded")) {
-				urlencoded = true;
-			} else if (contentType.startsWith("multipart/form-data")) {
-				parser = new MultipartParser();
-			}
-		} catch (Exception e) {
+	FormData(Headers headers) {
+		this.postLimit = Long.MAX_VALUE;
+		String contentType = headers.getFirst("content-type").toLowerCase();
+		if (contentType.startsWith("application/x-www-form-urlencoded")) {
+			urlencoded = true;
+		} else if (contentType.startsWith("multipart/form-data")) {
+			parser = new MultipartParser();
 		}
 	}
 
@@ -91,18 +87,18 @@ public class FormData {
 			throw new RuntimeException("post size exceed limit (" + postLimit + ")");
 		if (parser != null)
 			parser.process(c);
-		else
+		else if (raw != null)
 			raw.push_byte(c);
 	}
 
 	void end(boolean cancel) {
 		if (parser != null) {
-			MultipartParser _parser = parser;
+			parser.end(cancel);
 			parser = null;
-			_parser.end(cancel);
 		} else if (urlencoded) {
 			decode(new String(raw.array(), 0, raw.size(), StandardCharsets.UTF_8));
 			urlencoded = false;
+			raw = null;
 		}
 	}
 
@@ -118,9 +114,18 @@ public class FormData {
 		return amount;
 	}
 
-	public void useTempFile(int threshold) {
-		if (parser != null)
-			parser.useTempFile(threshold);
+	public long getCreateTime() {
+		return createTime;
+	}
+
+	public FormData useTempFile(int threshold) {
+		parser.useTempFile(threshold);
+		return this;
+	}
+
+	public FormData postLimit(long postLimit) {
+		this.postLimit = postLimit;
+		return this;
 	}
 
 	private class MultipartParser {

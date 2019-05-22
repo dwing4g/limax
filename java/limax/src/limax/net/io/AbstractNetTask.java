@@ -43,13 +43,7 @@ abstract class AbstractNetTask implements NetTask {
 	private final AtomicReference<Throwable> closeReason = new AtomicReference<Throwable>();
 	private final NetProcessor processor;
 	private boolean active;
-
-	private final Alarm alarm = new Alarm(new Runnable() {
-		@Override
-		public void run() {
-			close(new SocketTimeoutException("the channel closed by alarm"));
-		}
-	});
+	private final Alarm alarm = createAlarm("the channel closed by alarm");
 
 	AbstractNetTask(int rsize, int wsize, SSLExchange sslExchange, NetProcessor processor) {
 		this.sslExchange = sslExchange;
@@ -120,6 +114,16 @@ abstract class AbstractNetTask implements NetTask {
 	@Override
 	public void cancel(Throwable closeReason) {
 		close(closeReason);
+	}
+
+	@Override
+	public Alarm createAlarm(final String description) {
+		return NetModel.createAlarm(new Runnable() {
+			@Override
+			public void run() {
+				close(new SocketTimeoutException(description));
+			}
+		});
 	}
 
 	@Override

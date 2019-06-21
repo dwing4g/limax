@@ -142,7 +142,7 @@ public enum Trace {
 				} finally {
 					lock.unlock();
 				}
-			} , firstTime.getTimeInMillis() - now.getTimeInMillis(), period, TimeUnit.MILLISECONDS);
+			}, firstTime.getTimeInMillis() - now.getTimeInMillis(), period, TimeUnit.MILLISECONDS);
 		}
 
 		public void println(String str, Throwable e) {

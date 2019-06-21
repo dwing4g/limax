@@ -229,7 +229,7 @@ class FileSystemHandler implements HttpHandler, Closeable {
 
 	private HttpHandler getHandler(Host host, URI contextURI, URI requestURI) {
 		String _path = requestURI.getPath();
-		Path path = htdocs.resolve(contextURI.relativize(URI.create(_path)).toString());
+		Path path = htdocs.resolve(contextURI.relativize(requestURI).getPath());
 		FileHandler data = cache.get(path);
 		if (data == null) {
 			try {

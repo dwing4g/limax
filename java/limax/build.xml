@@ -2,18 +2,17 @@
 
 <project name="limax" default="dist">
 
-	<property name="src" value="src/" />
-	<property name="gen" value="gen/" />
-	<property name="build" value="bin/" />
-	<property name="limaxbin" value="../../bin" />
-	<property name="jssrc" value="../../javascript" />
+	<property name="src" location="src/" />
+	<property name="gen" location="gen/" />
+	<property name="build" location="bin/" />
+	<property name="limaxbin" location="../../bin" />
+	<property name="jssrc" location="../../javascript" />
 	<property name="jarfile" value="${limaxbin}/limax.jar" />
+	<property name="docpackagenames" value="limax.codec,limax.codec.asn1,limax.edb,limax.endpoint,limax.endpoint.script,limax.endpoint.variant,limax.http,limax.key,limax.key.ed,limax.net,limax.net.io,limax.p2p,limax.pkix,limax.provider,limax.sql,limax.util,limax.util.monitor,limax.util.transpond,limax.xmlconfig,limax.zdb,limax.zdb.tool" />
 
 	<target name="xmlgen">
 		<mkdir dir="${build}" />
-		<javac encoding="UTF-8" srcdir="${src}" includes="limax/xmlgen/**"
-			destdir="${build}" debug="true" debuglevel="lines,source"
-			includeantruntime="false">
+		<javac encoding="UTF-8" srcdir="${src}" includes="limax/xmlgen/**" destdir="${build}" debug="true" debuglevel="lines,source,vars" includeantruntime="false">
 			<compilerarg line="-Xlint:unchecked" />
 		</javac>
 		<java classpath="${build}" classname="limax.xmlgen.Main" fork="yes">
@@ -30,9 +29,7 @@
 				<include name="**/*.jar" />
 			</fileset>
 		</path>
-		<javac encoding="UTF-8" srcdir="${src}:${gen}" destdir="${build}"
-			classpathref="classpath" debug="true" debuglevel="lines,source,vars"
-			includeantruntime="false">
+		<javac encoding="UTF-8" srcdir="${src}:${gen}" destdir="${build}" classpathref="classpath" debug="true" debuglevel="lines,source,vars" includeantruntime="false">
 			<compilerarg line="-Xlint:unchecked" />
 		</javac>
 	</target>
@@ -61,15 +58,11 @@
 
 	<target name="doc">
 		<mkdir dir="doc" />
-		<javadoc sourcepath="src:gen"
-			packagenames="limax.codec,limax.codec.asn1,limax.edb,limax.endpoint,limax.endpoint.script,limax.endpoint.variant,limax.http,limax.key,limax.key.ed,limax.net,limax.net.io,limax.p2p,limax.pkix,limax.provider,limax.sql,limax.util,limax.util.monitor,limax.util.transpond,limax.xmlconfig,limax.zdb,limax.zdb.tool"
-			defaultexcludes="yes" destdir="doc" locale="en_US" Encoding="UTF-8"
-			docencoding="UTF-8" charset="UTF-8" />
+		<javadoc sourcepath="src:gen" packagenames="${docpackagenames}" defaultexcludes="yes" destdir="doc" locale="en_US" Encoding="UTF-8" docencoding="UTF-8" charset="UTF-8" />
 	</target>
 
 	<target name="-run">
-		<java classpath="${jarfile}" classname="limax.switcher.Main"
-			fork="true" spawn="true" />
+		<java classpath="${jarfile}" classname="limax.switcher.Main" fork="true" spawn="true" />
 	</target>
 
 	<target name="run" depends="dist, -run" />

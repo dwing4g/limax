@@ -1,6 +1,7 @@
 package limax.http;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Iterator;
 import java.util.List;
 
@@ -16,12 +17,20 @@ class HttpContext {
 	}
 
 	private static String normalize(String path) {
-		return fix(URI.create(path).normalize().toString());
+		try {
+			return fix(new URI(null, null, path, null).normalize().getPath());
+		} catch (URISyntaxException e) {
+			throw new IllegalArgumentException(e.getMessage(), e);
+		}
 	}
 
 	HttpContext(String path, Handler handler) {
 		this.prefix = normalize(path);
-		this.uri = URI.create(prefix.substring(0, prefix.length() - 1));
+		try {
+			this.uri = URI.create(new URI(null, null, prefix.substring(0, prefix.length() - 1), null).toASCIIString());
+		} catch (URISyntaxException e) {
+			throw new IllegalArgumentException(e.getMessage(), e);
+		}
 		this.handler = handler;
 	}
 

@@ -2,10 +2,10 @@
 
 <project name="auany" default="dist">
 
-	<property name="src" value="src/" />
-	<property name="gen" value="gen/" />
-	<property name="build" value="bin/" />
-	<property name="limaxbin" value="../../bin" />
+	<property name="src" location="src/" />
+	<property name="gen" location="gen/" />
+	<property name="build" location="bin/" />
+	<property name="limaxbin" location="../../bin" />
 	<property name="jarfile" value="${limaxbin}/auany.jar" />
 
 	<target name="limax">
@@ -32,7 +32,7 @@
 				<include name="**/*.jar" />
 			</fileset>
 		</path>
-		<javac encoding="UTF-8" srcdir="${gen}:${src}" destdir="${build}" classpathref="classpath" debug="true" debuglevel="lines,source" includeantruntime="false">
+		<javac encoding="UTF-8" srcdir="${gen}:${src}" destdir="${build}" classpathref="classpath" debug="true" debuglevel="lines,source,vars" includeantruntime="false">
 			<compilerarg line="-Xlint:unchecked" />
 		</javac>
 	</target>

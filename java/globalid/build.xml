@@ -2,10 +2,10 @@
 
 <project name="globalid" default="dist">
 
-	<property name="src" value="src" />
-	<property name="gen" value="gen" />
-	<property name="build" value="bin/" />
-	<property name="limaxbin" value="../../bin" />
+	<property name="src" location="src" />
+	<property name="gen" location="gen" />
+	<property name="build" location="bin/" />
+	<property name="limaxbin" location="../../bin" />
 	<property name="jarfile" value="${limaxbin}/globalid.jar" />
 
 	<target name="limax">

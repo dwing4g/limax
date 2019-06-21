@@ -68,11 +68,19 @@ final class Firewall {
 		return true;
 	}
 
+	private static Runnable loadTask = () -> {
+	};
+
+	static void reload() {
+		loadTask.run();
+	}
+
 	public static void initialize(Element self, Map<String, HttpHandler> httphandlers) throws Exception {
 		ElementHelper eh = new ElementHelper(self);
 		Path path = Service.getConfigParentFile().toPath().resolve(eh.getString("firewallConfig", "firewall.xml"));
 		long period = eh.getLong("firewallConfigCheckPeriod", 30000l);
-		Service.addRunAfterEngineStartTask(() -> Engine.getProtocolScheduler().scheduleAtFixedRate(() -> load(path), 0,
-				period, TimeUnit.MILLISECONDS));
+		loadTask = () -> load(path);
+		Service.addRunAfterEngineStartTask(
+				() -> Engine.getProtocolScheduler().scheduleAtFixedRate(loadTask, 0, period, TimeUnit.MILLISECONDS));
 	}
 }

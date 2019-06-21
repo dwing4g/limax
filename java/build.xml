@@ -6,12 +6,14 @@
 		<ant dir="limax" target="release" inheritAll="false"/>
 		<ant dir="globalid" target="release" inheritAll="false"/>
 		<ant dir="auany" target="release" inheritAll="false"/>
+		<ant dir="autiny" target="release" inheritAll="false"/>
 	</target>
 
 	<target name="clean">
 		<ant dir="limax" target="clean" inheritAll="false"/>
 		<ant dir="globalid" target="clean" inheritAll="false"/>
 		<ant dir="auany" target="clean" inheritAll="false"/>
+		<ant dir="autiny" target="clean" inheritAll="false"/>
 	</target>
 
 	<target name="all" depends="clean, release">

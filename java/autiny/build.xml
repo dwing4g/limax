@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="autiny" default="dist">
+
+	<property name="src" location="src/" />
+	<property name="src2" location="auany/" />
+	<property name="auanysrc" location="../auany/src/" />
+	<property name="auanygen" location="../auany/gen/" />
+	<property name="genbuild" location="genbin/" />
+	<property name="build" location="bin/" />
+	<property name="limaxbin" location="../../bin" />
+	<property name="genjar" value="gencodes.jar" />
+	<property name="jarfile" value="${limaxbin}/autiny.jar" />
+
+	<target name="auany-xmlgen">
+		<ant dir="../auany" target="xmlgen" inheritAll="false" />
+	</target>
+
+	<target name="-init">
+		<mkdir dir="${build}" />
+	</target>
+
+	<target name="genjar" depends="auany-xmlgen">
+		<path id="classpath">
+			<fileset dir="${limaxbin}">
+				<include name="limax.jar" />
+				<include name="auany.jar" />
+			</fileset>
+		</path>
+		<delete dir="${genbuild}" />
+		<mkdir dir="${genbuild}" />
+		<javac encoding="UTF-8" srcdir="${auanygen}" destdir="${genbuild}" classpathref="classpath" debug="true" debuglevel="lines,source,vars" includeantruntime="false">
+			<compilerarg line="-Xlint:unchecked" />
+		</javac>
+		<jar jarfile="${genjar}" basedir="${genbuild}" />
+		<delete dir="${genbuild}" />
+	</target>
+
+	<target name="-copycodes">
+		<copy todir="${src2}" overwrite="true" force="true">
+			<fileset dir="${auanysrc}">
+				<include name="**/*.java" />
+				<exclude name="limax/auany/appconfig/*.java" />
+			</fileset>
+		</copy>
+		<copy todir="${src2}/limax/auany/appconfig" overwrite="true" force="true">
+			<fileset dir="${auanysrc}/limax/auany/appconfig">
+				<include name="AppKey.java" />
+				<include name="ServiceType.java" />
+				<include name="Provider.java" />
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="init" depends="-init, genjar, -copycodes" />
+
+	<target name="-compile">
+		<path id="classpath">
+			<fileset file="${limaxbin}/limax.jar" />
+			<fileset file="${genjar}" />
+		</path>
+		<javac encoding="UTF-8" destdir="${build}" classpathref="classpath" debug="true" debuglevel="lines,source,vars" includeantruntime="false">
+			<compilerarg line="-Xlint:unchecked" />
+			<compilerarg line="-implicit:none" />
+			<src path="${src}" />
+			<src path="${src2}" />
+		</javac>
+	</target>
+
+	<target name="compile" depends="init, -compile" />
+
+	<target name="clean">
+		<delete dir="${build}" />
+		<delete dir="${gen}" />
+		<delete file="${jarfile}" />
+		<delete dir="${genbuild}" />
+		<delete file="${genjar}" />
+	</target>
+
+	<target name="-dist">
+		<jar jarfile="${jarfile}" basedir="${build}" manifest="${src}/MANIFEST.MF" />
+	</target>
+
+	<target name="dist" depends="compile, -dist" />
+
+	<target name="all" depends="clean, dist" />
+
+	<target name="release" depends="-init, genjar, -compile, -dist">
+		<delete file="${genjar}" />
+	</target>
+
+</project>

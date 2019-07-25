@@ -192,12 +192,15 @@ namespace limax {
 				{
 					std::lock_guard<std::recursive_mutex> l(view->mutex);
 					viewcontext->fireViewOnAttach(view, e.sessionid);
-					if (e.vardata.index >= 0 && !viewcontext->fireViewOnData(view, e.sessionid, e.vardata.index, e.vardata.field, e.vardata.data, e.vardata.dataremoved))
-					{
-						std::stringstream ss;
-						ss << "varindex  = " << e.vardata.index << " fieldindex = " << e.vardata.field;
-						fireErrorOccured(SYSTEM_VIEW_LOST_FIELD, protocol, ss.str());
-					}
+					for (const auto& data : protocol->members)
+						if (data.vardata.index >= 0)
+							if (!viewcontext->fireViewOnData(view, data.sessionid, data.vardata.index, data.vardata.field, data.vardata.data, data.vardata.dataremoved))
+							{
+								std::stringstream ss;
+								ss << "varindex  = " << data.vardata.index << " fieldindex = " << data.vardata.field;
+								fireErrorOccured(SYSTEM_VIEW_LOST_FIELD, protocol, ss.str());
+								return;
+							}
 					return;
 				}
 				break;

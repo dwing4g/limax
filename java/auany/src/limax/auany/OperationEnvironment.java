@@ -2,7 +2,7 @@ package limax.auany;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Map;
+import java.util.function.BiConsumer;
 
 import org.w3c.dom.Element;
 
@@ -32,12 +32,13 @@ public final class OperationEnvironment {
 		};
 	}
 
-	static void initialize(Element self, Map<String, HttpHandler> httphandlers) throws Exception {
+	static void initialize(Element self, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
 		ElementHelper eh = new ElementHelper(self);
 		identity = eh.getInt("identity");
 		keys = Arrays.stream(eh.getString("keys").split(",")).map(s -> s.getBytes(StandardCharsets.UTF_8))
 				.toArray(byte[][]::new);
 		Invite.init(self, httphandlers);
+		eh.warnUnused("parserClass", "inviteExpire");
 	}
 
 	static void unInitialize() {

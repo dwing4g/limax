@@ -457,9 +457,12 @@ public final class Account {
 				if (mainid == null)
 					return true;
 				xbean.Session s = table.Session.select(mainid);
-				if (s == null || !s.getSubordinates().contains(subid))
+				if (s == null)
 					return true;
-				sessionid[0] = Long.parseUnsignedLong(subid, Character.MAX_RADIX);
+				long id = Long.parseUnsignedLong(subid, Character.MAX_RADIX);
+				if (!s.getSubordinates().contains(id))
+					return true;
+				sessionid[0] = id;
 				sessionid[1] = mainid;
 				serial[0] = s.getSerial();
 			}

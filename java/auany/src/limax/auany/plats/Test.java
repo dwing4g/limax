@@ -1,6 +1,6 @@
 package limax.auany.plats;
 
-import java.util.Map;
+import java.util.function.BiConsumer;
 
 import org.w3c.dom.Element;
 
@@ -16,7 +16,7 @@ public final class Test implements PlatProcess {
 	private String password = "123456";
 
 	@Override
-	public void init(Element ele, Map<String, HttpHandler> httphandlers) {
+	public void init(Element ele, BiConsumer<String, HttpHandler> httphandlers) {
 		final String temp = new ElementHelper(ele).getString("password");
 		if (!temp.isEmpty())
 			password = temp;

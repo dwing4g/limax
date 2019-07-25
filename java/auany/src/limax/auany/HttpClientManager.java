@@ -1,6 +1,6 @@
 package limax.auany;
 
-import java.util.Map;
+import java.util.function.BiConsumer;
 
 import org.w3c.dom.Element;
 
@@ -11,7 +11,7 @@ import limax.util.HttpClientService;
 public final class HttpClientManager {
 	private static HttpClientService service;
 
-	static void initialize(Element self, Map<String, HttpHandler> httphandlers) throws Exception {
+	static void initialize(Element self, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
 		ElementHelper eh = new ElementHelper(self);
 		int corePoolSize = eh.getInt("corePoolSize", 8);
 		int defaultMaxOutstanding = eh.getInt("defaultMaxOutstanding", 3);
@@ -20,6 +20,7 @@ public final class HttpClientManager {
 		int defaultTimeout = eh.getInt("defaultTimeout", 10000);
 		service = new HttpClientService(corePoolSize, defaultMaxOutstanding, defaultMaxQueueCapacity,
 				defaultMaxContentLength, defaultTimeout);
+		eh.warnUnused("parserClass");
 	}
 
 	public static HttpClientService getService() {

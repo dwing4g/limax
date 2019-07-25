@@ -1,6 +1,6 @@
 package limax.auany.plats;
 
-import java.util.Map;
+import java.util.function.BiConsumer;
 
 import org.w3c.dom.Element;
 
@@ -16,7 +16,7 @@ public final class PortForward implements PlatProcess {
 	private String password = "912349h12i3g487608asf601023g2r";
 
 	@Override
-	public void init(Element ele, Map<String, HttpHandler> httphandlers) {
+	public void init(Element ele, BiConsumer<String, HttpHandler> httphandlers) {
 		final ElementHelper eh = new ElementHelper(ele);
 		password = eh.getString("password");
 	}

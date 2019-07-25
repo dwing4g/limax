@@ -81,22 +81,27 @@ public final class SwitcherListener implements ServerListener {
 	private final List<ServerManager> managers = new ArrayList<>();
 
 	static {
-		byte[] _secureIp;
-		try {
-			_secureIp = InetAddress.getByName(System.getProperty("limax.net.secureIp")).getAddress();
-		} catch (UnknownHostException e) {
-			_secureIp = null;
+		String ip = System.getProperty("limax.net.secureIp");
+		if (ip == null) {
+			secureIp = null;
+		} else {
+			byte[] _secureIp;
+			try {
+				_secureIp = InetAddress.getByName(ip).getAddress();
+			} catch (UnknownHostException e) {
+				_secureIp = null;
+			}
+			secureIp = _secureIp;
 		}
-		secureIp = _secureIp;
 	}
 
 	private static class SessionObject {
 		final long sessionid;
 		final long flags;
-		final Map<Integer, Byte> pvids;
+		private Map<Integer, Byte> _pvids;
 		private volatile LmkInfo lmkInfo;
 		private volatile Set<String> dictionaryKeys;
-		private Set<Integer> _readyset;
+		private Map<Integer, Byte> pvids;
 		private Collection<Consumer<Transport>> _cache = new ArrayList<>();
 		private volatile long pingtime = 0;
 
@@ -104,12 +109,12 @@ public final class SwitcherListener implements ServerListener {
 				Set<String> dictionaryKeys) {
 			this.sessionid = sessionid;
 			this.flags = flags;
-			this.pvids = pvids;
+			this._pvids = pvids;
 			this.lmkInfo = lmkInfo;
 			this.dictionaryKeys = dictionaryKeys;
-			this._readyset = pvids.entrySet().stream()
+			this.pvids = pvids.entrySet().stream()
 					.filter(e -> SessionType.ST_STATELESS == (SessionType.ST_STATELESS & e.getValue()))
-					.map(e -> e.getKey()).collect(Collectors.toSet());
+					.collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
 		}
 
 		@Override
@@ -122,7 +127,7 @@ public final class SwitcherListener implements ServerListener {
 		}
 
 		private boolean _isReady() {
-			return null == _readyset || _readyset.size() == pvids.size();
+			return null == _pvids || pvids.size() == _pvids.size();
 		}
 
 		static enum ReadyStatus {
@@ -135,14 +140,14 @@ public final class SwitcherListener implements ServerListener {
 
 		synchronized ReadyStatus providerReady(int pvid) {
 			if (_isReady())
-				return _readyset.contains(pvid) ? ReadyStatus.RS_READY_NOW : ReadyStatus.RS_READY_BEFORE;
-			_readyset.add(pvid);
+				return pvids.containsKey(pvid) ? ReadyStatus.RS_READY_NOW : ReadyStatus.RS_READY_BEFORE;
+			pvids.put(pvid, _pvids.get(pvid));
 			return _isReady() ? ReadyStatus.RS_READY_NOW : ReadyStatus.RS_UNREADY;
 		}
 
 		synchronized Collection<Consumer<Transport>> ready() {
 			Collection<Consumer<Transport>> result = _cache;
-			_readyset = null;
+			_pvids = null;
 			_cache = null;
 			return result;
 		}
@@ -271,7 +276,6 @@ public final class SwitcherListener implements ServerListener {
 		checkingmap.remove(so.sessionid);
 		session2iomap.remove(so.sessionid);
 		ProviderListener.getInstance().broadcastLinkBroken(so.sessionid, so.pvids.keySet());
-		ProviderListener.getInstance().unregisterClient(so.sessionid, so.pvids.keySet());
 	}
 
 	private static byte[] packAddress(SocketAddress peeraddress, SocketAddress reportaddress) throws IOException {
@@ -540,14 +544,14 @@ public final class SwitcherListener implements ServerListener {
 				protocol.uid = res.uid;
 				protocol.clientaddress.swap(arg.clientaddress);
 				protocol.flags = res.flags;
-				protocol.sessiontype.putAll(so.pvids);
+				protocol.sessiontype.putAll(arg.pvids);
 				protocol.logindata.type = ProviderLoginData.tUnused;
 				Pair<Transport, limax.switcher.switcherprovider.OnlineAnnounce> pair = checkingmap.put(so.sessionid,
 						new Pair<>(transport, protocol));
 				if (pair != null)
 					closeDuplicateCheckingTransport(pair.getKey());
-				boolean hasStatefulProvider = ProviderListener.getInstance().onlineAnnounce(so.pvids.keySet(), protocol,
-						transport);
+				boolean hasStatefulProvider = ProviderListener.getInstance().onlineAnnounce(arg.pvids.keySet(),
+						protocol, transport);
 				transport.setSessionObject(so);
 				if (transport instanceof StateTransport) {
 					((StateTransport) transport).setState(SwitcherServer.EndpointClient);
@@ -700,7 +704,8 @@ public final class SwitcherListener implements ServerListener {
 				close(transport);
 			}
 		} else {
-			ProviderListener.getInstance().unregisterClient(so.sessionid, so.pvids.keySet());
+			ProviderListener.getInstance().broadcastLinkBroken(so.sessionid, so.pvids.keySet());
+			transport.setSessionObject(null);
 			try {
 				if (transport instanceof WebSocketTransport) {
 					new WebSocketProtocol(
@@ -1064,13 +1069,12 @@ public final class SwitcherListener implements ServerListener {
 			if (so == null)
 				return;
 			transport.setSessionObject(null);
-			Collection<Integer> pvids = new ArrayList<>(so.pvids.keySet());
 			if (error != ErrorCodes.PROVIDER_DUPLICATE_SESSION) {
+				ProviderListener.getInstance().unregisterClient(sessionid, pvid);
 				so.pvids.remove(pvid);
 				if (!so.pvids.isEmpty())
 					ProviderListener.getInstance().broadcastLinkBroken(so.sessionid, so.pvids.keySet());
 			}
-			ProviderListener.getInstance().unregisterClient(so.sessionid, pvids);
 			closeSession(transport, error);
 		});
 	}

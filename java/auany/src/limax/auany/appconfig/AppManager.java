@@ -9,11 +9,11 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 
 import org.w3c.dom.Element;
 
@@ -147,17 +147,17 @@ public class AppManager {
 		}
 	}
 
-	public static void initialize(Element self, Map<String, HttpHandler> httphandlers) throws Exception {
+	public static void initialize(Element self, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
 		ElementHelper eh = new ElementHelper(self);
 		current = App.load((Element) self.getElementsByTagName("appconfig").item(0), new Context());
 		String message = current.getErrorMessage();
 		if (!message.isEmpty())
 			throw new Exception(message);
-		httphandlers.put("/app",
+		httphandlers.accept("/app",
 				HttpHelper.createHttpHandler(cache = HttpHelper.makeJSONCache(HttpHelper.uri2AppKey("/app"),
 						appkey -> current.appMap.get(appkey.getAppId()).createInfo(appkey.getType()))));
-		Path patchPath = Service.getConfigParentFile().toPath().resolve(eh.getString("appConfigPatch", "appnew.xml"));
-		long patchPeriod = eh.getLong("appConfigPatchCheckPeriod", 30000l);
+		Path patchPath = Service.getConfigParentFile().toPath().resolve(eh.getString("configPatch", "appnew.xml"));
+		long patchPeriod = eh.getLong("patchCheckPeriod", 30000l);
 		MBeans.register(MBeans.root(), new AppManagerMXBean() {
 			@Override
 			public void setServiceOptional(int appid, int serviceid, String optional) {
@@ -175,6 +175,7 @@ public class AppManager {
 				lock.unlock();
 			}
 		});
+		eh.warnUnused("parserClass");
 	}
 
 }

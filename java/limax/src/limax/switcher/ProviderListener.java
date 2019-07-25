@@ -73,11 +73,16 @@ public final class ProviderListener implements ServerListener {
 			this.pvid = pvid;
 			this.pinfos = pinfos;
 			this.capability = capability;
-			this.variantDefines = variantDefines;
-			this.scriptDefines = scriptDefines;
-			int pos = scriptDefines.indexOf(":");
-			int end = pos + 1 + Integer.parseInt(scriptDefines.substring(1, pos), Character.MAX_RADIX);
-			this.scriptDefinesKey = scriptDefines.substring(scriptDefines.lastIndexOf(',', end) + 1, end);
+			this.variantDefines = isVariantEnabled() ? variantDefines : null;
+			if (isScriptEnabled()) {
+				this.scriptDefines = scriptDefines;
+				int pos = scriptDefines.indexOf(":");
+				int end = pos + 1 + Integer.parseInt(scriptDefines.substring(1, pos), Character.MAX_RADIX);
+				this.scriptDefinesKey = scriptDefines.substring(scriptDefines.lastIndexOf(',', end) + 1, end);
+			} else {
+				this.scriptDefines = null;
+				this.scriptDefinesKey = null;
+			}
 		}
 
 		private boolean capability(int mask) {
@@ -85,7 +90,7 @@ public final class ProviderListener implements ServerListener {
 		}
 
 		@Override
-		public boolean isVarinatEnabled() {
+		public boolean isVariantEnabled() {
 			return capability(Bind.PS_VARIANT_ENABLED);
 		}
 
@@ -474,7 +479,7 @@ public final class ProviderListener implements ServerListener {
 			if (Main.isSessionUseVariant(e.getValue())) {
 				if (!args.isVariantSupported())
 					return ErrorCodes.PROVIDER_UNSUPPORTED_VARINAT;
-				else if (!args.isVarinatEnabled())
+				else if (!args.isVariantEnabled())
 					return ErrorCodes.PROVIDER_NOT_ALLOW_VARINAT;
 			}
 			if (Main.isSessionUseScript(e.getValue())) {
@@ -505,10 +510,13 @@ public final class ProviderListener implements ServerListener {
 		return ((SessionObject) transport.getSessionObject()).pvid;
 	}
 
-	synchronized void unregisterClient(long sid, Collection<Integer> pvids) {
-		pvids.stream().map(pvid -> pvidmap.get(pvid)).filter(Objects::nonNull)
-				.map(t -> (SessionObject) t.getSessionObject()).filter(so -> !so.isStateless())
-				.forEach(so -> so.sids.remove(sid));
+	synchronized void unregisterClient(long sid, int pvid) {
+		Transport transport = pvidmap.get(pvid);
+		if (transport != null) {
+			SessionObject so = (SessionObject) transport.getSessionObject();
+			if (!so.isStateless())
+				so.sids.remove(sid);
+		}
 	}
 
 	synchronized boolean onlineAnnounce(Collection<Integer> pvids, Protocol protocol, Transport _transport) {

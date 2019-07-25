@@ -1,2 +1,3 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<logger className="limax.auany.logger.PayLoggerSimpleFile"  payLoggerSimpleFileHome="paylogs"/>
+<logger enable="true" className="limax.auany.logger.PayLoggerSimpleFile"
+	payLoggerSimpleFileHome="paylogs" />

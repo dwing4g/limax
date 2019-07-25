@@ -9,6 +9,9 @@ namespace limax {
 	class LIMAX_DLL_EXPORT_API DictionaryCache
 	{
 	public:
+		DictionaryCache();
+		virtual ~DictionaryCache();
+	public:
 		virtual void put(std::string key, std::string value) = 0;
 		virtual std::string get(std::string key) = 0;
 		virtual std::vector<std::string> keys() = 0;
@@ -20,6 +23,9 @@ namespace limax {
 	{
 		std::mutex mutex;
 		hashmap<std::string, std::string> map;
+	public:
+		SimpleDictionaryCache();
+		virtual ~SimpleDictionaryCache();	
 	public:
 		virtual void put(std::string key, std::string value) override {
 			std::lock_guard<std::mutex> l(mutex);

@@ -44,7 +44,8 @@ final class StatesFormatter {
 					ps.println("			return state;");
 					ps.println("		}");
 					ps.println("		static public limax.net.State getDefaultState(int pvid) {");
-					ps.println("			return create" + manager.getInitStateName() + "(pvid);;");
+					ps.println(
+							"			return create" + StringUtils.upper1(manager.getInitStateName()) + "(pvid);;");
 					ps.println("		}");
 					ps.println("	}");
 					ps.println("}");

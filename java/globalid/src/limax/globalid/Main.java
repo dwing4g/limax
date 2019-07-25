@@ -75,6 +75,22 @@ public class Main {
 					} catch (Exception e) {
 					}
 				} , 0, keepAliveTimeout / 2, TimeUnit.MILLISECONDS);
+			Service.addRunAfterEngineStartTask(() -> {
+				try {
+					Procedure.call(() -> {
+						if (table.Maxgroupid.insert(0, maxgroupid) == null)
+							maxgroupid = table.Maxgroupid.select(0);
+						table.Namegroups.get().walk((k, v) -> {
+							groupids.put(k, v);
+							return true;
+						});
+						return true;
+					});
+				} catch (Exception e) {
+					Trace.fatal("get maxgroupid fatal.", e);
+					System.exit(0);
+				}
+			});
 		}
 
 		@Override
@@ -262,22 +278,6 @@ public class Main {
 	static Map<String, Short> groupids = new ConcurrentHashMap<>();
 
 	public static void main(String args[]) throws Exception {
-		Service.addRunAfterEngineStartTask(() -> {
-			try {
-				Procedure.call(() -> {
-					if (table.Maxgroupid.insert(0, maxgroupid) == null)
-						maxgroupid = table.Maxgroupid.select(0);
-					table.Namegroups.get().walk((k, v) -> {
-						groupids.put(k, v);
-						return true;
-					});
-					return true;
-				});
-			} catch (Exception e) {
-				Trace.fatal("get maxgroupid fatal.", e);
-				System.exit(0);
-			}
-		});
 		Service.run(args.length > 0 ? args[0] : "service-globalid.xml");
 	}
 }

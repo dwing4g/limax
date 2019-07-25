@@ -43,7 +43,7 @@ namespace limax {
 		ss << reportError;
 		std::string message(ss.str());
 		std::shared_ptr<WebSocketConnector> _this(self);
-		runOnUiThread([_this, status, message](){ _this->process(2, message); });
+		runOnUiThread([_this, message](){ _this->process(2, message); });
 	}
 
 	void WebSocketConnector::onCreate(TcpClient *tcpclient)

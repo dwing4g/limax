@@ -16,12 +16,15 @@
 		<mkdir dir="${build}" />
 	</target>
 
-	<target name="xmlgen" depends="limax">
-		<java classpath="${limaxbin}/limax.jar" classname="limax.xmlgen.Main" fork="true">
+	<target name="-xmlgen">
+		<java classpath="${limaxbin}/limax.jar" classname="limax.xmlgen.Main"
+			fork="true">
 			<arg value="-java" />
 			<arg value="../limax/globalid.xml" />
 		</java>
 	</target>
+
+	<target name="xmlgen" depends="limax, -xmlgen" />
 
 	<target name="init" depends="-init, limax, xmlgen" />
 
@@ -31,7 +34,9 @@
 				<include name="**/*.jar" />
 			</fileset>
 		</path>
-		<javac encoding="UTF-8" srcdir="${src}:${gen}" destdir="${build}" includeantruntime="false" classpathref="classpath" debug="true" debuglevel="lines,source,vars">
+		<javac encoding="UTF-8" srcdir="${src}:${gen}" destdir="${build}"
+			includeantruntime="false" classpathref="classpath" debug="true"
+			debuglevel="lines,source,vars">
 			<compilerarg line="-Xlint:unchecked" />
 		</javac>
 	</target>
@@ -52,7 +57,7 @@
 
 	<target name="all" depends="clean, dist" />
 
-	<target name="release" depends="-init, xmlgen, -compile, -dist" />
+	<target name="release" depends="-init, -xmlgen, -compile, -dist" />
 
 	<target name="-run">
 		<java jar="${jarfile}" fork="true" spawn="true" />

@@ -5,8 +5,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
@@ -21,7 +20,6 @@ import limax.switcher.LmkMasquerade;
 import limax.switcher.LmkStore;
 import limax.util.ElementHelper;
 import limax.util.Trace;
-import limax.util.XMLUtils;
 import limax.zdb.ManagementFactory;
 
 public class LmkManager {
@@ -75,25 +73,24 @@ public class LmkManager {
 		return new Exchange(Exchange.CONFIG_LMKMASQUERADE, lmkConfigData.encode());
 	}
 
-	static void initialize(Element self, Map<String, HttpHandler> httphandlers) throws Exception {
-		Optional<ElementHelper> optional = XMLUtils.getChildElements(self).stream()
-				.filter(node -> node.getNodeName().equals("lmk")).map(e -> new ElementHelper(e)).findFirst();
-		if (optional.isPresent()) {
-			ElementHelper eh = optional.get();
-			String passphrase = eh.getString("passphrase", null);
-			sslContextAllocator = new SSLContextAllocator(URI.create(eh.getString("location")), passphrase == null
-					? prompt -> System.console().readPassword(prompt) : prompt -> passphrase.toCharArray());
-			exchange = reload(eh);
-			LmkStore.recover(lmkMasquerade);
-			sslContextAllocator.addChangeListener(ctx -> {
-				try {
-					SessionManager.broadcast(exchange = reload(eh));
-				} catch (Exception e) {
-					if (Trace.isErrorEnabled())
-						Trace.error("LmkManager reload", e);
-				}
-			});
-		}
+	static void initialize(Element self, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
+		ElementHelper eh = new ElementHelper(self);
+		if (!eh.getBoolean("enable", false))
+			return;
+		String passphrase = eh.getString("passphrase", null);
+		sslContextAllocator = new SSLContextAllocator(URI.create(eh.getString("location")), passphrase == null
+				? prompt -> System.console().readPassword(prompt) : prompt -> passphrase.toCharArray());
+		exchange = reload(eh);
+		LmkStore.recover(lmkMasquerade);
+		sslContextAllocator.addChangeListener(ctx -> {
+			try {
+				SessionManager.broadcast(exchange = reload(eh));
+			} catch (Exception e) {
+				if (Trace.isErrorEnabled())
+					Trace.error("LmkManager reload", e);
+			}
+		});
+		eh.warnUnused();
 	}
 
 	static void sendConfigData(Transport transport) throws Exception {

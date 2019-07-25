@@ -689,8 +689,8 @@ public final class Variant implements JSONMarshal {
 
 		@Override
 		public boolean equals(Object obj) {
-			if (obj instanceof StringData) {
-				final StringData data = (StringData) obj;
+			if (obj instanceof OctetsData) {
+				final OctetsData data = (OctetsData) obj;
 				return data.value.equals(value);
 			}
 			return false;

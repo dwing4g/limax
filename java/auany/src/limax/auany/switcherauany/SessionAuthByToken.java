@@ -61,7 +61,7 @@ public class SessionAuthByToken
 	}
 
 	public long getTimeout() {
-		return 5000;
+		return 15000;
 	}
 
 	// DO NOT EDIT THIS }}}

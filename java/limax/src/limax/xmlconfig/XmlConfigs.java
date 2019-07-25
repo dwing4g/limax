@@ -319,9 +319,16 @@ public class XmlConfigs {
 			}
 		};
 
+		private static ConfigParser hollowConfigParser() {
+			return e -> {
+			};
+		}
+
 		@Override
 		public ConfigParser createConfigParse(Element self) throws Exception {
 			ElementHelper eh = new ElementHelper(self);
+			if (!eh.getBoolean("enable", true))
+				return hollowConfigParser();
 			final String name = eh.getString("name");
 			if (name.isEmpty())
 				throw new IllegalArgumentException("Manager need a name");

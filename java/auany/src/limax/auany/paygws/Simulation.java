@@ -3,11 +3,11 @@ package limax.auany.paygws;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 
 import org.w3c.dom.Element;
 
@@ -33,13 +33,13 @@ public final class Simulation implements PayGateway, HttpHandler {
 	private int maxAmount = 0;;
 
 	@Override
-	public void initialize(Element e, Map<String, HttpHandler> httphandlers) {
+	public void initialize(Element e, BiConsumer<String, HttpHandler> httphandlers) {
 		ElementHelper eh = new ElementHelper(e);
 		gateway = eh.getInt("gateway");
 		httpContext = eh.getString("httpContext");
 		maxAmount = eh.getInt("maxAmount", maxAmount);
 		maxDeliveryRandomDelay = eh.getLong("maxDeliveryRandomDelay", maxDeliveryRandomDelay);
-		httphandlers.put(httpContext, this);
+		httphandlers.accept(httpContext, this);
 	}
 
 	@Override

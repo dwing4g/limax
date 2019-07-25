@@ -3,47 +3,90 @@
 <project name="autiny" default="dist">
 
 	<property name="src" location="src/" />
+	<property name="gen" location="gen/" />
 	<property name="src2" location="auany/" />
-	<property name="auanysrc" location="../auany/src/" />
-	<property name="auanygen" location="../auany/gen/" />
-	<property name="genbuild" location="genbin/" />
 	<property name="build" location="bin/" />
+	<property name="auanysrc" location="../auany/src/" />
+	<property name="globalidsrc" location="../globalid/src/" />
+	<property name="gentempxml" value="gen.codes.temp.xml" />
+	<property name="genzdbxml" value="cache.zdb.xml" />
+	<property name="gensvrxml" value="cache.svr.xml" />
+	<property name="genbuild" location="genbin/" />
+	<property name="limaxsrc" location="../../java/limax" />
 	<property name="limaxbin" location="../../bin" />
 	<property name="genjar" value="gencodes.jar" />
 	<property name="jarfile" value="${limaxbin}/autiny.jar" />
 
-	<target name="auany-xmlgen">
-		<ant dir="../auany" target="xmlgen" inheritAll="false" />
+	<target name="auany">
+		<ant dir="../auany" target="dist" inheritAll="false" />
 	</target>
 
 	<target name="-init">
 		<mkdir dir="${build}" />
 	</target>
 
-	<target name="genjar" depends="auany-xmlgen">
+	<target name="-genjar">
+		<delete dir="${genbuild}" />
+		<delete dir="${gen}" />
+		<mkdir dir="${genbuild}" />
+		<javac encoding="UTF-8" srcdir="${src}"
+			includes="limax/auany/tiny/util/xmlfiles/**" destdir="${genbuild}"
+			classpath="${limaxbin}/limax.jar" debug="true" debuglevel="lines,source,vars"
+			includeantruntime="false">
+			<compilerarg line="-Xlint:unchecked" />
+		</javac>
+		<java classname="limax.auany.tiny.util.xmlfiles.GenCodes"
+			classpath="${genbuild}:${limaxbin}/limax.jar" fork="yes">
+			<arg value="${limaxsrc}/auany.xml" />
+			<arg value="${limaxsrc}/globalid.xml" />
+			<arg value="${gentempxml}" />
+			<arg value="${genzdbxml}" />
+			<arg value="${gensvrxml}" />
+		</java>
+		<java classpath="${limaxbin}/limax.jar" classname="limax.xmlgen.Main"
+			fork="true">
+			<arg value="-java" />
+			<arg value="-script" />
+			<arg value="-noServiceXML" />
+			<arg value="${gentempxml}" />
+		</java>
+		<delete file="${gentempxml}" />
+		<delete dir="${src}"
+			excludes="MANIFEST.MF limax/auany/* limax/auany/appconfig/** limax/auany/tiny/**" />
+
+		<delete dir="${genbuild}" />
+		<mkdir dir="${genbuild}" />
 		<path id="classpath">
 			<fileset dir="${limaxbin}">
 				<include name="limax.jar" />
 				<include name="auany.jar" />
+				<include name="globalid.jar" />
 			</fileset>
 		</path>
-		<delete dir="${genbuild}" />
-		<mkdir dir="${genbuild}" />
-		<javac encoding="UTF-8" srcdir="${auanygen}" destdir="${genbuild}" classpathref="classpath" debug="true" debuglevel="lines,source,vars" includeantruntime="false">
+		<javac encoding="UTF-8" srcdir="${gen}" destdir="${genbuild}"
+			classpathref="classpath" debug="true" debuglevel="lines,source,vars"
+			includeantruntime="false">
 			<compilerarg line="-Xlint:unchecked" />
 		</javac>
 		<jar jarfile="${genjar}" basedir="${genbuild}" />
 		<delete dir="${genbuild}" />
 	</target>
 
-	<target name="-copycodes">
+	<target name="genjar" depends="auany, -genjar" />
+
+	<target name="copycodes">
+		<delete dir="${src2}" />
 		<copy todir="${src2}" overwrite="true" force="true">
 			<fileset dir="${auanysrc}">
 				<include name="**/*.java" />
 				<exclude name="limax/auany/appconfig/*.java" />
 			</fileset>
+			<fileset dir="${globalidsrc}">
+				<include name="**/*.java" />
+			</fileset>
 		</copy>
-		<copy todir="${src2}/limax/auany/appconfig" overwrite="true" force="true">
+		<copy todir="${src2}/limax/auany/appconfig" overwrite="true"
+			force="true">
 			<fileset dir="${auanysrc}/limax/auany/appconfig">
 				<include name="AppKey.java" />
 				<include name="ServiceType.java" />
@@ -52,14 +95,15 @@
 		</copy>
 	</target>
 
-	<target name="init" depends="-init, genjar, -copycodes" />
+	<target name="init" depends="-init, genjar, copycodes" />
 
 	<target name="-compile">
 		<path id="classpath">
 			<fileset file="${limaxbin}/limax.jar" />
 			<fileset file="${genjar}" />
 		</path>
-		<javac encoding="UTF-8" destdir="${build}" classpathref="classpath" debug="true" debuglevel="lines,source,vars" includeantruntime="false">
+		<javac encoding="UTF-8" destdir="${build}" classpathref="classpath"
+			debug="true" debuglevel="lines,source,vars" includeantruntime="false">
 			<compilerarg line="-Xlint:unchecked" />
 			<compilerarg line="-implicit:none" />
 			<src path="${src}" />
@@ -72,12 +116,21 @@
 	<target name="clean">
 		<delete dir="${build}" />
 		<delete dir="${gen}" />
+		<delete dir="${src2}" />
 		<delete file="${jarfile}" />
 		<delete dir="${genbuild}" />
 		<delete file="${genjar}" />
+
+		<delete file="${gentempxml}" />
+		<delete file="${genzdbxml}" />
+		<delete file="${gensvrxml}" />
 	</target>
 
 	<target name="-dist">
+		<copy file="${genzdbxml}" todir="${build}/limax/auany/tiny/util/xmlfiles"
+			overwrite="true" force="true" />
+		<copy file="${gensvrxml}" todir="${build}/limax/auany/tiny/util/xmlfiles"
+			overwrite="true" force="true" />
 		<jar jarfile="${jarfile}" basedir="${build}" manifest="${src}/MANIFEST.MF" />
 	</target>
 
@@ -85,8 +138,6 @@
 
 	<target name="all" depends="clean, dist" />
 
-	<target name="release" depends="-init, genjar, -compile, -dist">
-		<delete file="${genjar}" />
-	</target>
+	<target name="release" depends="-init, -genjar, copycodes, -compile, -dist" />
 
 </project>

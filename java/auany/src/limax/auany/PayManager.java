@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -86,9 +87,9 @@ public final class PayManager {
 	};
 	private final static Map<Integer, PayGateway> gateways = new HashMap<>();
 
-	static void initialize(Element self, Map<String, HttpHandler> httphandlers) throws Exception {
+	static void initialize(Element self, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
 		ElementHelper eh = new ElementHelper(self);
-		boolean payEnable = eh.getBoolean("payEnable", false);
+		boolean payEnable = eh.getBoolean("enable", false);
 		if (payEnable) {
 			Path orderQueueHome = Paths.get(eh.getString("orderQueueHome", "queue"));
 			Path deliveryQueueHome = Paths.get(eh.getString("deliveryQueueHome", "queue"));
@@ -119,6 +120,7 @@ public final class PayManager {
 			for (int i = 0; i < count; i++)
 				parsePayElement((Element) list.item(i), httphandlers);
 			enabled = true;
+			eh.warnUnused("parserClass");
 		}
 	}
 
@@ -139,7 +141,7 @@ public final class PayManager {
 		}
 	}
 
-	private static void parsePayElement(Element e, Map<String, HttpHandler> httphandlers) throws Exception {
+	private static void parsePayElement(Element e, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
 		ElementHelper eh = new ElementHelper(e);
 		int gateway = eh.getInt("gateway");
 		PayGateway payGateway = (PayGateway) Class.forName(eh.getString("className")).newInstance();

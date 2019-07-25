@@ -62,6 +62,7 @@ public final class PayLoggerSimpleFile implements PayLogger {
 			Files.createDirectories(path = Paths.get(eh.getString("payLoggerSimpleFileHome", "paylogs")));
 		} catch (IOException e1) {
 		}
+		eh.warnUnused();
 	}
 
 	private String format(Date date, String op, PayOrder o) {

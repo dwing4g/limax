@@ -110,7 +110,7 @@ namespace limax {
 			if (timeout)
 				pushErrorOccured(SOURCE_ENDPOINT, ENDPOINT_PING_TIMEOUT, "ping server time out");
 			dispatcher.await();
-			dispatcher([this, session]()
+			dispatcher([this]()
 			{
 				if (LoginStatus::LOGINING == loginstatus)
 				{

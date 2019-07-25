@@ -1,6 +1,6 @@
 package limax.auany;
 
-import java.util.Map;
+import java.util.function.BiConsumer;
 
 import org.w3c.dom.Element;
 
@@ -9,7 +9,7 @@ import limax.http.HttpHandler;
 
 public interface PlatProcess {
 
-	void init(Element e, Map<String, HttpHandler> httphandlers);
+	void init(Element e, BiConsumer<String, HttpHandler> httphandlers);
 
 	void check(String username, String token, Result result);
 }

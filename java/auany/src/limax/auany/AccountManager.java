@@ -2,7 +2,7 @@ package limax.auany;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.function.BiConsumer;
 
 import org.w3c.dom.Element;
 
@@ -36,9 +36,9 @@ public class AccountManager {
 		}
 	};
 
-	static void initialize(Element self, Map<String, HttpHandler> httphandlers) throws Exception {
-		for (Element e : XMLUtils.getChildElements(self).stream().filter(node -> node.getNodeName().equals("logger"))
-				.toArray(Element[]::new)) {
+	static void initialize(Element self, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
+		for (Element e : XMLUtils.getChildElements(self).stream()
+				.filter(node -> node.getAttribute("enable").equals("true")).toArray(Element[]::new)) {
 			Class<?> clazz = Class.forName(new ElementHelper(e).getString("className"));
 			if (Helper.interfaceSet(clazz).contains(AccountLogger.class)) {
 				AccountLogger logger = (AccountLogger) clazz.newInstance();

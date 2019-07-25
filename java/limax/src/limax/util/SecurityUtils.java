@@ -68,7 +68,6 @@ import limax.codec.asn1.ASN1PrimitiveObject;
 import limax.codec.asn1.ASN1RawData;
 import limax.codec.asn1.ASN1Sequence;
 import limax.codec.asn1.DecodeBER;
-import sun.security.pkcs11.SunPKCS11;
 
 public final class SecurityUtils {
 
@@ -685,7 +684,8 @@ public final class SecurityUtils {
 		path = path.toAbsolutePath().normalize();
 		Pair<char[], Provider> pair = mapPKCS11Providers.get(path);
 		if (pair == null) {
-			Provider provider = new SunPKCS11(path.toString());
+			Provider provider = (Provider) Class.forName("sun.security.pkcs11.SunPKCS11").getConstructor(String.class)
+					.newInstance(path.toString());
 			Security.addProvider(provider);
 			mapPKCS11Providers.put(path, pair = new Pair<>(cb.apply("PKCS11 [" + path + "] PIN:"), provider));
 		}

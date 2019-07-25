@@ -4,6 +4,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import org.w3c.dom.Element;
 
@@ -60,13 +61,14 @@ class Invite {
 		}
 	}
 
-	public static void init(Element e, Map<String, HttpHandler> httphandlers) {
+	public static void init(Element e, BiConsumer<String, HttpHandler> httphandlers) {
 		ElementHelper eh = new ElementHelper(e);
-		LIFETIME = eh.getLong("lifetime", 60000l) * 1000000l;
-		httphandlers.put("/invite",
-				HttpHelper.createHttpHandler(HttpHelper.makeJSONCacheNone(HttpHelper.uri2AppKey("/invite"),
+		LIFETIME = eh.getLong("inviteExpire", 60000l) * 1000000l;
+		final HttpHandler handler = HttpHelper
+				.createHttpHandler(HttpHelper.makeJSONCacheNone(HttpHelper.uri2AppKey("/invite"),
 						key -> new InviteCode(AppManager.randomSwitcher(key.getType(), key.getAppId()),
-								alloc(key.getAppId())))));
+								alloc(key.getAppId()))));
+		httphandlers.accept("/invite", handler);
 	}
 
 	public static void check(String username, String token, Set<Integer> pvids, Result result) {

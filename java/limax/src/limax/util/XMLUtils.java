@@ -94,6 +94,14 @@ public final class XMLUtils {
 		return factory.newDocumentBuilder();
 	}
 
+	public static Element createRootElement(String name) throws Exception {
+		DocumentBuilder db = createDocumentBuilder();
+		final Document doc = db.newDocument();
+		final Element root = doc.createElement(name);
+		doc.appendChild(root);
+		return root;
+	}
+
 	public static Element getRootElement(File file) throws Exception {
 		DocumentBuilder db = createDocumentBuilder();
 		final Document doc = db.parse(file);

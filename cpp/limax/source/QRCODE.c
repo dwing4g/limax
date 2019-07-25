@@ -3,9 +3,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
-#include "QRCODE.h"
+#include "../include/QRCODE.h"
 
-#ifdef LIMAX_OS_APPLE_FAMILY
+#ifdef __APPLE__
 #include <malloc/malloc.h>
 #else
 #include <malloc.h>
@@ -204,7 +204,7 @@ void qr_initialize(){
 		map[(int)"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[i]] = i;
 	char *p = KANJI;
 	int pos = 0;
-	for (int i = 0; i < sizeof(kanji) / 3; i++) {
+	for (int i = 0; i < (int)(sizeof(kanji) / 3); i++) {
 		int v = map[(int)*p++] << 18;
 		v |= map[(int)*p++] << 12;
 		v |= map[(int)*p++] << 6;
@@ -1548,7 +1548,7 @@ static int bitCount(int value) {
 }
 
 static int decodeVersion(int encodedVersion) {
-	for (int i = 0; i < sizeof(ECC_VERSION) / sizeof(ECC_VERSION[0]); i++)
+	for (int i = 0; i < (int)(sizeof(ECC_VERSION) / sizeof(ECC_VERSION[0])); i++)
 		if (bitCount(ECC_VERSION[i] ^ encodedVersion) <= 3)
 			return i + 7;
 	return -1;
@@ -1585,7 +1585,7 @@ static int ECC_FORMAT[] = { 0x5412, 0x5125, 0x5e7c, 0x5b4b, 0x45f9, 0x40ce, 0x4f
 0x0255, 0x0d0c, 0x083b, 0x355f, 0x3068, 0x3f31, 0x3a06, 0x24b4, 0x2183, 0x2eda, 0x2bed };
 
 static int decodeFormat(int encodedFormat) {
-	for (int i = 0; i < sizeof(ECC_FORMAT) / sizeof(ECC_FORMAT[0]); i++)
+	for (int i = 0; i < (int)(sizeof(ECC_FORMAT) / sizeof(ECC_FORMAT[0])); i++)
 		if (bitCount(ECC_FORMAT[i] ^ encodedFormat) <= 3)
 			return i;
 	return -1;

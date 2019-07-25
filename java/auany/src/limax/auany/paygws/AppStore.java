@@ -11,11 +11,11 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -46,7 +46,7 @@ public final class AppStore implements PayGateway {
 	private static long receiptExpire;
 
 	@Override
-	public void initialize(Element e, Map<String, HttpHandler> httphandlers) throws Exception {
+	public void initialize(Element e, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
 		ElementHelper eh = new ElementHelper(e);
 		url = new URL(eh.getString("url", "https://buy.itunes.apple.com/verifyReceipt"));
 		pattern = Pattern.compile(eh.getString("productPattern", "[^\\d]+([\\d]+)$"));

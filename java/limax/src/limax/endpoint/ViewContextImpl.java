@@ -92,12 +92,12 @@ final class ViewContextImpl {
 		case SyncViewToClients.DT_TEMPORARY_ATTACH: {
 			final TemporaryView view = findTemporaryView(p.classindex, p.instanceindex);
 			if (view != null && p.members.size() >= 1) {
-				ViewMemberData e = p.members.get(0);
 				synchronized (view) {
-					view.onAttach(e.sessionid);
-					if (e.vardata.index >= 0)
-						view.onData(e.sessionid, e.vardata.index, e.vardata.field, e.vardata.data,
-								e.vardata.dataremoved);
+					view.onAttach(p.members.get(0).sessionid);
+					for (ViewMemberData var : p.members)
+						if (var.vardata.index >= 0)
+							view.onData(var.sessionid, var.vardata.index, var.vardata.field, var.vardata.data,
+									var.vardata.dataremoved);
 				}
 			}
 			break;

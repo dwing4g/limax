@@ -16,13 +16,15 @@
 		<mkdir dir="${build}" />
 	</target>
 
-	<target name="xmlgen" depends="limax">
+	<target name="-xmlgen">
 		<java classpath="${limaxbin}/limax.jar" classname="limax.xmlgen.Main" fork="true">
 			<arg value="-java" />
 			<arg value="-script" />
 			<arg value="../limax/auany.xml" />
 		</java>
 	</target>
+
+	<target name="xmlgen" depends="limax, -xmlgen" />
 
 	<target name="init" depends="-init, limax, xmlgen" />
 
@@ -53,12 +55,23 @@
 
 	<target name="all" depends="clean, dist" />
 
-	<target name="release" depends="-init, xmlgen, -compile, -dist" />
+	<target name="release" depends="-init, -xmlgen, -compile, -dist" />
 
 	<target name="-run">
 		<java jar="${jarfile}" fork="true" spawn="true" />
 	</target>
 
 	<target name="run" depends="dist, -run" />
+
+	<target name="stop">
+		<java classpath="${limaxbin}/limax.jar" classname="limax.executable.Main" fork="true">
+			<arg value="jmxtool" />
+			<arg value="stop" />
+			<arg value="-c" />
+			<arg value="service:jmx:rmi://localhost:10202/jndi/rmi://localhost:10201/jmxrmi" />
+			<arg value="-d" />
+			<arg value="1" />
+		</java>
+	</target>
 
 </project>

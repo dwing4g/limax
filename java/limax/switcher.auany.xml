@@ -22,7 +22,7 @@
 	</bean>
 
 	<rpc name="SessionAuthByToken" type="10" argument="AuanyAuthArg"
-		result="AuanyAuthRes" maxsize="8192" timeout="5000" />
+		result="AuanyAuthRes" maxsize="8192" timeout="15000" />
 
 	<bean name="CheckProviderKeyArg">
 		<variable name="pvid" type="int" />

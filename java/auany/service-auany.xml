@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ServiceConf name="auany" xmlns:xi="http://www.w3.org/2001/XInclude">
     <JmxServer host="localhost" rmiPort="10201" serverPort="10202"/>
+    <Trace console="true" level="INFO" outDir="./trace"
+        rotateHourOfDay="6" rotateMinute="0"/>
     <Zdb autoKeyInitValue="0" autoKeyStep="16777216"
         checkpointPeriod="60000" corePoolSize="30" dbhome="zdb"
         deadlockDetectPeriod="1000"
@@ -11,34 +13,45 @@
         <Procedure maxExecutionTime="0" retryDelay="100"
             retrySerial="false" retryTimes="3" trace="WARN"/>
     </Zdb>
-    <Auany appConfigPatch="appnew.xml" appConfigPatchCheckPeriod="30000"
-        deliveryExpire="604800000" deliveryQueueBackoffMax="5"
-        deliveryQueueCheckPeriod="60000"
-        deliveryQueueConcurrencyBits="3" deliveryQueueHome="queue"
-        deliveryQueueScheduler="4" fileTransactionHome="transactions"
-        firewallConfig="firewall.xml" firewallConfigCheckPeriod="30000"
-        httpClientCorePoolSize="8"
-        httpClientDefaultMaxContentLength="16384"
-        httpClientDefaultMaxOutstanding="3"
-        httpClientDefaultMaxQueueCapacity="16"
-        httpClientDefaultTimeout="10000" httpServerIp="0.0.0.0"
-        httpServerPort="8181" identity="0" inviteExpire="60000"
-        keys="3df9xDFFDC" orderExpire="3600000"
-        orderQueueConcurrencyBits="3" orderQueueHome="queue"
-        parserClass="limax.auany.XmlConfig$LoadConfig" payEnable="true">
+    <AuanyHttpService httpServerIp="0.0.0.0" httpServerPort="8181" parserClass="limax.auany.XmlConfig$HttpServerConfig"/>
+    <OperationEnvironment identity="0" inviteExpire="60000"
+        keys="3df9xDFFDC" parserClass="limax.auany.XmlConfig$OperationEnvironmentConfig"/>
+    <LmkManager enable="false" location="pkcs12:/work/auany.p12"
+        parserClass="limax.auany.XmlConfig$LmkManagerConfig"
+        passphrase="123456" revocationCheckerOptions="disable"
+        trustsPath="/work/pkix/root/ca.p7b" validateDate="true"/>
+    <AuanyHttpClient corePoolSize="8" defaultMaxContentLength="16384"
+        defaultMaxOutstanding="3" defaultMaxQueueCapacity="16"
+        defaultTimeout="10000" parserClass="limax.auany.XmlConfig$HttpClientConfig"/>
+    <Firewall checkPeriod="30000" config="firewall.xml" parserClass="limax.auany.XmlConfig$FirewallConfig"/>
+    <AppManager configPatch="appnew.xml"
+        parserClass="limax.auany.XmlConfig$AppManagerConfig" patchCheckPeriod="30000">
         <xi:include href="appconfig.xml"/>
-        <!-- xi:include href="accountloggermysql.xml"/ -->
-        <!-- xi:include href="payloggermysql.xml"/ -->
+    </AppManager>
+    <Firewall checkPeriod="30000" config="firewall.xml" parserClass="limax.auany.XmlConfig$FirewallConfig"/>
+    <AccountManager parserClass="limax.auany.XmlConfig$AccountManagerConfig">
+        <xi:include href="accountloggermysql.xml"/>
+        <xi:include href="payloggermysql.xml"/>
         <xi:include href="payloggerfile.xml"/>
-        <plat className="limax.auany.plats.Test" name="test" password="123456"/>
-        <plat className="limax.auany.plats.PortForward"
+    </AccountManager>
+    <PlatManager parserClass="limax.auany.XmlConfig$PlatManagerConfig">
+        <plat className="limax.auany.plats.Test" enable="true"
+            name="test" password="123456"/>
+        <plat className="limax.auany.plats.PortForward" enable="false"
             name="portforward" password="portforward!!"/>
-        <plat className="limax.auany.local.Authenticator" name="local"
-            scheduler="8" timeout="2000">
+        <plat className="limax.auany.local.Authenticator" enable="false"
+            name="local" scheduler="8" timeout="2000">
             <radius host="192.168.1.1" port="1812" secret="helloworld"/>
             <ldap baseDN="cn=users,dc=limax,dc=org" key="uid" url="ldap://192.168.1.1:389/"/>
             <sql opClassName="limax.auany.local.SimpleSqlOp" pool="8" url="jdbc:mysql://192.168.1.3:3306/test?user=root&amp;password=admin&amp;characterEncoding=utf8"/>
         </plat>
+    </PlatManager>
+    <PayManager deliveryExpire="604800000" deliveryQueueBackoffMax="5"
+        deliveryQueueCheckPeriod="60000"
+        deliveryQueueConcurrencyBits="3" deliveryQueueHome="queue"
+        deliveryQueueScheduler="4" enable="true"
+        fileTransactionHome="transactions" orderExpire="3600000"
+        orderQueueConcurrencyBits="3" orderQueueHome="queue" parserClass="limax.auany.XmlConfig$PayManagerConfig">
         <pay className="limax.auany.paygws.Simulation" gateway="0"
             httpContext="/pay/simulation" maxAmount="999999" maxDeliveryRandomDelay="30000"/>
         <appstore home="appstore" maxContentLength="16384"
@@ -48,12 +61,7 @@
             receiptVerifyScheduler="4" retryDelay="300000" timeout="15000"/>
         <pay className="limax.auany.paygws.AppStore" gateway="1"
             productPattern="[^\d]+([\d]+)$" url="https://buy.itunes.apple.com/verifyReceipt"/>
-        <!--lmk location="pkcs12:/work/auany.p12" passphrase="123456"
-            revocationCheckerOptions="disable"
-            trustsPath="/work/pkix/root/ca.p7b" validateDate="true"/-->
-    </Auany>
-    <Trace console="true" level="INFO" outDir="./trace"
-        rotateHourOfDay="6" rotateMinute="0"/>
+    </PayManager>
     <Provider additionalStateClass="limax.auany.states.AuanyServer"
         className="limax.auany.SessionManager"
         defaultStateClass="limax.auany.states.AuanyProvider"

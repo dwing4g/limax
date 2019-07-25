@@ -2,9 +2,9 @@ package limax.auany.local;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
@@ -49,11 +49,12 @@ public class Authenticator implements PlatProcess {
 	}
 
 	@Override
-	public void init(Element ele, Map<String, HttpHandler> httphandlers) {
+	public void init(Element ele, BiConsumer<String, HttpHandler> httphandlers) {
 		ElementHelper eh = new ElementHelper(ele);
 		int timeout = eh.getInt("timeout", 2000);
+		String name = eh.getString("name");
 		ScheduledExecutorService scheduler = ConcurrentEnvironment.getInstance()
-				.newScheduledThreadPool(getClass().getName(), eh.getInt("scheduler", 8));
+				.newScheduledThreadPool(getClass().getName() + "." + name, eh.getInt("scheduler", 8));
 		try {
 			for (Element e : XMLUtils.getChildElements(ele)) {
 				eh = new ElementHelper(e);
@@ -73,6 +74,7 @@ public class Authenticator implements PlatProcess {
 				default:
 					throw new IllegalArgumentException("unknown local authenticator " + e.getTagName());
 				}
+				eh.warnUnused();
 			}
 		} catch (Exception e) {
 			if (Trace.isErrorEnabled())

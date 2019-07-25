@@ -31,7 +31,7 @@ import limax.util.Trace;
 final class PlatManager {
 	private final static Map<String, PlatProcess> plats = new ConcurrentHashMap<>();
 
-	static void initialize(Element self, Map<String, HttpHandler> httphandlers) throws Exception {
+	static void initialize(Element self, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
 		NodeList list = self.getElementsByTagName("plat");
 		int count = list.getLength();
 		for (int i = 0; i < count; i++)
@@ -89,13 +89,15 @@ final class PlatManager {
 		}
 	}
 
-	private static void parsePlatElement(Element e, Map<String, HttpHandler> httphandlers)
+	private static void parsePlatElement(Element e, BiConsumer<String, HttpHandler> httphandlers)
 			throws ClassNotFoundException, InstantiationException, IllegalAccessException {
 		ElementHelper eh = new ElementHelper(e);
+		if (!eh.getBoolean("enable", false))
+			return;
 		String classname = eh.getString("className");
-		String platname = eh.getString("name").toUpperCase();
 		if (classname.isEmpty())
 			return;
+		String platname = eh.getString("name").toUpperCase();
 		if (Trace.isDebugEnabled())
 			Trace.debug("Config.load plat classname = " + classname + " platname = " + platname);
 		Class<?> cls = Class.forName(classname);

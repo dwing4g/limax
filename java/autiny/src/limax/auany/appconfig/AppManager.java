@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 
 import org.w3c.dom.Element;
 
@@ -52,7 +53,7 @@ public class AppManager {
 		return "";
 	}
 
-	public static void initialize(Element self, Map<String, HttpHandler> httphandlers) throws Exception {
+	public static void initialize(Element self, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
 	}
 
 }

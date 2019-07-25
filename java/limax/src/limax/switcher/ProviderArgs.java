@@ -6,7 +6,7 @@ interface ProviderArgs {
 
 	int getProviderId();
 
-	boolean isVarinatEnabled();
+	boolean isVariantEnabled();
 
 	boolean isVariantSupported();
 

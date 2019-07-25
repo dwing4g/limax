@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -274,42 +275,20 @@ namespace limax.util
             return wrapper.exception;
         }
     }
-    public sealed class BlockingQueue<T>
-    {
-        private readonly Queue<T> q = new Queue<T>();
-        public void put(T t)
-        {
-            lock (q)
-            {
-                q.Enqueue(t);
-                Monitor.PulseAll(q);
-            }
-        }
-        public T get()
-        {
-            lock (q)
-            {
-                while (q.Count == 0)
-                    Monitor.Wait(q);
-                return q.Dequeue();
-            }
-        }
-    }
     public sealed class SingleThreadExecutor
     {
         private readonly Thread thread;
         private readonly int tid;
-        private readonly BlockingQueue<Action> q = new BlockingQueue<Action>();
+        private readonly BlockingCollection<Action> q = new BlockingCollection<Action>();
         private volatile bool terminated = false;
         public SingleThreadExecutor(string name)
         {
             thread = new Thread(() =>
             {
-                while (true)
+                for (Action r; true;  )
                 {
-                    Action r = q.get();
-                    if (r == null)
-                        return;
+                    try { r = q.Take(); }
+                    catch (ThreadInterruptedException) { break; }
                     try { r(); }
                     catch (Exception) { }
                 }
@@ -324,7 +303,7 @@ namespace limax.util
                 throw new Exception("Action r == null");
             if (terminated)
                 throw new Exception("SingleThreadExecutor <" + thread.Name + "> terminated");
-            q.put(r);
+            q.Add(r);
         }
         public void wait(Action r)
         {
@@ -354,8 +333,9 @@ namespace limax.util
         public void shutdown()
         {
             terminated = true;
-            q.put(null);
+            thread.Interrupt();
             thread.Join();
+            q.Dispose();
         }
     }
     public sealed class HashExecutor

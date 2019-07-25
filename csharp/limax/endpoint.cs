@@ -1904,12 +1904,12 @@ namespace limax.endpoint
                         TemporaryView view = findTemporaryView(p.classindex, p.instanceindex);
                         if (view != null && p.members.Count >= 1)
                         {
-                            ViewMemberData e = p.members[0];
                             lock (view)
                             {
-                                view.doOnAttach(e.sessionid);
-                                if ((e.vardata.index & 0x80) == 0)
-                                    view.doOnData(e.sessionid, e.vardata.index, e.vardata.field, e.vardata.data, e.vardata.dataremoved);
+                                view.doOnAttach(p.members[0].sessionid);
+                                foreach (ViewMemberData var in p.members)
+                                    if ((var.vardata.index & 0x80) == 0)
+                                        view.doOnData(var.sessionid, var.vardata.index, var.vardata.field, var.vardata.data, var.vardata.dataremoved);
                             }
                         }
                         break;

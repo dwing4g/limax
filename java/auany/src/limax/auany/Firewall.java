@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -75,12 +76,13 @@ final class Firewall {
 		loadTask.run();
 	}
 
-	public static void initialize(Element self, Map<String, HttpHandler> httphandlers) throws Exception {
+	public static void initialize(Element self, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
 		ElementHelper eh = new ElementHelper(self);
-		Path path = Service.getConfigParentFile().toPath().resolve(eh.getString("firewallConfig", "firewall.xml"));
-		long period = eh.getLong("firewallConfigCheckPeriod", 30000l);
+		Path path = Service.getConfigParentFile().toPath().resolve(eh.getString("config", "firewall.xml"));
+		long period = eh.getLong("checkPeriod", 30000l);
 		loadTask = () -> load(path);
 		Service.addRunAfterEngineStartTask(
 				() -> Engine.getProtocolScheduler().scheduleAtFixedRate(loadTask, 0, period, TimeUnit.MILLISECONDS));
+		eh.warnUnused("parserClass");
 	}
 }

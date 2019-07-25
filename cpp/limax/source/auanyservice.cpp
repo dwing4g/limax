@@ -41,7 +41,7 @@ namespace limax {
 		}
 		void AuanyService::onResultViewOpen(endpoint::auanyviews::ServiceResult *view)
 		{
-			view->registerListener([view](const ViewChangedEvent& e)
+			view->registerListener([](const ViewChangedEvent& e)
 			{
 				limax::auanyviews::Result *r = (limax::auanyviews::Result*) e.getValue();
 				std::shared_ptr<AuanyService> service = removeService(r->sn);

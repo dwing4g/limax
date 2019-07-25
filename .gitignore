@@ -1,6 +1,11 @@
 /bin/
 /java/auany/bin/
 /java/auany/gen/
+/java/autiny/auany/
+/java/autiny/bin/
+/java/autiny/gen/
+/java/autiny/cache.svr.xml
+/java/autiny/cache.zdb.xml
 /java/globalid/bin/
 /java/globalid/gen/
 /java/limax/bin/

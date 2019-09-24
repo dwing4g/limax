@@ -10,10 +10,10 @@ import java.security.Signature;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
-import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
@@ -65,8 +65,8 @@ class CertificateGenerator {
 	private final PublicKey publicKey;
 	private final X509Certificate cacert;
 	private final int signsize;
-	private Date notBefore;
-	private Date notAfter;
+	private Instant notBefore;
+	private Instant notAfter;
 	private X500Principal subject;
 	private ASN1Sequence basicConstraints;
 	private URI ocspURI;
@@ -90,8 +90,8 @@ class CertificateGenerator {
 		setCA();
 	}
 
-	void setValidity(Date notBefore, Date notAfter) {
-		if (notBefore.after(notAfter))
+	void setValidity(Instant notBefore, Instant notAfter) {
+		if (notBefore.isAfter(notAfter))
 			throw new IllegalArgumentException("notBefore after notAfter");
 		this.notBefore = notBefore;
 		this.notAfter = notAfter;
@@ -207,14 +207,14 @@ class CertificateGenerator {
 	}
 
 	private byte[] renewTBSCertificate(ASN1Object signatureAlgorithm, X509Certificate cert) throws Exception {
-		long now = System.currentTimeMillis();
+		Instant now = Instant.now();
 		ASN1Sequence tbsCertificate = new ASN1Sequence();
 		tbsCertificate.addChild(V3);
 		tbsCertificate.addChild(generateSerialNumber());
 		tbsCertificate.addChild(signatureAlgorithm);
 		tbsCertificate.addChild(new ASN1RawData(cert.getIssuerX500Principal().getEncoded()));
-		tbsCertificate.addChild(new ASN1Sequence(new ASN1GeneralizedTime(new Date(now)),
-				new ASN1GeneralizedTime(new Date(now + cert.getNotAfter().getTime() - cert.getNotBefore().getTime()))));
+		tbsCertificate.addChild(new ASN1Sequence(new ASN1GeneralizedTime(now),
+				new ASN1GeneralizedTime(now.plusMillis(cert.getNotAfter().getTime() - cert.getNotBefore().getTime()))));
 		tbsCertificate.addChild(new ASN1RawData(cert.getSubjectX500Principal().getEncoded()));
 		tbsCertificate.addChild(new ASN1RawData(publicKey.getEncoded()));
 		ASN1Sequence extensions = new ASN1Sequence();

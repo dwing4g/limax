@@ -7,7 +7,7 @@ import java.security.Signature;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509CRL;
 import java.security.cert.X509Certificate;
-import java.util.Date;
+import java.time.Instant;
 import java.util.Map;
 
 import limax.codec.asn1.ASN1BitString;
@@ -56,12 +56,12 @@ class CRLGenerator {
 		tbsCertList.addChild(new ASN1Integer(BigInteger.ONE));
 		tbsCertList.addChild(algorithmIdentifier);
 		tbsCertList.addChild(new ASN1RawData(cacert.getSubjectX500Principal().getEncoded()));
-		long now = System.currentTimeMillis();
-		tbsCertList.addChild(new ASN1GeneralizedTime(new Date(now)));
-		tbsCertList.addChild(new ASN1GeneralizedTime(new Date(now + nextUpdateDelay)));
+		Instant now = Instant.now();
+		tbsCertList.addChild(new ASN1GeneralizedTime(now));
+		tbsCertList.addChild(new ASN1GeneralizedTime(now.plusMillis(nextUpdateDelay)));
 		ASN1Sequence revokedCertificates = new ASN1Sequence();
-		revokes.forEach((serial, time) -> revokedCertificates
-				.addChild(new ASN1Sequence(new ASN1Integer(serial), new ASN1GeneralizedTime(new Date(time)))));
+		revokes.forEach((serial, time) -> revokedCertificates.addChild(
+				new ASN1Sequence(new ASN1Integer(serial), new ASN1GeneralizedTime(Instant.ofEpochMilli(time)))));
 		tbsCertList.addChild(revokedCertificates);
 		ASN1Sequence extensions = new ASN1Sequence();
 		extensions.addChild(new ASN1Sequence(OID_CRLNumber,

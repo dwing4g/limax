@@ -1,5 +1,6 @@
 package limax.net;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -14,19 +15,19 @@ import limax.util.Trace;
 
 public final class State {
 
-	private final static class Stub {
-		private Class<? extends Skeleton> cls;
-		private int maxsize;
+	private static class Stub {
+		private final Constructor<? extends Skeleton> constructor;
+		private final int maxsize;
 
-		public Stub(Class<? extends Skeleton> cls, int maxsize) {
-			this.cls = cls;
+		public Stub(Constructor<? extends Skeleton> constructor, int maxsize) {
+			this.constructor = constructor;
 			this.maxsize = maxsize;
 		}
 
 		public Skeleton newInstance() throws InstantiationException {
 			try {
-				return cls.newInstance();
-			} catch (IllegalAccessException e) {
+				return constructor.newInstance();
+			} catch (Exception e) {
 				throw new InstantiationException(e.getMessage());
 			}
 		}
@@ -38,24 +39,29 @@ public final class State {
 
 		@Override
 		public String toString() {
-			return "Stub(" + cls.getName() + ")";
+			return "Stub(" + constructor.getDeclaringClass().getName() + ")";
 		}
 	}
 
-	private final Map<Integer, Stub> stubs = new HashMap<Integer, Stub>();
+	private final Map<Integer, Stub> stubs = new HashMap<>();
 
 	public State() {
 	}
 
 	private Stub getStub(int type) {
-		final Stub stub = stubs.get(type);
+		Stub stub = stubs.get(type);
 		if (null == stub)
 			throw new RuntimeException("Protocol.Stub NOT found type=" + type);
 		return stub;
 	}
 
 	public void addStub(Class<? extends Skeleton> skel, int type, int maxsize) {
-		final Stub stub = new Stub(skel, maxsize);
+		Stub stub;
+		try {
+			stub = new Stub(skel.getDeclaredConstructor(), maxsize);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 		if (null != stubs.put(type, stub))
 			throw new RuntimeException("duplicate type of " + stub + "with type = " + type);
 	}
@@ -65,7 +71,7 @@ public final class State {
 	}
 
 	public Map<Integer, Integer> getSizePolicy() {
-		Map<Integer, Integer> map = new HashMap<Integer, Integer>();
+		Map<Integer, Integer> map = new HashMap<>();
 		for (Entry<Integer, Stub> e : stubs.entrySet())
 			map.put(e.getKey(), e.getValue().maxsize);
 		return map;
@@ -97,10 +103,11 @@ public final class State {
 
 	Collection<Skeleton> decode(final OctetsStream os, final Transport transport)
 			throws InstantiationException, SizePolicyException, CodecException {
-		final Collection<Skeleton> skels = new ArrayList<Skeleton>();
+		final Collection<Skeleton> skels = new ArrayList<>();
 		final Manager manager = transport.getManager();
 		final UnknownProtocolHandler unknownProtocolHandler = manager instanceof SupportUnknownProtocol
-				? ((SupportUnknownProtocol) manager).getUnknownProtocolHandler() : null;
+				? ((SupportUnknownProtocol) manager).getUnknownProtocolHandler()
+				: null;
 
 		while (os.remain() > 0) {
 			os.begin();

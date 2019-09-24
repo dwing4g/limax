@@ -3,7 +3,7 @@ package limax.node.js.modules.http;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -115,7 +115,7 @@ public class Header implements Pump {
 
 	public void updateDate() {
 		remove("Date");
-		set("Date", ZonedDateTime.now(ZoneId.of("GMT")).format(DateTimeFormatter.RFC_1123_DATE_TIME));
+		set("Date", ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.RFC_1123_DATE_TIME));
 	}
 
 	public Buffer format(String prefix) throws Exception {

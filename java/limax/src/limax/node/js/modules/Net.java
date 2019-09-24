@@ -201,7 +201,7 @@ public final class Net implements Module {
 					SSLSession session = engine.getSession();
 					try {
 						callbackPeerInfo.call(Stream.concat(Stream.of(session.getPeerPrincipal()),
-								Arrays.stream(session.getPeerCertificateChain())).toArray());
+								Arrays.stream(session.getPeerCertificates())).toArray());
 					} catch (Exception e) {
 						callbackPeerInfo.call(new Object[] {});
 					}

@@ -2,11 +2,10 @@ package limax.pkix.tool;
 
 import java.math.BigInteger;
 import java.security.Signature;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -135,23 +134,27 @@ class OcspHttpHandler implements HttpHandler {
 
 	private static OcspResponseInfo makeResponse(List<OcspCertStatus> certStatuses, int nextUpdateDelay,
 			int signatureBits, OcspSignerConfig.Current config) throws Exception {
-		long now = System.currentTimeMillis();
-		long nextUpdate = now + TimeUnit.DAYS.toMillis(nextUpdateDelay);
+		Instant now = Instant.now();
+		Instant nextUpdate = now.plusMillis(nextUpdateDelay);
 		ASN1Sequence responses = new ASN1Sequence();
 		for (OcspCertStatus certStatus : certStatuses) {
 			ASN1Sequence singleResponse = new ASN1Sequence();
 			singleResponse.addChild(certStatus.getCertID());
-			singleResponse.addChild(certStatus.isRevoked()
-					? new ASN1Sequence(CtxTag1, new ASN1GeneralizedTime(new Date(certStatus.getRevocationTime())))
-					: new ASN1Null(CtxTag0));
-			singleResponse.addChild(new ASN1GeneralizedTime(new Date(now)));
-			singleResponse.addChild(new ASN1ConstructedObject(CtxTag0, new ASN1GeneralizedTime(new Date(nextUpdate))));
+			singleResponse
+					.addChild(
+							certStatus.isRevoked()
+									? new ASN1Sequence(CtxTag1,
+											new ASN1GeneralizedTime(
+													Instant.ofEpochMilli(certStatus.getRevocationTime())))
+									: new ASN1Null(CtxTag0));
+			singleResponse.addChild(new ASN1GeneralizedTime(now));
+			singleResponse.addChild(new ASN1ConstructedObject(CtxTag0, new ASN1GeneralizedTime(nextUpdate)));
 			responses.addChild(singleResponse);
 		}
 		ASN1Sequence tbsResponseData = new ASN1Sequence();
 		tbsResponseData.addChild(V1);
 		tbsResponseData.addChild(new ASN1RawData(config.getResponderID()));
-		tbsResponseData.addChild(new ASN1GeneralizedTime(new Date(now)));
+		tbsResponseData.addChild(new ASN1GeneralizedTime(now));
 		tbsResponseData.addChild(responses);
 		byte[] tbsResponseDataDER = tbsResponseData.toDER();
 		PublicKeyAlgorithm publicKeyAlgorithm = PublicKeyAlgorithm.valueOf(config.getPrivateKey());

@@ -39,7 +39,8 @@ abstract class JmxTool {
 		String cmd = args[0].toLowerCase();
 		Options options = new Options();
 		try {
-			JmxTool tool = (JmxTool) Class.forName("limax.executable." + upper1(cmd)).newInstance();
+			JmxTool tool = (JmxTool) Class.forName("limax.executable." + upper1(cmd)).getDeclaredConstructor()
+					.newInstance();
 			tool.build(options);
 			options.parse(args, 1);
 			tool.run(options);

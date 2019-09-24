@@ -181,12 +181,13 @@ public class Service {
 			ElementHelper eh = new ElementHelper(e);
 			String creatorclass = eh.getString("parserCreatorClass");
 			if (null != creatorclass && creatorclass.length() > 0) {
-				ConfigParserCreator creator = (ConfigParserCreator) Class.forName(creatorclass).newInstance();
+				ConfigParserCreator creator = (ConfigParserCreator) Class.forName(creatorclass).getDeclaredConstructor()
+						.newInstance();
 				return creator.createConfigParse(e);
 			}
 			String parserclass = eh.getString("parserClass");
 			if (null != parserclass && parserclass.length() > 0)
-				return (ConfigParser) Class.forName(parserclass).newInstance();
+				return (ConfigParser) Class.forName(parserclass).getDeclaredConstructor().newInstance();
 
 			String n = e.getNodeName();
 			ConfigParserCreator creator = normalcreatormap.get(n);

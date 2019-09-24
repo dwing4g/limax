@@ -7,13 +7,11 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
-import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -21,14 +19,6 @@ import java.util.function.Function;
 import javax.net.ssl.SSLSession;
 
 abstract class AbstractHttpExchange implements HttpExchange {
-	private final static String pattern = "EEE, dd MMM yyyy HH:mm:ss zzz";
-	private final static TimeZone gmtTZ = TimeZone.getTimeZone("GMT");
-	private final static ThreadLocal<DateFormat> dateFormat = ThreadLocal.withInitial(() -> {
-		DateFormat df = new SimpleDateFormat(pattern, Locale.US);
-		df.setTimeZone(gmtTZ);
-		return df;
-	});
-
 	final HttpProcessor processor;
 	FormData formData;
 	HttpHandler httpHandler;
@@ -267,7 +257,7 @@ abstract class AbstractHttpExchange implements HttpExchange {
 				return;
 			if (headers.get(":status") == null)
 				headers.set(":status", 200);
-			headers.set("date", dateFormat.get().format(new Date()));
+			headers.set("date", ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.RFC_1123_DATE_TIME));
 			headers.set("server", "Limax/1.1");
 			Long length;
 			if (dataSupplier == null)
@@ -277,8 +267,10 @@ abstract class AbstractHttpExchange implements HttpExchange {
 			else
 				length = null;
 			if (sendResponseHeaders(headers, length)) {
-				sendJob = length == null ? dataSupplier instanceof SendJob ? (SendJob) dataSupplier
-						: new UndeterministicSendLoop(dataSupplier) : new DeterministicSendLoop(dataSupplier);
+				sendJob = length == null
+						? dataSupplier instanceof SendJob ? (SendJob) dataSupplier
+								: new UndeterministicSendLoop(dataSupplier)
+						: new DeterministicSendLoop(dataSupplier);
 				sendJob.launch(this);
 			}
 		});

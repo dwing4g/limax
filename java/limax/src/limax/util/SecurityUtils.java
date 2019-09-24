@@ -684,8 +684,12 @@ public final class SecurityUtils {
 		path = path.toAbsolutePath().normalize();
 		Pair<char[], Provider> pair = mapPKCS11Providers.get(path);
 		if (pair == null) {
-			Provider provider = (Provider) Class.forName("sun.security.pkcs11.SunPKCS11").getConstructor(String.class)
-					.newInstance(path.toString());
+			Provider provider = Security.getProvider("SunPKCS11");
+			if (provider == null)
+				provider = (Provider) Class.forName("sun.security.pkcs11.SunPKCS11").getConstructor(String.class)
+						.newInstance(path.toString());
+			else
+				Provider.class.getMethod("configure", String.class).invoke(provider, path.toString());
 			Security.addProvider(provider);
 			mapPKCS11Providers.put(path, pair = new Pair<>(cb.apply("PKCS11 [" + path + "] PIN:"), provider));
 		}

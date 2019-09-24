@@ -89,8 +89,7 @@ final class PlatManager {
 		}
 	}
 
-	private static void parsePlatElement(Element e, BiConsumer<String, HttpHandler> httphandlers)
-			throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+	private static void parsePlatElement(Element e, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
 		ElementHelper eh = new ElementHelper(e);
 		if (!eh.getBoolean("enable", false))
 			return;
@@ -100,8 +99,7 @@ final class PlatManager {
 		String platname = eh.getString("name").toUpperCase();
 		if (Trace.isDebugEnabled())
 			Trace.debug("Config.load plat classname = " + classname + " platname = " + platname);
-		Class<?> cls = Class.forName(classname);
-		PlatProcess process = (PlatProcess) cls.newInstance();
+		PlatProcess process = (PlatProcess) Class.forName(classname).getDeclaredConstructor().newInstance();
 		process.init(e, httphandlers);
 		if (null != plats.put(platname.toLowerCase(), process))
 			throw new RuntimeException("duplicate plat process type " + platname);

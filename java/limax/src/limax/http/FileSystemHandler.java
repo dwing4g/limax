@@ -18,10 +18,11 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.FileTime;
 import java.security.MessageDigest;
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ import limax.net.Engine;
 import limax.util.Closeable;
 
 class FileSystemHandler implements HttpHandler, Closeable {
+	private final DateTimeFormatter sdf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 	private final Path htdocs;
 	private final WatchService watchService;
 	private final Map<Path, FileHandler> cache = new ConcurrentHashMap<>();
@@ -199,7 +201,6 @@ class FileSystemHandler implements HttpHandler, Closeable {
 	}
 
 	private FileHandler handleDirectory(Path path, String _path) throws IOException {
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 		StringBuilder sb = new StringBuilder("<!doctype html><html><title>");
 		sb.append(_path).append("</title><body><table><tr>");
 		int pos = _path.lastIndexOf('/');
@@ -211,7 +212,8 @@ class FileSystemHandler implements HttpHandler, Closeable {
 			for (Iterator<Path> it = paths.iterator(); it.hasNext();) {
 				Path p = it.next();
 				String name = p.getFileName().toString();
-				String time = sdf.format(new Date(Files.getLastModifiedTime(p).toMillis()));
+				String time = Instant.ofEpochMilli(Files.getLastModifiedTime(p).toMillis())
+						.atZone(ZoneId.systemDefault()).format(sdf);
 				String href = _path + "/" + name;
 				if (Files.isDirectory(p))
 					list0.add(new Object[] { href, name + "/", time, "" });

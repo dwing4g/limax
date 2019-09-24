@@ -10,6 +10,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509CRL;
 import java.security.cert.X509Certificate;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -72,7 +73,8 @@ class CertificateAuthority {
 			KeyPair keyPair = keyPairGenerator.generateKeyPair();
 			CertificateGenerator cergen = new CertificateGenerator(keyPair, Integer.parseInt(part[2]));
 			cergen.setSubject(param.getSubject());
-			cergen.setValidity(param.getNotBefore(), param.getNotAfter());
+			cergen.setValidity(Instant.ofEpochMilli(param.getNotBefore().getTime()),
+					Instant.ofEpochMilli(param.getNotAfter().getTime()));
 			cergen.setKeyUsage(caKeyUsages);
 			cergen.setCertificatePolicyCPS(param.getCertificatePolicyCPS());
 			cergen.setAdditionalExtensions(param.getAdditionalExtensions());
@@ -109,7 +111,7 @@ class CertificateAuthority {
 			throw new IllegalArgumentException("request notBefore out of ca's validity range");
 		if (notAfter.before(this.notBefore) || notAfter.after(this.notAfter))
 			throw new IllegalArgumentException("request notBefore out of ca's validity range");
-		cergen.setValidity(notBefore, notAfter);
+		cergen.setValidity(Instant.ofEpochMilli(notBefore.getTime()), Instant.ofEpochMilli(notAfter.getTime()));
 		return cergen;
 	}
 

@@ -12,6 +12,7 @@ final class Monitor extends JmxTool {
 
 	@Override
 	void run(Options options) throws Exception {
-		limax.util.monitor.Monitor.start((Collector) Class.forName(options.getValue("-c")).newInstance());
+		limax.util.monitor.Monitor
+				.start((Collector) Class.forName(options.getValue("-c")).getDeclaredConstructor().newInstance());
 	}
 }

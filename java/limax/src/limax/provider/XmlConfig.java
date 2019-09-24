@@ -348,7 +348,7 @@ public final class XmlConfig {
 			} else {
 				Class<?> cls = Class.forName(clsname);
 				String singleton = eh.getString("classSingleton");
-				listener = (ProviderListener) (singleton.isEmpty() ? cls.newInstance()
+				listener = (ProviderListener) (singleton.isEmpty() ? cls.getDeclaredConstructor().newInstance()
 						: cls.getMethod(singleton).invoke(null));
 			}
 

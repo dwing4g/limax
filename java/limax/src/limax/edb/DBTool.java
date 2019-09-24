@@ -5,15 +5,16 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import limax.util.InteractiveTool;
 
 public final class DBTool extends InteractiveTool {
-	private final static SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
+	private final static DateTimeFormatter sdf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
 	private DBTool() {
 	}
@@ -54,11 +55,8 @@ public final class DBTool extends InteractiveTool {
 
 		void listValidLoggerId() throws Exception {
 			int n = 0;
-			Date date = new Date();
-			for (long l : ids) {
-				date.setTime(l);
-				out.println(n++ + " : " + sdf.format(date));
-			}
+			for (long l : ids)
+				out.println(n++ + " : " + Instant.ofEpochMilli(l).atZone(ZoneId.systemDefault()).format(sdf));
 		}
 
 		void action(int n) throws Exception {

@@ -1,6 +1,8 @@
 package limax.zdb;
 
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -208,20 +210,20 @@ final class Checkpoint implements Runnable, CheckpointMBean {
 		return nextCheckpointTime;
 	}
 
-	private final static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+	private final static DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+
+	private static String toDateTimeString(long millis) {
+		return dateFormat.format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()));
+	}
 
 	@Override
 	public String getTimeOfNextCheckpoint() {
-		synchronized (dateFormat) {
-			return dateFormat.format(this.getNextCheckpointTime());
-		}
+		return toDateTimeString(this.getNextCheckpointTime());
 	}
 
 	@Override
 	public String getTimeOfNextFlush() {
-		synchronized (dateFormat) {
-			return dateFormat.format(this.getNextFlushTime());
-		}
+		return toDateTimeString(this.getNextFlushTime());
 	}
 
 	@Override

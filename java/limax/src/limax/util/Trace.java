@@ -3,8 +3,10 @@ package limax.util;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoField;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -94,7 +96,7 @@ public enum Trace {
 
 	private static class Log {
 		private final Lock lock = new ReentrantLock();
-		private final static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+		private final static DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 		private boolean console;
 		private PrintStream ps;
 		private ScheduledExecutorService scheduler;
@@ -117,21 +119,18 @@ public enum Trace {
 			}
 
 			this.scheduler = ConcurrentEnvironment.getInstance().newScheduledThreadPool("Trace.Log.Scheduler", 1, true);
-			Calendar firstTime = Calendar.getInstance();
-			firstTime.set(Calendar.HOUR_OF_DAY, hourOfDay);
-			firstTime.set(Calendar.MINUTE, minute);
-			firstTime.set(Calendar.SECOND, 0);
-			firstTime.set(Calendar.MILLISECOND, 0);
-			Calendar now = Calendar.getInstance();
-			if (firstTime.before(now))
-				firstTime.add(Calendar.DATE, 1);
+			ZonedDateTime now = ZonedDateTime.now();
+			ZonedDateTime firstTime = now.with(ChronoField.HOUR_OF_DAY, 6).with(ChronoField.MINUTE_OF_HOUR, 0)
+					.with(ChronoField.SECOND_OF_MINUTE, 0).with(ChronoField.MILLI_OF_SECOND, 0);
+			if (firstTime.isBefore(now))
+				firstTime = firstTime.plusDays(1);
 			scheduler.scheduleAtFixedRate(() -> {
 				lock.lock();
 				try {
 					if (null == ps)
 						return;
 					File dest = new File(home, "trace."
-							+ new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.SSS").format(Calendar.getInstance().getTime())
+							+ DateTimeFormatter.ofPattern("yyyy.MM.dd.HH.mm.ss.SSS").format(LocalDateTime.now())
 							+ ".log");
 					File file = new File(home, "trace.log");
 					ps.close();
@@ -142,13 +141,13 @@ public enum Trace {
 				} finally {
 					lock.unlock();
 				}
-			}, firstTime.getTimeInMillis() - now.getTimeInMillis(), period, TimeUnit.MILLISECONDS);
+			}, firstTime.toInstant().toEpochMilli() - now.toInstant().toEpochMilli(), period, TimeUnit.MILLISECONDS);
 		}
 
 		public void println(String str, Throwable e) {
 			lock.lock();
 			try {
-				str = dateFormat.format(Calendar.getInstance().getTime()) + " " + str;
+				str = dateFormat.format(LocalDateTime.now()) + " " + str;
 				if (ps != null) {
 					ps.println(str);
 					if (e != null)

@@ -7,9 +7,8 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import org.w3c.dom.Element;
 
@@ -21,10 +20,10 @@ import limax.util.ElementHelper;
 import limax.util.Trace;
 
 public final class PayLoggerSimpleFile implements PayLogger {
-	private final static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+	private final static DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
-	private Date getDate() {
-		Calendar cal = Calendar.getInstance();
+	private LocalDateTime getDate() {
+		LocalDateTime now = LocalDateTime.now();
 		if (last == null) {
 			File file = path.resolve("pay.log").toFile();
 			try {
@@ -34,10 +33,9 @@ public final class PayLoggerSimpleFile implements PayLogger {
 					Trace.error("PayLogger openlog " + file, e);
 				ps = null;
 			}
-		} else if (last.get(Calendar.DAY_OF_YEAR) != cal.get(Calendar.DAY_OF_YEAR)) {
+		} else if (last.getDayOfYear() != now.getDayOfYear()) {
 			ps.close();
-			File dest = path.resolve("pay." + new SimpleDateFormat("yyyy.MM.dd").format(last.getTime()) + ".log")
-					.toFile();
+			File dest = path.resolve("pay." + last.format(DateTimeFormatter.ofPattern("yyyy.MM.dd")) + ".log").toFile();
 			File file = path.resolve("pay.log").toFile();
 			try {
 				ps = new PrintStream(new FileOutputStream(file, !file.renameTo(dest)), false, "UTF-8");
@@ -47,13 +45,13 @@ public final class PayLoggerSimpleFile implements PayLogger {
 				ps = null;
 			}
 		}
-		last = cal;
-		return cal.getTime();
+		last = now;
+		return now;
 	}
 
 	private PrintStream ps;
 	private Path path;
-	private Calendar last;
+	private LocalDateTime last;
 
 	@Override
 	public void initialize(Element e) {
@@ -65,55 +63,55 @@ public final class PayLoggerSimpleFile implements PayLogger {
 		eh.warnUnused();
 	}
 
-	private String format(Date date, String op, PayOrder o) {
-		return dateFormat.format(date) + "," + op + "," + o.getOrder() + "," + o.getGateway() + "," + o.getSessionId()
+	private String format(LocalDateTime date, String op, PayOrder o) {
+		return date.format(dateFormat) + "," + op + "," + o.getOrder() + "," + o.getGateway() + "," + o.getSessionId()
 				+ "," + o.getPayId() + "," + o.getProduct() + "," + o.getPrice() + "," + o.getQuantity() + ","
 				+ o.getPrice() * o.getQuantity() + "," + o.getElapsed();
 	}
 
-	private String format(Date date, String op, int number, Request r) {
-		return dateFormat.format(date) + "," + op + "," + number + "," + r.getTid() + "," + r.getOrder() + ","
+	private String format(LocalDateTime date, String op, int number, Request r) {
+		return date.format(dateFormat) + "," + op + "," + number + "," + r.getTid() + "," + r.getOrder() + ","
 				+ r.getSessionId() + "," + r.getPayId() + "," + r.getProduct() + "," + r.getQuantity();
 	}
 
 	@Override
 	public synchronized void logCreate(PayOrder order) {
-		Date date = getDate();
+		LocalDateTime date = getDate();
 		if (ps != null)
 			ps.println(format(date, "CREATE", order));
 	}
 
 	@Override
 	public synchronized void logFake(long serial, int gateway, int expect) {
-		Date date = getDate();
+		LocalDateTime date = getDate();
 		if (ps != null)
 			ps.println(dateFormat.format(date) + ",FAKE," + serial + "," + gateway + "," + expect);
 	}
 
 	@Override
 	public synchronized void logExpire(PayOrder order) {
-		Date date = getDate();
+		LocalDateTime date = getDate();
 		if (ps != null)
 			ps.println(format(date, "EXPIRE", order));
 	}
 
 	@Override
 	public synchronized void logOk(PayOrder order) {
-		Date date = getDate();
+		LocalDateTime date = getDate();
 		if (ps != null)
 			ps.println(format(date, "OK", order));
 	}
 
 	@Override
 	public synchronized void logFail(PayOrder order, String gatewayMessage) {
-		Date date = getDate();
+		LocalDateTime date = getDate();
 		if (ps != null)
 			ps.println(format(date, "FAIL", order) + "," + gatewayMessage);
 	}
 
 	@Override
 	public synchronized void logDead(PayDelivery pd) {
-		Date date = getDate();
+		LocalDateTime date = getDate();
 		if (ps != null)
 			ps.println(dateFormat.format(date) + ",DEAD," + pd.getOrder() + "," + pd.getSessionId() + ","
 					+ pd.getPayId() + "," + pd.getProduct() + "," + pd.getPrice() + "," + pd.getQuantity() + ","
@@ -128,28 +126,28 @@ public final class PayLoggerSimpleFile implements PayLogger {
 
 	@Override
 	public synchronized void logAppStoreCreate(Request req, int gateway) {
-		Date date = getDate();
+		LocalDateTime date = getDate();
 		if (ps != null)
 			ps.println(format(date, "AppStoreCreate", gateway, req));
 	}
 
 	@Override
 	public synchronized void logAppStoreSucceed(Request req) {
-		Date date = getDate();
+		LocalDateTime date = getDate();
 		if (ps != null)
 			ps.println(format(date, "AppStoreSucceed", 0, req));
 	}
 
 	@Override
 	public synchronized void logAppStoreFail(Request req, int status) {
-		Date date = getDate();
+		LocalDateTime date = getDate();
 		if (ps != null)
 			ps.println(format(date, "AppStoreFail", status, req));
 	}
 
 	@Override
 	public synchronized void logAppStoreReceiptReplay(Request req) {
-		Date date = getDate();
+		LocalDateTime date = getDate();
 		if (ps != null)
 			ps.println(format(date, "AppStoreReceiptReplay", 0, req));
 	}

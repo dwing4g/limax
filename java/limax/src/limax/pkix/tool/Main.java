@@ -14,7 +14,9 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509CRL;
 import java.security.cert.X509CRLEntry;
 import java.security.cert.X509Certificate;
-import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
@@ -46,9 +48,12 @@ import limax.util.SecurityUtils.PublicKeyAlgorithm;
 import limax.util.Trace;
 
 public class Main {
-	private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-
 	private Main() {
+	}
+
+	private static Date parse(String s) {
+		return new Date(LocalDate.from(DateTimeFormatter.BASIC_ISO_DATE.parse(s)).atStartOfDay(ZoneId.systemDefault())
+				.toInstant().toEpochMilli());
 	}
 
 	private static void u(String message) {
@@ -155,8 +160,8 @@ public class Main {
 			usage(3);
 		URI location = URI.create(args[0]);
 		X500Principal subject = new X500Principal(args[1]);
-		Date notBefore = sdf.parse(args[2]);
-		Date notAfter = sdf.parse(args[3]);
+		Date notBefore = parse(args[2]);
+		Date notAfter = parse(args[3]);
 		CAService.create(location, new X509RootCertificateParameter() {
 			@Override
 			public X500Principal getSubject() {
@@ -205,8 +210,8 @@ public class Main {
 		CAService ca = CAService.create(URI.create(args[0]), Main::getPassphrase);
 		URI location = URI.create(args[1]);
 		X500Principal subject = new X500Principal(args[2]);
-		Date notBefore = sdf.parse(args[3]);
-		Date notAfter = sdf.parse(args[4]);
+		Date notBefore = parse(args[3]);
+		Date notAfter = parse(args[4]);
 		KeyPair keyPair = keyPairGenerator(ca, location);
 		KeyInfo.save(location, keyPair.getPrivate(), ca.sign(new X509EndEntityCertificateParameter() {
 			@Override
@@ -258,7 +263,7 @@ public class Main {
 		X509Certificate cacert = ca.getCACertificate();
 		CertificateFactory cf = CertificateFactory.getInstance("X.509");
 		long now = System.currentTimeMillis();
-		long nextUpdateDelay = sdf.parse(args[2]).getTime() - now;
+		long nextUpdateDelay = parse(args[2]).getTime() - now;
 		Map<BigInteger, Long> revokes = new HashMap<>();
 		Path crlPath = Paths.get(args[1]);
 		if (Files.isRegularFile(crlPath)) {
@@ -386,8 +391,8 @@ public class Main {
 
 	private final static SignCA signCA = (args, ca, publicKey) -> {
 		X500Principal subject = new X500Principal(args[2]);
-		Date notBefore = sdf.parse(args[3]);
-		Date notAfter = sdf.parse(args[4]);
+		Date notBefore = parse(args[3]);
+		Date notAfter = parse(args[4]);
 		URI baseURI = new URI("http", args[5], "/", null);
 		return ca.sign(new X509CACertificateParameter() {
 			@Override
@@ -425,8 +430,8 @@ public class Main {
 	private final static SignCA signLmkCA = (args, ca, publicKey) -> {
 		X500Principal subject = new X500Principal(args[2]);
 		GeneralName dnsName = GeneralName.createDNSName(args[3].toLowerCase());
-		Date notBefore = sdf.parse(args[4]);
-		Date notAfter = sdf.parse(args[5]);
+		Date notBefore = parse(args[4]);
+		Date notAfter = parse(args[5]);
 		URI baseURI = new URI("http", args[6], "/", null);
 		return ca.sign(new X509CACertificateParameter() {
 			@Override

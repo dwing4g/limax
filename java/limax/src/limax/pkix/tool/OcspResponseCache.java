@@ -1,6 +1,7 @@
 package limax.pkix.tool;
 
 import java.math.BigInteger;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -18,7 +19,7 @@ class OcspResponseCache {
 	private static final int BUCKET_SIZE = (1 << BUCKET_SHIFT_BITS);
 	private static final int BUCKET_MASK = BUCKET_SIZE - 1;
 	private final AtomicInteger size = new AtomicInteger();
-	private final Map<Octets, Pair<Long, byte[]>> cache = new ConcurrentHashMap<>();
+	private final Map<Octets, Pair<Instant, byte[]>> cache = new ConcurrentHashMap<>();
 	private final List<Map<BigInteger, List<Octets>>> indexes = new ArrayList<>();
 
 	OcspResponseCache(int capacity) {
@@ -42,8 +43,8 @@ class OcspResponseCache {
 	}
 
 	byte[] get(Octets key) {
-		Pair<Long, byte[]> info = cache.get(key);
-		return info == null || System.currentTimeMillis() > info.getKey() ? null : info.getValue();
+		Pair<Instant, byte[]> info = cache.get(key);
+		return info == null || Instant.now().isAfter(info.getKey()) ? null : info.getValue();
 	}
 
 	void put(Octets key, OcspResponseInfo responseInfo) {

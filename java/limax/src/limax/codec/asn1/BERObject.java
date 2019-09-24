@@ -45,7 +45,7 @@ class BERObject {
 
 	protected ASN1Object tag2Object(ASN1Tag tag) {
 		try {
-			return tag2Class.get(tag).newInstance();
+			return tag2Class.get(tag).getDeclaredConstructor().newInstance();
 		} catch (Exception e) {
 			return berIdentifier.isConstructed() ? new ASN1ConstructedObject(tag) : new ASN1PrimitiveObject(tag);
 		}

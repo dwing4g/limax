@@ -42,7 +42,7 @@ public abstract class TTableCache<K, V> {
 		try {
 			@SuppressWarnings("unchecked")
 			TTableCache<K, V> cache = (TTableCache<K, V>) Class.forName(Zdb.meta().getDefaultTableCache())
-					.newInstance();
+					.getDeclaredConstructor().newInstance();
 			cache.initialize(table, meta);
 			return cache;
 		} catch (Throwable e) {

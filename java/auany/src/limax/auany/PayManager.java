@@ -104,7 +104,7 @@ public final class PayManager {
 					.filter(node -> node.getNodeName().equals("logger")).toArray(Element[]::new)) {
 				Class<?> clazz = Class.forName(new ElementHelper(e).getString("className"));
 				if (Helper.interfaceSet(clazz).contains(PayLogger.class)) {
-					PayLogger logger = (PayLogger) clazz.newInstance();
+					PayLogger logger = (PayLogger) clazz.getDeclaredConstructor().newInstance();
 					logger.initialize(e);
 					loggers.add(logger);
 					if (Trace.isInfoEnabled())
@@ -144,7 +144,8 @@ public final class PayManager {
 	private static void parsePayElement(Element e, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
 		ElementHelper eh = new ElementHelper(e);
 		int gateway = eh.getInt("gateway");
-		PayGateway payGateway = (PayGateway) Class.forName(eh.getString("className")).newInstance();
+		PayGateway payGateway = (PayGateway) Class.forName(eh.getString("className")).getDeclaredConstructor()
+				.newInstance();
 		payGateway.initialize(e, httphandlers);
 		gateways.put(gateway, payGateway);
 	}

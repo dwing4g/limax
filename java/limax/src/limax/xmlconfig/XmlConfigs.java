@@ -345,7 +345,8 @@ public class XmlConfigs {
 			} else {
 				Class<?> cls = Class.forName(clsname);
 				String singleton = eh.getString("classSingleton");
-				listener = (Listener) (singleton.isEmpty() ? cls.newInstance() : cls.getMethod(singleton).invoke(null));
+				listener = (Listener) (singleton.isEmpty() ? cls.getDeclaredConstructor().newInstance()
+						: cls.getMethod(singleton).invoke(null));
 			}
 			if (type.equalsIgnoreCase("client")) {
 				ClientManagerConfigBuilder builder = new ClientManagerConfigXmlBuilder()

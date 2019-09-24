@@ -19,7 +19,9 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.X509EncodedKeySpec;
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -71,13 +73,11 @@ import limax.util.XMLUtils;
 
 class CertServer {
 	static final long CERTFILE_MAX_SIZE = Long.getLong("limax.pkix.tool.CertServer.CERTFILE_SIZE_MAX", 65536);
-	private static final ThreadLocal<SimpleDateFormat> defaultDateFormat = ThreadLocal
-			.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd"));
 	private static final long CACHE_TIME_OUT = 30000;
 	private static final int MASK_USAGE_MANDATORY = 2;
 	private static final int MASK_USAGE_TRUE = 1;
 	private final CAService ca;
-	private final Date caLifetime;
+	private final Instant caLifetime;
 	private final int port;
 	private final OcspServer ocspServer;
 	private final AuthCode authCode;
@@ -227,25 +227,28 @@ class CertServer {
 		return null;
 	}
 
-	private Date getNotBefore(JSON json, Map<String, Object> transform) {
+	private static String instant2LocalDateString(Instant instant) {
+		return instant.atZone(ZoneId.systemDefault()).toLocalDate().toString();
+	}
+
+	private Instant getNotBefore(JSON json, Map<String, Object> transform) {
 		try {
-			String date = notBeforeMandatory ? defaultDateFormat.get().format(new Date())
+			String date = notBeforeMandatory ? instant2LocalDateString(Instant.now())
 					: json.get("notBefore").toString();
 			transform.put("notBefore", date);
-			return defaultDateFormat.get().parse(date);
+			return LocalDate.parse(date).atStartOfDay(ZoneId.systemDefault()).toInstant();
 		} catch (Exception e) {
 		}
 		transform.put("notBefore", null);
 		return null;
 	}
 
-	private Date getNotAfter(JSON json, Date notBefore, Map<String, Object> transform) {
+	private Instant getNotAfter(JSON json, Instant notBefore, Map<String, Object> transform) {
 		try {
-			String date = notAfterMandatory
-					? defaultDateFormat.get().format(new Date(notBefore.getTime() + notAfterPeriod))
+			String date = notAfterMandatory ? instant2LocalDateString(notBefore.plusMillis(notAfterPeriod))
 					: json.get("notAfter").toString();
 			transform.put("notAfter", date);
-			return defaultDateFormat.get().parse(date);
+			return LocalDate.parse(date).atStartOfDay(ZoneId.systemDefault()).toInstant();
 		} catch (Exception e) {
 		}
 		transform.put("notAfter", null);
@@ -338,11 +341,10 @@ class CertServer {
 			JSON json = requestJSON(exchange);
 			if (json.isNull()) {
 				Map<String, Object> initial = new HashMap<>();
-				long now = System.currentTimeMillis();
+				Instant now = Instant.now();
 				initial.put("subject", subjectTemplate);
-				initial.put("notBefore",
-						Collections.singletonMap(defaultDateFormat.get().format(new Date(now)), notBeforeMandatory));
-				initial.put("notAfter", defaultDateFormat.get().format(new Date(now + notAfterPeriod)));
+				initial.put("notBefore", Collections.singletonMap(instant2LocalDateString(now), notBeforeMandatory));
+				initial.put("notAfter", instant2LocalDateString(now.plusMillis(notAfterPeriod)));
 				initial.put("keyUsage", keyUsage);
 				initial.put("extKeyUsage", extKeyUsage);
 				return responseJSON(exchange, initial);
@@ -350,13 +352,13 @@ class CertServer {
 			Map<String, Object> transform = new HashMap<>();
 			X500Principal subject = getSubject(json, transform);
 			Collection<GeneralName> subjectAltNames = getSubjectAltNames(json, transform);
-			Date notBefore = getNotBefore(json, transform);
-			Date notAfter = getNotAfter(json, notBefore, transform);
+			Instant notBefore = getNotBefore(json, transform);
+			Instant notAfter = getNotAfter(json, notBefore, transform);
 			if (notAfter != null && notBefore != null) {
-				long delta = notAfter.getTime() - notBefore.getTime();
+				long delta = notAfter.toEpochMilli() - notBefore.toEpochMilli();
 				if (delta < notAfterPeriodLow || delta > notAfterPeriodHigh)
 					transform.put("notAfter", null);
-				if (notAfter.after(caLifetime)) {
+				if (notAfter.isAfter(caLifetime)) {
 					transform.put("notAfter", null);
 					if (Trace.isErrorEnabled()) {
 						Trace.error("CertServer CANNOT signature certificate notAfter = " + notAfter
@@ -398,12 +400,12 @@ class CertServer {
 
 						@Override
 						public Date getNotBefore() {
-							return notBefore;
+							return new Date(notBefore.toEpochMilli());
 						}
 
 						@Override
 						public Date getNotAfter() {
-							return notAfter;
+							return new Date(notAfter.toEpochMilli());
 						}
 
 						@Override
@@ -503,8 +505,8 @@ class CertServer {
 	CertServer(CAService ca, int port, OcspServer ocspServer, Element root, AuthCode authCode, Archive archive)
 			throws Exception {
 		this.ca = ca;
-		this.caLifetime = Arrays.stream(ca.getCACertificates()).map(X509Certificate::getNotAfter)
-				.max(Comparator.comparingLong(Date::getTime)).get();
+		this.caLifetime = Instant.ofEpochMilli(Arrays.stream(ca.getCACertificates()).map(X509Certificate::getNotAfter)
+				.max(Comparator.comparingLong(Date::getTime)).get().getTime());
 		this.port = port;
 		this.ocspServer = ocspServer;
 		this.authCode = authCode;

@@ -41,7 +41,7 @@ public class AccountManager {
 				.filter(node -> node.getAttribute("enable").equals("true")).toArray(Element[]::new)) {
 			Class<?> clazz = Class.forName(new ElementHelper(e).getString("className"));
 			if (Helper.interfaceSet(clazz).contains(AccountLogger.class)) {
-				AccountLogger logger = (AccountLogger) clazz.newInstance();
+				AccountLogger logger = (AccountLogger) clazz.getDeclaredConstructor().newInstance();
 				logger.initialize(e);
 				loggers.add(logger);
 				if (Trace.isInfoEnabled())

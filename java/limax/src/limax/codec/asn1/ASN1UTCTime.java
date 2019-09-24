@@ -1,9 +1,8 @@
 package limax.codec.asn1;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TimeZone;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 
 import limax.codec.Codec;
 import limax.codec.CodecException;
@@ -11,37 +10,28 @@ import limax.codec.CodecException;
 public class ASN1UTCTime extends ASN1Object implements PrimitiveObject {
 	public static final ASN1ObjectIdentifier oid = new ASN1ObjectIdentifier("2.1.0.0");
 	public static final ASN1Tag tag = new ASN1Tag(TagClass.Universal, 23);
-	private static final SimpleDateFormat utcFormat = new SimpleDateFormat("yyMMddHHmmss");
-
-	static {
-		utcFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-		utcFormat.set2DigitYearStart(new Date(949363200000L));
-	}
-
+	private static final DateTimeFormatter utcFormat = DateTimeFormatter.ofPattern("yyMMddHHmmssX")
+			.withZone(ZoneOffset.UTC);
 	private final ASN1PrimitiveObject obj;
 
-	public ASN1UTCTime(ASN1Tag tag, Date value) {
-		obj = new ASN1PrimitiveObject(tag, (utcFormat.format(value) + "Z").getBytes());
+	public ASN1UTCTime(ASN1Tag tag, Instant value) {
+		obj = new ASN1PrimitiveObject(tag, utcFormat.format(value).getBytes());
 	}
 
-	public ASN1UTCTime(Date value) {
+	public ASN1UTCTime(Instant value) {
 		this(tag, value);
 	}
 
 	public ASN1UTCTime(ASN1Tag tag) {
-		this(tag, new Date());
+		this(tag, Instant.now());
 	}
 
 	public ASN1UTCTime() {
-		this(tag, new Date());
+		this(tag, Instant.now());
 	}
 
-	public Date get() {
-		try {
-			return utcFormat.parse(new String(getData()));
-		} catch (ParseException e) {
-			throw new BERException(e);
-		}
+	public Instant get() {
+		return parse(getData());
 	}
 
 	@Override
@@ -70,10 +60,10 @@ public class ASN1UTCTime extends ASN1Object implements PrimitiveObject {
 		obj.render(c);
 	}
 
-	private static Date parse(byte[] data) {
+	private static Instant parse(byte[] data) {
 		try {
-			return utcFormat.parse(new String(data));
-		} catch (ParseException e) {
+			return Instant.from(utcFormat.parse(new String(data)));
+		} catch (Exception e) {
 			throw new BERException(e);
 		}
 	}
@@ -92,5 +82,4 @@ public class ASN1UTCTime extends ASN1Object implements PrimitiveObject {
 	public ASN1Tag getTag() {
 		return obj.getTag();
 	}
-
 }

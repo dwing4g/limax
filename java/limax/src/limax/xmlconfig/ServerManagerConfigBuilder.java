@@ -38,7 +38,7 @@ public class ServerManagerConfigBuilder implements ConfigBuilder {
 		this.checkOutputBuffer = config.isCheckOutputBuffer();
 		this.outputSecurity = config.getOutputSecurityBytes();
 		this.inputSecurity = config.getInputSecurityBytes();
-		this.outputCompress = config.isCheckOutputBuffer();
+		this.outputCompress = config.isOutputCompress();
 		this.inputCompress = config.isInputCompress();
 		this.defaultState = config.getDefaultState();
 		this.dispatcher = config.getDispatcher();

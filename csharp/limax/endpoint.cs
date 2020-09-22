@@ -468,6 +468,7 @@ namespace limax.endpoint
         LoginConfig getLoginConfig();
         bool isPingServerOnly();
         bool auanyService();
+        bool keepAlive();
         State getEndpointState();
         IDictionary<int, IDictionary<short, Type>> getStaticViewClasses();
         ICollection<int> getVariantProviderIds();
@@ -479,6 +480,7 @@ namespace limax.endpoint
         EndpointConfigBuilder outputBufferSize(int outputBufferSize);
         EndpointConfigBuilder executor(Executor executor);
         EndpointConfigBuilder auanyService(bool used);
+        EndpointConfigBuilder keepAlive(bool used);
         EndpointConfigBuilder endpointState(params State[] states);
         EndpointConfigBuilder staticViewClasses(params View.StaticManager[] managers);
         EndpointConfigBuilder variantProviderIds(params int[] pvids);
@@ -492,6 +494,7 @@ namespace limax.endpoint
         internal readonly LoginConfig loginConfig;
         internal readonly bool pingServerOnly;
         internal volatile bool auanyServciceUsed = true;
+        internal volatile bool keepAlivedUsed = true;
         internal volatile int _outputBufferSize = 8 * 1024;
         internal volatile int _inputBufferSize = 8 * 1024;
         internal volatile Executor _executor;
@@ -555,6 +558,11 @@ namespace limax.endpoint
         public EndpointConfigBuilder auanyService(bool used)
         {
             this.auanyServciceUsed = used;
+            return this;
+        }
+        public EndpointConfigBuilder keepAlive(bool used)
+        {
+            this.keepAlivedUsed = used;
             return this;
         }
         private class DefaultClientManagerConfig : ClientManagerConfig
@@ -643,6 +651,10 @@ namespace limax.endpoint
             public bool auanyService()
             {
                 return impl.auanyServciceUsed;
+            }
+            public bool keepAlive()
+            {
+                return impl.keepAlivedUsed;
             }
             public Dispatcher getDispatcher()
             {
@@ -742,7 +754,7 @@ namespace limax.endpoint
             this.listener = listener;
             this.pvids = pvids;
             this.manager = (ClientManager)Engine.add(config.getClientManagerConfig(), this, this);
-            this.keepalive = new KeepAlive(this);
+            this.keepalive = config.keepAlive() ? KeepAliveImpl.create(this) : KeepAliveHollow.instance;
             this.scriptExchange = config.getScriptEngineHandle() != null ? new ScriptExchange(
                     this, config.getScriptEngineHandle()) : null;
             if (listener is TunnelSupport)
@@ -766,7 +778,23 @@ namespace limax.endpoint
         {
             return listener;
         }
-        private class KeepAlive : IDisposable
+        private interface KeepAlive : IDisposable
+        {
+            void startPingAndKeepAlive(Transport transport);
+            void process(PingAndKeepAlive p);
+            bool isTimeout();
+        }
+        private sealed class KeepAliveHollow : KeepAlive
+        {
+            private KeepAliveHollow() {}
+            public void startPingAndKeepAlive(Transport transport) {}
+            public void process(PingAndKeepAlive p) {}
+            public bool isTimeout() { return false; }
+            public void Dispose() {}
+
+            internal static KeepAlive instance = new KeepAliveHollow();
+        }
+        private sealed class KeepAliveImpl : KeepAlive
         {
             private const int PING_TIMEOUT = 5;
             private const int KEEP_ALIVE_DELAY = 50;
@@ -774,7 +802,12 @@ namespace limax.endpoint
             private readonly Timer timer;
             private volatile bool wait_response;
             private volatile bool timeout = false;
-            public KeepAlive(EndpointManagerImpl impl)
+
+            internal static KeepAlive create(EndpointManagerImpl impl)
+            {
+                return new KeepAliveImpl(impl);
+            }
+            private KeepAliveImpl(EndpointManagerImpl impl)
             {
                 this.impl = impl;
                 this.timer = new Timer(_ =>

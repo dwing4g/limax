@@ -56,15 +56,9 @@
 
 - (void)initPickView {
     serverDatas = @[
-                    [ServerData newData:@"172.16.0.33" p: 10000],
-                    [ServerData newData:@"172.16.0.45" p: 10000],
-                    [ServerData newData:@"192.168.1.100" p: 10000],
-                    [ServerData newData:@"192.168.1.101" p: 10000],
-                    [ServerData newData:@"192.168.1.102" p: 10000],
-                    [ServerData newData:@"192.168.1.103" p: 10000],
-                    [ServerData newData:@"192.168.1.104" p: 10000],
-                    [ServerData newData:@"192.168.1.105" p: 10000],
-                    [ServerData newData:@"192.168.1.106" p: 10000]
+                    [ServerData newData:@"127.0.0.1" p: 10000],
+                    [ServerData newData:@"10.0.0.191" p: 10000],
+                    [ServerData newData:@"192.168.1.99" p: 10000]
                     ];
     
     self.servers.dataSource = self;

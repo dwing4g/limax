@@ -1,7 +1,5 @@
 package limax.zdb;
 
-import java.util.Iterator;
-
 import limax.codec.MarshalException;
 import limax.codec.OctetsStream;
 import limax.util.Trace;
@@ -153,12 +151,12 @@ final class TRecord<K, V> extends XBean {
 	private OctetsStream snapshotValue = null;
 	private State snapshotState = null;
 
-	boolean tryMarshalN(Iterator<TRecord<K, V>> it) {
+	boolean tryMarshalN(Runnable action) {
 		if (!lockey.rTryLock())
 			return false;
 		try {
 			marshal0();
-			it.remove();
+			action.run();
 		} finally {
 			lockey.rUnlock();
 		}

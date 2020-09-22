@@ -3,18 +3,7 @@ package limax.zdb;
 import java.util.concurrent.Future;
 
 @FunctionalInterface
-public interface Procedure {
-
-	interface Result {
-		boolean isSuccess();
-
-		Throwable getException();
-	}
-
-	interface Done<P extends Procedure> {
-		void doDone(P p, Result r);
-	}
-
+public interface Procedure extends AbstractProcedure {
 	boolean process() throws Exception;
 
 	static <P extends Procedure> void execute(P p) {
@@ -49,23 +38,4 @@ public interface Procedure {
 		return submit(this);
 	}
 
-	default int maxExecutionTime() {
-		return -1;
-	}
-
-	default int retryDelay() {
-		return -1;
-	}
-
-	default int retryTimes() {
-		return -1;
-	}
-
-	default boolean retrySerial() {
-		return false;
-	}
-
-	default String getName() {
-		return getClass().getName();
-	}
 }

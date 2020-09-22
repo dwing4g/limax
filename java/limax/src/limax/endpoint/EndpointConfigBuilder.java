@@ -14,6 +14,8 @@ public interface EndpointConfigBuilder {
 
 	EndpointConfigBuilder aunayService(boolean used);
 
+	EndpointConfigBuilder keepAlive(boolean used);
+	
 	EndpointConfigBuilder endpointState(State... states);
 
 	EndpointConfigBuilder staticViewClasses(View.StaticManager... managers);

@@ -1,59 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="limax" default="dist">
-
-	<property environment="env" />
-	<condition property="sdk.dir" value="${env.ANDROID_HOME}">
-		<isset property="env.ANDROID_HOME" />
-	</condition>
-
-	<loadproperties srcFile="project.properties" />
-	<fail
-		message="sdk.dir is missing. Make sure to generate local.properties using 'android update project' or to inject it through the ANDROID_HOME environment variable."
-		unless="sdk.dir" />
-
-	<property name="java.target" value="1.6" />
-	<property name="java.source" value="1.6" />
-	<property name="java.encoding" value="UTF-8" />
-	<property name="out.library.jar.file" value="limax.jar" />
+<project name="limax" default="init">
 
 	<property name="limax.java.path" location="./../limax" />
-
-	<import file="${sdk.dir}/tools/ant/build.xml" />
+	<property name="limax.java.src" location="./src/main/java" />
 
 	<target name="init">
 		<ant dir="${limax.java.path}" target="xmlgen" inheritAll="false" />
 
 		<!-- gen files -->
-		<copy todir="src/limax/defines">
+		<copy todir="${limax.java.src}/limax/defines">
 			<fileset dir="${limax.java.path}/gen/limax/defines" />
 		</copy>
-		<copy todir="src/limax/endpoint">
+		<copy todir="${limax.java.src}/limax/endpoint">
 			<fileset dir="${limax.java.path}/gen/limax/endpoint"
 				excludes="PortForward.java" />
 		</copy>
-		<copy todir="src/limax/providerendpoint">
+		<copy todir="${limax.java.src}/limax/providerendpoint">
 			<fileset dir="${limax.java.path}/gen/limax/providerendpoint" />
 		</copy>
-		<copy todir="src/limax/auanyviews">
+		<copy todir="${limax.java.src}/limax/auanyviews">
 			<fileset dir="${limax.java.path}/gen/limax/auanyviews" />
 		</copy>
 
 		<!-- individual files -->
-		<copy todir="src/limax">
+		<copy todir="${limax.java.src}/limax">
 			<fileset dir="individual/limax" />
 		</copy>
 
 		<!-- src files -->
-		<copy todir="src/limax/codec">
+		<copy todir="${limax.java.src}/limax/codec">
 			<fileset dir="${limax.java.path}/src/limax/codec">
 				<exclude name="**/asn1/**" />
 			</fileset>
 		</copy>
-		<copy todir="src/limax/endpoint">
+		<copy todir="${limax.java.src}/limax/endpoint">
 			<fileset dir="${limax.java.path}/src/limax/endpoint"
 				excludes="script/JavaScriptHandle.java,Expansion.java" />
 		</copy>
-		<copy todir="src/limax/net">
+		<copy todir="${limax.java.src}/limax/net">
 			<fileset dir="${limax.java.path}/src/limax/net"
 				includes="AbstractManager.java,AbstractRpcContext.java,AbstractTransport.java,
 				ClientListener.java,ClientManager.java,ClientManagerConfig.java,ClientManagerImpl.java,
@@ -63,28 +47,24 @@
 				SupportTypedDataBroadcast.java,SupportTypedDataTransfer.java,SupportUnknownProtocol.java,
 				Transport.java,UnknownProtocolHandler.java" />
 		</copy>
-		<copy todir="src/limax/net/io">
-			<fileset dir="${limax.java.path}/src/limax/net/io" excludes="NetModel.java,WebSocketServerTask.java" />
+		<copy todir="${limax.java.src}/limax/net/io">
+			<fileset dir="${limax.java.path}/src/limax/net/io" excludes="NetModel.java,WebSocketServerTask.java,Asynchronous*" />
 		</copy>
-		<copy todir="src/limax/util">
+		<copy todir="${limax.java.src}/limax/util">
 			<fileset dir="${limax.java.path}/src/limax/util"
 				includes="Closeable.java,HttpClient.java,ConcurrentEnvironment.java,Dispatcher.java,HashExecutor.java,Helper.java,
-				JMXException.java,Resource.java,ScheduledTimeoutExecutor.java,TimeoutExecutor.java,Pair.java" />
+				JMXException.java,Resource.java,ScheduledTimeoutExecutor.java,TimeoutExecutor.java,Pair.java,BoundedExecutor.java" />
 		</copy>
-		<copy todir="src/limax/xmlconfig">
+		<copy todir="${limax.java.src}/limax/xmlconfig">
 			<fileset dir="${limax.java.path}/src/limax/xmlconfig"
 				includes="ClientManagerConfigBuilder.java,ConfigBuilder.java" />
 		</copy>
 	</target>
 
-	<target name="cleanlib">
-		<delete file="${out.library.jar.file}" />
-		<delete dir="src/limax" />
+	<target name="clean">
+		<delete includeemptydirs="true">
+			<fileset dir="${limax.java.src}" includes="**/*"/>
+		</delete>
 	</target>
-
-	<target name="dist" depends="init,release">
-		<delete dir="src/limax" />
-	</target>
-	<target name="all" depends="cleanlib,clean,dist" />
 
 </project>

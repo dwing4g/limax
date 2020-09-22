@@ -20,6 +20,8 @@ public interface EndpointConfig extends Config {
 
 	boolean auanyService();
 
+	boolean keepAlive();
+	
 	State getEndpointState();
 
 	Map<Integer, Map<Short, Class<? extends View>>> getStaticViewClasses();

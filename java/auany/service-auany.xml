@@ -28,7 +28,6 @@
         parserClass="limax.auany.XmlConfig$AppManagerConfig" patchCheckPeriod="30000">
         <xi:include href="appconfig.xml"/>
     </AppManager>
-    <Firewall checkPeriod="30000" config="firewall.xml" parserClass="limax.auany.XmlConfig$FirewallConfig"/>
     <AccountManager parserClass="limax.auany.XmlConfig$AccountManagerConfig">
         <xi:include href="accountloggermysql.xml"/>
         <xi:include href="payloggermysql.xml"/>

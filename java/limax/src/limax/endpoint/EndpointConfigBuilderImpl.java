@@ -26,6 +26,7 @@ final class EndpointConfigBuilderImpl implements EndpointConfigBuilder {
 	private volatile Executor executor;
 	private volatile State endpointState = new State();
 	private volatile boolean auanyServiceUsed = true;
+	private volatile boolean keepAliveUsed = true;
 
 	private final Map<Integer, Map<Short, Class<? extends View>>> svclasses = new HashMap<Integer, Map<Short, Class<? extends View>>>();
 	private Collection<Integer> variantpvids = new HashSet<Integer>();
@@ -92,6 +93,12 @@ final class EndpointConfigBuilderImpl implements EndpointConfigBuilder {
 	@Override
 	public EndpointConfigBuilder aunayService(boolean used) {
 		this.auanyServiceUsed = used;
+		return this;
+	}
+
+	@Override
+	public EndpointConfigBuilder keepAlive(boolean used) {
+		keepAliveUsed = used;
 		return this;
 	}
 
@@ -195,6 +202,11 @@ final class EndpointConfigBuilderImpl implements EndpointConfigBuilder {
 			@Override
 			public boolean auanyService() {
 				return auanyServiceUsed;
+			}
+
+			@Override
+			public boolean keepAlive() {
+				return keepAliveUsed;
 			}
 
 			@Override

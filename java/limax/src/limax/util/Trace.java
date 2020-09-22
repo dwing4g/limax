@@ -120,8 +120,9 @@ public enum Trace {
 
 			this.scheduler = ConcurrentEnvironment.getInstance().newScheduledThreadPool("Trace.Log.Scheduler", 1, true);
 			ZonedDateTime now = ZonedDateTime.now();
-			ZonedDateTime firstTime = now.with(ChronoField.HOUR_OF_DAY, 6).with(ChronoField.MINUTE_OF_HOUR, 0)
-					.with(ChronoField.SECOND_OF_MINUTE, 0).with(ChronoField.MILLI_OF_SECOND, 0);
+			ZonedDateTime firstTime = now.with(ChronoField.HOUR_OF_DAY, hourOfDay)
+					.with(ChronoField.MINUTE_OF_HOUR, minute).with(ChronoField.SECOND_OF_MINUTE, 0)
+					.with(ChronoField.MILLI_OF_SECOND, 0);
 			if (firstTime.isBefore(now))
 				firstTime = firstTime.plusDays(1);
 			scheduler.scheduleAtFixedRate(() -> {

@@ -254,6 +254,7 @@ function Limax(initializer, cache, ontunnel) {
 		c.i = p();
 		c.f = p();
 		var l = p();
+		var lmkdata = p();
 		for (var i = 0; i < l.length; i += 3) {
 			var ck = (d[l[i]] = l[i + 1].split(",")).pop();
 			var cv = cache.get(ck);
@@ -290,7 +291,7 @@ function Limax(initializer, cache, ontunnel) {
 			});
 		}
 		if (ontunnel)
-			ontunnel(1, 0, p());
+			ontunnel(1, 0, lmkdata);
 	}
 	function update(s) {
 		var v = p(s);
@@ -475,7 +476,7 @@ function loadJSON(uri, onjson, timeout, cacheDir, staleEnable) {
 	}
 	r.onreadystatechange = function() {
 		if (r.readyState == r.DONE) {
-			if (typeof w == "undefined")
+			if (typeof w != "undefined")
 				clearTimeout(w);
 			switch (r.status) {
 			case 200:

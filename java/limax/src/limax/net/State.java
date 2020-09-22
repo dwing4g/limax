@@ -113,7 +113,7 @@ public final class State {
 			os.begin();
 			try {
 				final int type = os.unmarshal_int();
-				final int size = Engine.checkLimitProtocolSize(os.unmarshal_size());
+				final int size = Engine.checkLimitProtocolSize(type, os.unmarshal_size());
 				final Stub stub = stubs.get(type);
 				if (null == stub) {
 					if (unknownProtocolHandler != null) {

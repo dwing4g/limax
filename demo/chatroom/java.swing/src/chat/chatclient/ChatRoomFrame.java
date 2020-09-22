@@ -217,7 +217,7 @@ public class ChatRoomFrame {
 		final StringBuilder sb = new StringBuilder();
 		if (!recved)
 			sb.append("you to ");
-		view.visitNames(m -> sb.append(m.get(sessionid)));
+		view.visitNames(m -> sb.append(m.get(sessionid).nickname));
 		if (recved)
 			sb.append(" to you");
 		sb.append(" : ").append(msg);

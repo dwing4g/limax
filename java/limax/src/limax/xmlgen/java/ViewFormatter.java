@@ -213,8 +213,9 @@ class ViewFormatter {
 					if (var.getType() instanceof TypeBinary)
 						f += "OctetsCopy";
 					ps.println("			limax.codec.Octets _d_ = " + m + "(_p_.get" + f + "());");
-					ps.println("			String _t_ = " + (Main.scriptSupport ? "script ? " + m + "(\"X"
-							+ StringStream.pack((Integer) var.attachment()) + ":\", _p_.get" + f + "()) : \"\""
+					ps.println("			String _t_ = " + (Main.scriptSupport
+							? "script ? " + m + "(\"X" + StringStream.pack((Integer) var.attachment()) + ":\", _p_.get"
+									+ f + "()) : \"\""
 							: "\"\"") + ";");
 					binds.stream().filter(bind -> bind.contains(var)).forEach(bind -> {
 						ps.println("			_field_collector_" + bind.getName()
@@ -658,12 +659,12 @@ class ViewFormatter {
 		if (hasVariables()) {
 			ps.println(
 					"	private void onChanged(long sessionid, byte index, byte field, limax.codec.Octets data, limax.codec.Octets dataremoved) throws MarshalException {");
-			if (Stream
-					.concat(view.getBinds().stream().filter(bind -> bind.getValueType() instanceof Xbean)
+			if (Stream.concat(
+					view.getBinds().stream().filter(bind -> bind.getValueType() instanceof Xbean)
 							.map(bind -> (Xbean) bind.getValueType()),
-							view.getSubscribes().stream().filter(subs -> subs.getBind() != null)
-									.filter(subs -> subs.getBind().getValueType() instanceof Xbean)
-									.map(subs -> (Xbean) subs.getBind().getValueType()))
+					view.getSubscribes().stream().filter(subs -> subs.getBind() != null)
+							.filter(subs -> subs.getBind().getValueType() instanceof Xbean)
+							.map(subs -> (Xbean) subs.getBind().getValueType()))
 					.findAny().isPresent()) {
 				printViewChangeType(ps, view, start);
 				ps.println("		OctetsStream _os_ = OctetsStream.wrap(data);");
@@ -887,7 +888,8 @@ class ViewFormatter {
 			ps.println("import limax.provider." + getViewParentClass() + ";");
 			if (!(view.getBinds().isEmpty() && view.getVariables().isEmpty())) {
 				ps.println("import limax.provider.ViewDataCollector;");
-				ps.println("import " + getProviderNamespace() + ".Marshals;");
+				if (!getProviderNamespace().equalsIgnoreCase(namespace))
+					ps.println("import " + getProviderNamespace() + ".Marshals;");
 			}
 			ps.println(view.getComment());
 			ps.println("public abstract class _" + name + " extends " + getViewParentClass() + " {");
@@ -1034,18 +1036,14 @@ class ViewFormatter {
 									.map(n -> "(byte)" + varnameindex.getIndex(n)).collect(Collectors.joining(","))
 							+ "};");
 		case session:
-			ps.println(
-					"		_collectors_[0] = new byte[] {"
-							+ Stream.concat(view.getVariables().stream().filter(var -> !var.isSnapshot()),
-									view.getBinds().stream().filter(bind -> !bind.isSnapshot()))
-									.map(n -> "(byte)" + varnameindex.getIndex(n)).collect(Collectors.joining(","))
-							+ "};");
-			ps.println(
-					"		_collectors_[1] = new byte[] {"
-							+ Stream.concat(view.getVariables().stream().filter(var -> var.isSnapshot()),
-									view.getBinds().stream().filter(bind -> bind.isSnapshot() && bind.isImmutable()))
-									.map(n -> "(byte)" + varnameindex.getIndex(n)).collect(Collectors.joining(","))
-							+ "};");
+			ps.println("		_collectors_[0] = new byte[] {" + Stream
+					.concat(view.getVariables().stream().filter(var -> !var.isSnapshot()),
+							view.getBinds().stream().filter(bind -> !bind.isSnapshot()))
+					.map(n -> "(byte)" + varnameindex.getIndex(n)).collect(Collectors.joining(",")) + "};");
+			ps.println("		_collectors_[1] = new byte[] {" + Stream
+					.concat(view.getVariables().stream().filter(var -> var.isSnapshot()),
+							view.getBinds().stream().filter(bind -> bind.isSnapshot() && bind.isImmutable()))
+					.map(n -> "(byte)" + varnameindex.getIndex(n)).collect(Collectors.joining(",")) + "};");
 			ps.println(
 					"		_collectors_[2] = new byte[] {"
 							+ view.getBinds().stream().filter(bind -> bind.isSnapshot() && !bind.isImmutable())

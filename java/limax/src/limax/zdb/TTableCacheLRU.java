@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.Map.Entry;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -21,7 +21,7 @@ final class TTableCacheLRU<K, V> extends TTableCache<K, V> {
 			private static final long serialVersionUID = 650878930636563676L;
 
 			@Override
-			protected boolean removeEldestEntry(Entry<K, TRecord<K, V>> eldest) {
+			protected boolean removeEldestEntry(Map.Entry<K, TRecord<K, V>> eldest) {
 				int capacity = getCapacity();
 				if (capacity > 0 && capacity < size())
 					cleaner.start();

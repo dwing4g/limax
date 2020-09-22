@@ -92,14 +92,16 @@ final class EndpointManagerImpl implements EndpointManager, ClientListener, Supp
 		this.config = config;
 		this.listener = listener;
 		this.pvids = pvids;
+		this.keepalive = config.keepAlive() ? new KeepAliveImpl() : hollowKeepAlive;
 		this.manager = (ClientManager) Engine.add(config.getClientManagerConfig(), this, this);
 		this.scriptExchange = config.getScriptEngineHandle() != null
-				? new ScriptExchange(this, config.getScriptEngineHandle()) : null;
+				? new ScriptExchange(this, config.getScriptEngineHandle())
+				: null;
 		if (listener instanceof TunnelSupport) {
 			((TunnelSupport) listener).registerTunnelSender(new TunnelSender() {
 				@Override
-				public void send(int providerid, int label, Octets data)
-						throws InstantiationException, SizePolicyException, CodecException, ClassCastException {
+				public void send(int providerid, int label, Octets data) throws InstantiationException,
+						SizePolicyException, CodecException, ClassCastException {
 					new Tunnel(providerid, 0, label, data).send(manager.getTransport());
 				}
 			});
@@ -170,8 +172,8 @@ final class EndpointManagerImpl implements EndpointManager, ClientListener, Supp
 			keepalive.startPingAndKeepAlive(transport);
 		} else {
 			dhRandom = Helper.makeDHRandom();
-			new CHandShake((byte) config.getDHGroup(),
-					Octets.wrap(Helper.generateDHResponse(config.getDHGroup(), dhRandom).toByteArray()))
+			new CHandShake((byte) config.getDHGroup(), Octets
+					.wrap(Helper.generateDHResponse(config.getDHGroup(), dhRandom).toByteArray()))
 							.send(transport);
 		}
 	}
@@ -226,7 +228,38 @@ final class EndpointManagerImpl implements EndpointManager, ClientListener, Supp
 		return pfm;
 	}
 
-	private class KeepAlive {
+	private interface KeepAlive {
+
+		void cancel();
+
+		void startPingAndKeepAlive(Transport transport) throws Exception;
+
+		void process(PingAndKeepAlive p);
+
+		boolean isTimeout();
+
+	}
+
+	private static final KeepAlive hollowKeepAlive = new KeepAlive() {
+		@Override
+		public void cancel() {
+		}
+
+		@Override
+		public void startPingAndKeepAlive(Transport transport) throws Exception {
+		}
+
+		@Override
+		public void process(PingAndKeepAlive p) {
+		}
+
+		@Override
+		public boolean isTimeout() {
+			return false;
+		}
+	};
+
+	private class KeepAliveImpl implements KeepAlive {
 		private final static int PING_TIMEOUT = 5;
 		private final static int KEEP_ALIVE_DELAY = 50;
 		private final AtomicReference<Future<?>> refFuture = new AtomicReference<Future<?>>();
@@ -238,10 +271,12 @@ final class EndpointManagerImpl implements EndpointManager, ClientListener, Supp
 				future.cancel(false);
 		}
 
+		@Override
 		public void cancel() {
 			update(null);
 		}
 
+		@Override
 		public void startPingAndKeepAlive(Transport transport) throws Exception {
 			new PingAndKeepAlive(System.currentTimeMillis()).send(transport);
 			update(Engine.getProtocolScheduler().scheduleWithFixedDelay(new Runnable() {
@@ -255,6 +290,7 @@ final class EndpointManagerImpl implements EndpointManager, ClientListener, Supp
 			}, PING_TIMEOUT, Long.MAX_VALUE, TimeUnit.SECONDS));
 		}
 
+		@Override
 		public void process(PingAndKeepAlive p) {
 			if (timeout)
 				return;
@@ -272,12 +308,13 @@ final class EndpointManagerImpl implements EndpointManager, ClientListener, Supp
 			}, KEEP_ALIVE_DELAY, Long.MAX_VALUE, TimeUnit.SECONDS));
 		}
 
+		@Override
 		public boolean isTimeout() {
 			return timeout;
 		}
 	}
 
-	private final KeepAlive keepalive = new KeepAlive();
+	private final KeepAlive keepalive;
 	private volatile BigInteger dhRandom;
 	private volatile PortForward.ManagerImpl portforward = null;
 	private volatile Transport transportsaved = null;
@@ -292,7 +329,8 @@ final class EndpointManagerImpl implements EndpointManager, ClientListener, Supp
 
 	void process(SHandShake p) throws Exception {
 		StateTransport transport = (StateTransport) p.getTransport();
-		byte[] material = Helper.computeDHKey(config.getDHGroup(), new BigInteger(p.dh_data.getBytes()), dhRandom)
+		byte[] material = Helper
+				.computeDHKey(config.getDHGroup(), new BigInteger(p.dh_data.getBytes()), dhRandom)
 				.toByteArray();
 		byte[] key = ((InetSocketAddress) transport.getPeerAddress()).getAddress().getAddress();
 		int half = material.length / 2;
@@ -367,7 +405,8 @@ final class EndpointManagerImpl implements EndpointManager, ClientListener, Supp
 						@Override
 						public void run() {
 							try {
-								new Tunnel(AuanyService.providerId, 0, -1, new Octets()).send(transport);
+								new Tunnel(AuanyService.providerId, 0, -1, new Octets())
+										.send(transport);
 							} catch (Exception e) {
 							}
 						}
@@ -392,7 +431,8 @@ final class EndpointManagerImpl implements EndpointManager, ClientListener, Supp
 	private void createStaticViewContextImpls() {
 		limax.endpoint.auanyviews.ViewManager vm = limax.endpoint.auanyviews.ViewManager
 				.createInstance(AuanyService.providerId);
-		viewContextMap.put(vm.getProviderId(), new StaticViewContextImpl(vm.getProviderId(), vm.getClasses(), this));
+		viewContextMap.put(vm.getProviderId(),
+				new StaticViewContextImpl(vm.getProviderId(), vm.getClasses(), this));
 		for (Map.Entry<Integer, Map<Short, Class<? extends View>>> e : config.getStaticViewClasses().entrySet())
 			viewContextMap.put(e.getKey(), new StaticViewContextImpl(e.getKey(), e.getValue(), this));
 	}

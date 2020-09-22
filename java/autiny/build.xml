@@ -21,6 +21,10 @@
 		<ant dir="../auany" target="dist" inheritAll="false" />
 	</target>
 
+	<target name="globalid">
+		<ant dir="../globalid" target="dist" inheritAll="false" />
+	</target>
+
 	<target name="-init">
 		<mkdir dir="${build}" />
 	</target>
@@ -29,30 +33,24 @@
 		<delete dir="${genbuild}" />
 		<delete dir="${gen}" />
 		<mkdir dir="${genbuild}" />
-		<javac encoding="UTF-8" srcdir="${src}"
-			includes="limax/auany/tiny/util/xmlfiles/**" destdir="${genbuild}"
-			classpath="${limaxbin}/limax.jar" debug="true" debuglevel="lines,source,vars"
-			includeantruntime="false">
+		<javac encoding="UTF-8" srcdir="${src}" includes="limax/auany/tiny/util/xmlfiles/**" destdir="${genbuild}" classpath="${limaxbin}/limax.jar" debug="true" debuglevel="lines,source,vars" includeantruntime="false">
 			<compilerarg line="-Xlint:unchecked" />
 		</javac>
-		<java classname="limax.auany.tiny.util.xmlfiles.GenCodes"
-			classpath="${genbuild}:${limaxbin}/limax.jar" fork="yes">
+		<java classname="limax.auany.tiny.util.xmlfiles.GenCodes" classpath="${genbuild}:${limaxbin}/limax.jar" fork="yes">
 			<arg value="${limaxsrc}/auany.xml" />
 			<arg value="${limaxsrc}/globalid.xml" />
 			<arg value="${gentempxml}" />
 			<arg value="${genzdbxml}" />
 			<arg value="${gensvrxml}" />
 		</java>
-		<java classpath="${limaxbin}/limax.jar" classname="limax.xmlgen.Main"
-			fork="true">
+		<java classpath="${limaxbin}/limax.jar" classname="limax.xmlgen.Main" fork="true">
 			<arg value="-java" />
 			<arg value="-script" />
 			<arg value="-noServiceXML" />
 			<arg value="${gentempxml}" />
 		</java>
 		<delete file="${gentempxml}" />
-		<delete dir="${src}"
-			excludes="MANIFEST.MF limax/auany/* limax/auany/appconfig/** limax/auany/tiny/**" />
+		<delete dir="${src}" excludes="MANIFEST.MF limax/auany/* limax/auany/appconfig/** limax/auany/tiny/**" />
 
 		<delete dir="${genbuild}" />
 		<mkdir dir="${genbuild}" />
@@ -63,16 +61,14 @@
 				<include name="globalid.jar" />
 			</fileset>
 		</path>
-		<javac encoding="UTF-8" srcdir="${gen}" destdir="${genbuild}"
-			classpathref="classpath" debug="true" debuglevel="lines,source,vars"
-			includeantruntime="false">
+		<javac encoding="UTF-8" srcdir="${gen}" destdir="${genbuild}" classpathref="classpath" debug="true" debuglevel="lines,source,vars" includeantruntime="false">
 			<compilerarg line="-Xlint:unchecked" />
 		</javac>
 		<jar jarfile="${genjar}" basedir="${genbuild}" />
 		<delete dir="${genbuild}" />
 	</target>
 
-	<target name="genjar" depends="auany, -genjar" />
+	<target name="genjar" depends="auany, globalid, -genjar" />
 
 	<target name="copycodes">
 		<delete dir="${src2}" />
@@ -85,8 +81,7 @@
 				<include name="**/*.java" />
 			</fileset>
 		</copy>
-		<copy todir="${src2}/limax/auany/appconfig" overwrite="true"
-			force="true">
+		<copy todir="${src2}/limax/auany/appconfig" overwrite="true" force="true">
 			<fileset dir="${auanysrc}/limax/auany/appconfig">
 				<include name="AppKey.java" />
 				<include name="ServiceType.java" />
@@ -102,8 +97,7 @@
 			<fileset file="${limaxbin}/limax.jar" />
 			<fileset file="${genjar}" />
 		</path>
-		<javac encoding="UTF-8" destdir="${build}" classpathref="classpath"
-			debug="true" debuglevel="lines,source,vars" includeantruntime="false">
+		<javac encoding="UTF-8" destdir="${build}" classpathref="classpath" debug="true" debuglevel="lines,source,vars" includeantruntime="false">
 			<compilerarg line="-Xlint:unchecked" />
 			<compilerarg line="-implicit:none" />
 			<src path="${src}" />
@@ -127,10 +121,8 @@
 	</target>
 
 	<target name="-dist">
-		<copy file="${genzdbxml}" todir="${build}/limax/auany/tiny/util/xmlfiles"
-			overwrite="true" force="true" />
-		<copy file="${gensvrxml}" todir="${build}/limax/auany/tiny/util/xmlfiles"
-			overwrite="true" force="true" />
+		<copy file="${genzdbxml}" todir="${build}/limax/auany/tiny/util/xmlfiles" overwrite="true" force="true" />
+		<copy file="${gensvrxml}" todir="${build}/limax/auany/tiny/util/xmlfiles" overwrite="true" force="true" />
 		<jar jarfile="${jarfile}" basedir="${build}" manifest="${src}/MANIFEST.MF" />
 	</target>
 

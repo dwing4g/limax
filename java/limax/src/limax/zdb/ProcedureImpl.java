@@ -6,16 +6,21 @@ import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import limax.util.Promise;
 import limax.util.Trace;
 
-final class ProcedureImpl<P extends Procedure> implements Procedure.Result {
-
+final class ProcedureImpl<P extends AbstractProcedure> {
 	boolean call() {
 		int savepoint = Transaction.savepoint();
 		try {
-			if (process.process()) {
-				setSuccess(true);
+			if (process instanceof Function) {
+				value = ((Function<?>) process).process();
 				setException(null);
+				setSuccess(true);
+				return true;
+			} else if (((Procedure) process).process()) {
+				setException(null);
+				setSuccess(true);
 				return true;
 			}
 		} catch (Exception e) {
@@ -61,23 +66,37 @@ final class ProcedureImpl<P extends Procedure> implements Procedure.Result {
 		} else {
 			impl.call();
 		}
-		return impl;
+		return impl.getResult();
 	}
 
 	static <P extends Procedure> Future<Procedure.Result> submit(P p) {
 		if (Transaction.current() != null)
 			throw new IllegalStateException("can not submit in transaction.");
-		return new ProcedureFuture<P>(new ProcedureImpl<P>(p));
+		return new ProcedureFuture<>(new ProcedureImpl<>(p));
 	}
 
 	static <P extends Procedure> void execute(P p, Procedure.Done<P> done) {
-		new ProcedureFuture<P>(new ProcedureImpl<P>(p), done);
+		new ProcedureFuture<>(new ProcedureImpl<>(p), done);
+	}
+
+	@SuppressWarnings("unchecked")
+	static <R, F extends Function<R>> Promise<R> promise(F f) {
+		if (Transaction.current() != null)
+			throw new IllegalStateException("can not promise in transaction.");
+		ProcedureImpl<F> p = new ProcedureImpl<>(f);
+		return Promise.of((resolve, reject) -> new ProcedureFuture<>(p, (_p, r) -> {
+			if (r.isSuccess())
+				resolve.accept((R) p.value);
+			else
+				reject.accept(r.getException());
+		}));
 	}
 
 	private final P process;
 	private volatile Transaction.Isolation isolation;
 	private volatile boolean success = false;
 	private volatile Throwable exception;
+	private volatile Object value;
 
 	private ProcedureImpl(P p) {
 		this.process = p;
@@ -88,22 +107,31 @@ final class ProcedureImpl<P extends Procedure> implements Procedure.Result {
 		return isolation;
 	}
 
-	@Override
-	public boolean isSuccess() {
-		return success;
+	Procedure.Result getResult() {
+		return new Procedure.Result() {
+
+			@Override
+			public boolean isSuccess() {
+				return success;
+			}
+
+			@Override
+			public Throwable getException() {
+				return exception;
+			}
+		};
 	}
 
 	void setSuccess(boolean success) {
 		this.success = success;
 	}
 
-	@Override
-	public Throwable getException() {
-		return exception;
-	}
-
 	void setException(Throwable exception) {
 		this.exception = exception;
+	}
+
+	Throwable getException() {
+		return exception;
 	}
 
 	String getProcedureName() {
@@ -132,10 +160,10 @@ final class ProcedureImpl<P extends Procedure> implements Procedure.Result {
 		return t0 <= 0 ? 0 : Zdb.random().nextInt(t1 <= 0 ? t0 : Math.min(t0, t1));
 	}
 
-	private static class ProcedureFuture<P extends Procedure> implements RunnableFuture<Procedure.Result> {
+	private static class ProcedureFuture<P extends AbstractProcedure> implements RunnableFuture<Procedure.Result> {
 		private volatile Future<ProcedureImpl<P>> future;
 		private final ProcedureImpl<P> p;
-		private final Procedure.Done<P> done;
+		private final AbstractProcedure.Done<P> done;
 		private volatile int retry = 0;
 
 		public ProcedureFuture(ProcedureImpl<P> p) {
@@ -155,7 +183,7 @@ final class ProcedureImpl<P extends Procedure> implements Procedure.Result {
 		private void done() {
 			if (done != null)
 				try {
-					done.doDone(p.process, p);
+					done.doDone(p.process, p.getResult());
 				} catch (Throwable e) {
 					if (Trace.isErrorEnabled())
 						Trace.error("doDone", e);
@@ -215,7 +243,7 @@ final class ProcedureImpl<P extends Procedure> implements Procedure.Result {
 			for (;;) {
 				try {
 					future.get();
-					return p;
+					return p.getResult();
 				} catch (ExecutionException e) {
 					if (!(e.getCause() instanceof XDeadLockError))
 						throw new ExecutionException(p.getException());
@@ -230,7 +258,7 @@ final class ProcedureImpl<P extends Procedure> implements Procedure.Result {
 			for (;;) {
 				try {
 					future.get(timeout, unit);
-					return p;
+					return p.getResult();
 				} catch (ExecutionException e) {
 					if (!(e.getCause() instanceof XDeadLockError))
 						throw new ExecutionException(p.getException());

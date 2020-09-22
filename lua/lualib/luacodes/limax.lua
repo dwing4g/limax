@@ -301,6 +301,7 @@ return function (initializer, cache, ontunnel)
     end
     c.i, c.f = p(), p()
     local l = p()
+    local lmkdata = p()
     for i = 1, #l, 3 do
       d[l[i]] = {}
       for v in l[i + 1]:gmatch('[^,]+') do
@@ -346,7 +347,7 @@ return function (initializer, cache, ontunnel)
       end
     end
     if ontunnel then
-   		ontunnel(1, 0, p())
+   		ontunnel(1, 0, lmkdata)
     end
   end
   local function update(s)

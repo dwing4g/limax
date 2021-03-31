@@ -18,6 +18,7 @@ import java.util.function.BiConsumer;
 import org.w3c.dom.Element;
 
 import limax.auany.HttpHelper;
+import limax.auany.json.AppInfo;
 import limax.auany.json.SwitcherInfo;
 import limax.http.HttpHandler;
 import limax.net.Engine;
@@ -145,6 +146,16 @@ public class AppManager {
 		} finally {
 			lock.unlock();
 		}
+	}
+
+	public static AppInfo getAppInfo(int appid, ServiceType type) {
+		final Context current = AppManager.current;
+		if (null == current)
+			return null;
+		App app = current.appMap.get(appid);
+		if (null == app)
+			return null;
+		return app.createInfo(type);
 	}
 
 	public static void initialize(Element self, BiConsumer<String, HttpHandler> httphandlers) throws Exception {

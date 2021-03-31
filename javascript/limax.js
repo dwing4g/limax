@@ -114,6 +114,19 @@ function Limax(initializer, cache, ontunnel) {
 		}
 	}
 	var p = Parser(), c = {}, d = {}, t = {};
+	function EQ(a, b) {
+		if (a === b)
+			return true;
+		if ((typeof a == "object" && a != null) && (typeof b == "object" && b != null)) {
+			if (Object.keys(a).length != Object.keys(b).length)
+				return false;
+			for (var p in a)
+				if (!b.hasOwnProperty(p) || !EQ(a[p], b[p]))
+					return false;
+			return true;
+		}
+		return false;
+	}
 	function R(r, l, m) {
 		function f(r, s, v, o, b) {
 			var e = {
@@ -158,7 +171,7 @@ function Limax(initializer, cache, ontunnel) {
 							var n = o[v.f]
 							for ( var x in v.r)
 								for ( var y in n)
-									if (v.r[x] == n[y]) {
+									if (EQ(v.r[x], n[y])) {
 										n.splice(y, 1);
 										break;
 									}
@@ -168,8 +181,16 @@ function Limax(initializer, cache, ontunnel) {
 							if (typeof o[v.f] == "undefined")
 								o[v.f] = new Map();
 							var n = o[v.f];
-							for ( var x in v.r)
-								n["delete"](v.r[x]);
+							var l = [];
+							n.forEach(function(y, k) {
+								for ( var x in v.r)
+									if (EQ(v.r[x], k)) {
+										l.push(k);
+										break;
+									}
+							})
+							for ( var k in l)
+								n["delete"](l[k]);
 							v.c.forEach(function(v, k) {
 								n.set(k, v);
 							})
@@ -561,10 +582,4 @@ function loadServiceInfos(host, port, appid, additionalQuery, timeout,
 				onresult(undefined, e);
 			}
 	}, timeout, cacheDir, staleEnable);
-}
-
-function loadServiceInfos(host, port, appid, timeout, cacheDir, staleEnable,
-		onresult, wss) {
-	loadServiceInfos(host, port, appid, "", timeout, cacheDir, staleEnable,
-			onresult, wss);
 }

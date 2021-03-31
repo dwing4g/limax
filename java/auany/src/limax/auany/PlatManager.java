@@ -4,8 +4,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
 import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Calendar;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
 import org.w3c.dom.Element;
@@ -29,13 +31,41 @@ import limax.util.ElementHelper;
 import limax.util.Trace;
 
 final class PlatManager {
+
+	private static final long trustallmode_sessionid_step = 60 * 60 * 24 * 7;
+	private static final long trustallmode_sessionid_init = buildTruskAllModeSessionidInit();
+	private static final AtomicLong trustallmode_sessionid = new AtomicLong(trustallmode_sessionid_init);
+
+	private static long buildTruskAllModeSessionidInit() {
+		final Calendar cal = Calendar.getInstance();
+		final long day = cal.get(Calendar.DAY_OF_WEEK) - 1;
+		final long hour = cal.get(Calendar.HOUR_OF_DAY);
+		final long minute = cal.get(Calendar.MINUTE);
+		final long seconde = cal.get(Calendar.SECOND);
+		return seconde + 60 * minute + 60 * 24 * hour + 60 * 60 * 24 * day;
+	}
+
+	private static long nextTruskAllModeSessionid() {
+		return trustallmode_sessionid.getAndAdd(trustallmode_sessionid_step);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////
+
 	private final static Map<String, PlatProcess> plats = new ConcurrentHashMap<>();
+	private static boolean trustallmode = false;
 
 	static void initialize(Element self, BiConsumer<String, HttpHandler> httphandlers) throws Exception {
-		NodeList list = self.getElementsByTagName("plat");
-		int count = list.getLength();
-		for (int i = 0; i < count; i++)
-			parsePlatElement((Element) list.item(i), httphandlers);
+		final boolean trustallmode = new ElementHelper(self).getBoolean("trustall", false);
+		if (trustallmode) {
+			Trace.fatal("PlatManager buildTruskAllMode sessionid init = " + trustallmode_sessionid_init + " step = "
+					+ trustallmode_sessionid_step);
+			PlatManager.trustallmode = trustallmode;
+		} else {
+			NodeList list = self.getElementsByTagName("plat");
+			int count = list.getLength();
+			for (int i = 0; i < count; i++)
+				parsePlatElement((Element) list.item(i), httphandlers);
+		}
 	}
 
 	static void check(String username, String token, String platflag, Result result) {
@@ -139,7 +169,10 @@ final class PlatManager {
 
 	static void process(SessionAuthByToken rpc) {
 		try {
-			_process(rpc);
+			if (trustallmode)
+				_trustAll(rpc);
+			else
+				_process(rpc);
 		} catch (Exception e) {
 			if (Trace.isWarnEnabled())
 				Trace.warn(rpc, e);
@@ -148,6 +181,42 @@ final class PlatManager {
 			res.errorCode = ErrorCodes.AUANY_AUTHENTICATE_FAIL;
 			response(rpc);
 		}
+	}
+
+	private static void _trustAll(SessionAuthByToken rpc) {
+		AuanyAuthArg arg = rpc.getArgument();
+		AuanyAuthRes res = rpc.getResult();
+		SocketAddress peeraddress;
+		@SuppressWarnings("unused")
+		SocketAddress reportaddress;
+		try (final ObjectInputStream ois = new ObjectInputStream(
+				new ByteArrayInputStream(arg.clientaddress.array(), 0, arg.clientaddress.size()))) {
+			peeraddress = (SocketAddress) ois.readObject();
+			reportaddress = (SocketAddress) ois.readObject();
+		} catch (Exception e) {
+			peeraddress = reportaddress = new SocketAddress() {
+				private static final long serialVersionUID = -210184168558204443L;
+			};
+		}
+		if (!Firewall.checkPermit(peeraddress, arg.pvids.keySet())) {
+			res.errorSource = ErrorSource.LIMAX;
+			res.errorCode = ErrorCodes.AUANY_CHECK_LOGIN_IP_FAILED;
+			response(rpc);
+			return;
+		}
+		Integer appid = AppManager.checkAppId(arg.pvids.keySet());
+		if (appid == null) {
+			res.errorSource = ErrorSource.LIMAX;
+			res.errorCode = ErrorCodes.AUANY_UNKNOWN_PLAT;
+			response(rpc);
+			return;
+		}
+
+		res.errorSource = ErrorSource.LIMAX;
+		res.errorCode = ErrorCodes.SUCCEED;
+		res.sessionid = res.mainid = nextTruskAllModeSessionid();
+		res.uid = arg.username;
+		response(rpc);
 	}
 
 	private static void _process(SessionAuthByToken rpc) {

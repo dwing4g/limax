@@ -72,8 +72,7 @@ public class RFC6455 {
 
 	private void consume(byte c) {
 		data.push_byte(c);
-		if (--length == 0)
-			stage = -1;
+		length--;
 	}
 
 	private void process(byte c) throws RFC6455Exception {
@@ -143,7 +142,7 @@ public class RFC6455 {
 	public Queue<Pair<Byte, byte[]>> unwrap(ByteBuffer in) throws RFC6455Exception {
 		while (in.hasRemaining()) {
 			process(in.get());
-			if (stage == -1) {
+			if (stage > 13 && 0 == length) {
 				if (fin)
 					queue.offer(new Pair<>(opcode, data.getBytes()));
 				stage = 0;

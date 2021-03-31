@@ -137,7 +137,7 @@ public class KeyInfo {
 		String describe = location.getSchemeSpecificPart();
 		int pos = describe.indexOf('@');
 		String alias = pos == -1 ? null : describe.substring(0, pos);
-		Path path = Paths.get(describe.substring(pos + 1));
+		Path path = Paths.get(new URI("file", describe.substring(pos + 1), null));
 		return KeyContainer.valueOf(location).load(new KeyUpdater(location), alias, path, passphraseCallback);
 	}
 
@@ -146,7 +146,7 @@ public class KeyInfo {
 		String describe = location.getSchemeSpecificPart();
 		int pos = describe.indexOf('@');
 		String alias = pos == -1 ? null : describe.substring(0, pos);
-		Path path = Paths.get(describe.substring(pos + 1));
+		Path path = Paths.get(new URI("file", describe.substring(pos + 1), null));
 		return KeyContainer.valueOf(location).save(new KeyUpdater(location), alias, path, privateKey, chain,
 				passphraseCallback);
 	}

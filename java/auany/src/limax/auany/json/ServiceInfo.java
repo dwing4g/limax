@@ -5,17 +5,11 @@ import java.util.List;
 import limax.codec.JSONSerializable;
 
 public final class ServiceInfo implements JSONSerializable {
-	@SuppressWarnings("unused")
 	private final List<SwitcherInfo> switchers;
-	@SuppressWarnings("unused")
 	private final List<Integer> pvids;
-	@SuppressWarnings("unused")
 	private final List<Integer> payids;
-	@SuppressWarnings("unused")
 	private final List<String> userjsons;
-	@SuppressWarnings("unused")
 	private final boolean running;
-	@SuppressWarnings("unused")
 	private final String optional;
 
 	public ServiceInfo(List<SwitcherInfo> switchers, List<Integer> pvids, List<Integer> payids, List<String> userjsons,
@@ -27,4 +21,29 @@ public final class ServiceInfo implements JSONSerializable {
 		this.running = running;
 		this.optional = optional;
 	}
+
+	public List<SwitcherInfo> getSwitchers() {
+		return switchers;
+	}
+
+	public List<Integer> getPvids() {
+		return pvids;
+	}
+
+	public List<Integer> getPayids() {
+		return payids;
+	}
+
+	public List<String> getUserjsons() {
+		return userjsons;
+	}
+
+	public boolean isRunning() {
+		return running;
+	}
+
+	public String getOptional() {
+		return optional;
+	}
+
 }

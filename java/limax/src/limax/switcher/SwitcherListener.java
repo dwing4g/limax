@@ -642,7 +642,9 @@ public final class SwitcherListener implements ServerListener {
 				break;
 			}
 			checkingmap.remove(sessionid);
-			session2iomap.put(sessionid, transport);
+			Transport oldtransport = session2iomap.put(sessionid, transport);
+			if (null != oldtransport && Trace.isErrorEnabled())
+				Trace.error("ERROR : duplicate transport [" + transport + "] [" + oldtransport + "]");
 			try {
 				if (transport instanceof WebSocketTransport) {
 					StringStream sstream = StringStream.create().marshal(ErrorSource.LIMAX).marshal(ErrorCodes.SUCCEED)

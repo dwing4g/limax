@@ -47,7 +47,7 @@ public class Engine {
 
 	static int checkLimitProtocolSize(int type, int size) throws SizePolicyException {
 		if (size > limitProtocolSize)
-			throw new SizePolicyException("size = " + type + " " + size
+			throw new SizePolicyException("type = " + type + " size = " + size
 					+ " exceed limax.net.Engine.limitProtocolSize = " + limitProtocolSize);
 		return size;
 	}

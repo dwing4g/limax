@@ -146,7 +146,6 @@ public class TrustManager implements Cloneable {
 			PKIXRevocationChecker pKIXRevocationChecker = (PKIXRevocationChecker) CertPathValidator.getInstance("PKIX")
 					.getRevocationChecker();
 			pKIXRevocationChecker.setOptions(options);
-			System.out.println(options);
 			pkixBuilderParameters.addCertPathChecker(pKIXRevocationChecker);
 		} else {
 			pkixBuilderParameters.setRevocationEnabled(false);

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/java/auany/auany.iml" filepath="$PROJECT_DIR$/java/auany/auany.iml" />
+      <module fileurl="file://$PROJECT_DIR$/java/autiny/autiny.iml" filepath="$PROJECT_DIR$/java/autiny/autiny.iml" />
+      <module fileurl="file://$PROJECT_DIR$/java/globalid/globalid.iml" filepath="$PROJECT_DIR$/java/globalid/globalid.iml" />
+      <module fileurl="file://$PROJECT_DIR$/java/limax/limax.iml" filepath="$PROJECT_DIR$/java/limax/limax.iml" />
+    </modules>
+  </component>
+</project>

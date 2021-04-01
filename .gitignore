@@ -73,3 +73,7 @@ lua/lualib/macos.clang.makefile/*.dylib
 lua/lualib/src/*.o
 lua/lualib/windows.vs2015/.vs
 .svn/
+
+/out/
+/java/limax/service-endpoint.xml
+/java/limax/service-provider.xml
